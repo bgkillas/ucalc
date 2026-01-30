@@ -1,8 +1,8 @@
-#[derive(Default, Debug, PartialEq)]
+#[derive(Default, Debug, PartialEq, Clone)]
 pub struct Parsed {
     pub parsed: Vec<NumOp>,
 }
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum NumOp {
     Num(f64),
     Operator(Operators),
@@ -43,123 +43,112 @@ impl NumOp {
 }
 #[derive(Debug, PartialEq)]
 pub enum ParseError {}
+//TODO allocations
+//TODO consider tokenizer
 impl Parsed {
     pub fn rpn(value: &str) -> Result<Self, ParseError> {
-        let mut parsed = Vec::new();
-        let mut chars = value.chars().peekable();
-        while let Some(c) = chars.next() {
-            if c.is_ascii_whitespace() {
+        let mut parsed = Vec::with_capacity(value.len());
+        for token in value.split(' ') {
+            if token.is_empty() {
                 continue;
             }
-            if c.is_ascii_alphabetic() {
-                let mut n = c.to_string();
-                while let Some(t) = chars.peek() {
-                    if t.is_ascii_alphabetic() {
-                        n.push(chars.next().unwrap());
-                    } else {
-                        break;
-                    }
-                }
-                if let Some(value) = Constants::get(n.as_str()) {
-                    parsed.push(NumOp::Num(value));
-                } else {
-                    parsed.push(NumOp::Operator(Operators::Fun(
-                        Function::try_from(n.as_str()).unwrap(),
-                    )));
-                }
-            } else if c.is_ascii_digit() {
-                let mut n = c.to_string();
-                while let Some(t) = chars.peek() {
-                    if t.is_ascii_digit() || *t == '.' {
-                        n.push(chars.next().unwrap());
-                    } else {
-                        break;
-                    }
-                }
-                parsed.push(NumOp::Num(n.parse().unwrap()));
-            } else if let Ok(operator) = Operators::try_from(c) {
+            if token.len() == 1
+                && let Ok(operator) = Operators::try_from(token.chars().next().unwrap())
+            {
                 parsed.push(NumOp::Operator(operator));
+            } else if let Ok(n) = token.parse() {
+                parsed.push(NumOp::Num(n));
+            } else if let Some(value) = Constants::get(token) {
+                parsed.push(NumOp::Num(value));
+            } else {
+                parsed.push(NumOp::Operator(Operators::Fun(
+                    Function::try_from(token).unwrap(),
+                )));
             }
         }
         Ok(Self { parsed })
     }
     pub fn infix(value: &str) -> Result<Self, ParseError> {
-        let mut parsed = Vec::new();
-        let mut operator_stack: Vec<Operators> = Vec::new();
-        let mut chars = value.chars().peekable();
+        let mut parsed = Vec::with_capacity(value.len());
+        let mut operator_stack: Vec<Operators> = Vec::with_capacity(value.len());
+        let mut chars = value.char_indices();
         let mut negate = true;
-        while let Some(c) = chars.next() {
-            if c.is_ascii_whitespace() {
-                continue;
-            }
-            if c.is_ascii_alphabetic() {
-                let mut n = c.to_string();
-                while let Some(t) = chars.peek() {
-                    if t.is_ascii_alphabetic() {
-                        n.push(chars.next().unwrap());
-                    } else {
-                        break;
-                    }
-                }
-                if let Some(value) = Constants::get(n.as_str()) {
-                    parsed.push(NumOp::Num(value));
-                } else {
-                    operator_stack.push(Operators::Fun(Function::try_from(n.as_str()).unwrap()));
-                }
-                negate = false;
-            } else if c.is_ascii_digit() {
-                let mut n = c.to_string();
-                while let Some(t) = chars.peek() {
-                    if t.is_ascii_digit() || *t == '.' {
-                        n.push(chars.next().unwrap());
-                    } else {
-                        break;
-                    }
-                }
-                parsed.push(NumOp::Num(n.parse().unwrap()));
-                negate = false;
-            } else if let Ok(mut operator) = Operators::try_from(c) {
-                if negate && Operators::Sub == operator {
-                    operator = Operators::Negate;
-                }
-                if operator != Operators::LeftParenthesis {
+        while let Some((i, c)) = chars.next() {
+            match c {
+                ' ' => {}
+                ',' => {
                     while let Some(top) = operator_stack.last()
                         && *top != Operators::LeftParenthesis
-                        && (top.precedence() > operator.precedence()
-                            || (top.precedence() == operator.precedence()
-                                && operator.associativity() == Some(Associativity::Left)))
                     {
                         parsed.push(NumOp::Operator(operator_stack.pop().unwrap()));
                     }
+                    negate = true;
                 }
-                operator_stack.push(operator);
-                negate = true;
-            } else {
-                match c {
-                    ',' => {
+                ')' => {
+                    while let Some(top) = operator_stack.last()
+                        && *top != Operators::LeftParenthesis
+                    {
+                        parsed.push(NumOp::Operator(operator_stack.pop().unwrap()));
+                    }
+                    operator_stack.pop();
+                    if let Some(top) = operator_stack.last()
+                        && matches!(top, Operators::Fun(_))
+                    {
+                        parsed.push(NumOp::Operator(operator_stack.pop().unwrap()));
+                    }
+                    negate = false;
+                }
+                'a'..='z' => {
+                    let mut l = 0;
+                    for (i, t) in value[i..].char_indices() {
+                        if t.is_ascii_alphabetic() {
+                            l = i;
+                        } else {
+                            break;
+                        }
+                    }
+                    let l = l + c.len_utf8();
+                    if let Some(value) = Constants::get(&value[i..i + l]) {
+                        parsed.push(NumOp::Num(value));
+                    } else {
+                        operator_stack.push(Operators::Fun(
+                            Function::try_from(&value[i..i + l]).unwrap(),
+                        ));
+                    }
+                    let _ = chars.advance_by(l - 1);
+                    negate = false;
+                }
+                '0'..='9' if c.is_ascii_digit() => {
+                    let mut l = 0;
+                    for t in value[i..].chars() {
+                        if t.is_ascii_digit() || t == '.' {
+                            l += 1;
+                        } else {
+                            break;
+                        }
+                    }
+                    parsed.push(NumOp::Num(value[i..i + l].parse().unwrap()));
+                    let _ = chars.advance_by(l - 1);
+                    negate = false;
+                }
+                _ if let Ok(mut operator) = Operators::try_from(c) => {
+                    if negate && Operators::Sub == operator {
+                        operator = Operators::Negate;
+                    }
+                    if operator != Operators::LeftParenthesis {
                         while let Some(top) = operator_stack.last()
                             && *top != Operators::LeftParenthesis
+                            && (top.precedence().unwrap() > operator.precedence().unwrap()
+                                || (top.precedence().unwrap() == operator.precedence().unwrap()
+                                    && operator.left_associative().unwrap()))
                         {
                             parsed.push(NumOp::Operator(operator_stack.pop().unwrap()));
                         }
-                        negate = true;
                     }
-                    ')' => {
-                        while let Some(top) = operator_stack.last()
-                            && *top != Operators::LeftParenthesis
-                        {
-                            parsed.push(NumOp::Operator(operator_stack.pop().unwrap()));
-                        }
-                        operator_stack.pop();
-                        if let Some(top) = operator_stack.last()
-                            && matches!(top, Operators::Fun(_))
-                        {
-                            parsed.push(NumOp::Operator(operator_stack.pop().unwrap()));
-                        }
-                        negate = false;
-                    }
-                    _ => unreachable!(),
+                    operator_stack.push(operator);
+                    negate = true;
                 }
+                _ => unreachable!(),
             }
         }
         while let Some(operator) = operator_stack.pop() {
@@ -219,18 +208,6 @@ impl TryFrom<char> for Operators {
         })
     }
 }
-#[derive(PartialOrd, PartialEq, Clone, Copy)]
-pub enum Precedence {
-    Pow = 3,
-    Negate = 2,
-    Mul = 1,
-    Add = 0,
-}
-#[derive(PartialOrd, PartialEq, Clone, Copy)]
-pub enum Associativity {
-    Left,
-    Right,
-}
 impl Function {
     pub fn inputs(self) -> usize {
         match self {
@@ -242,6 +219,7 @@ impl Function {
         }
     }
 }
+//TODO should not be options
 impl Operators {
     pub fn inputs(self) -> Option<usize> {
         Some(match self {
@@ -251,22 +229,20 @@ impl Operators {
             Operators::LeftParenthesis => return None,
         })
     }
-    pub fn precedence(self) -> Option<Precedence> {
+    pub fn precedence(self) -> Option<u8> {
         Some(match self {
-            Operators::Add | Operators::Sub => Precedence::Add,
-            Operators::Mul | Operators::Div => Precedence::Mul,
-            Operators::Pow => Precedence::Pow,
-            Operators::Negate => Precedence::Negate,
+            Operators::Add | Operators::Sub => 0,
+            Operators::Mul | Operators::Div => 1,
+            Operators::Negate => 2,
+            Operators::Pow => 3,
             Operators::LeftParenthesis | Operators::Fun(_) => return None,
         })
     }
-    pub fn associativity(self) -> Option<Associativity> {
+    pub fn left_associative(self) -> Option<bool> {
         Some(match self {
-            Operators::Add | Operators::Sub | Operators::Mul | Operators::Div => {
-                Associativity::Left
-            }
-            Operators::Pow => Associativity::Right,
-            Operators::LeftParenthesis | Operators::Fun(_) | Operators::Negate => return None,
+            Operators::Add | Operators::Sub | Operators::Mul | Operators::Div => true,
+            Operators::Pow | Operators::Negate => false,
+            Operators::LeftParenthesis | Operators::Fun(_) => return None,
         })
     }
 }

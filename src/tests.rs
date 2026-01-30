@@ -16,7 +16,7 @@ macro_rules! assert_correct {
 fn parse_neg() {
     assert_correct!(
         Parsed::infix("-4").unwrap(),
-        Parsed::rpn("4_").unwrap(),
+        Parsed::rpn("4 _").unwrap(),
         vec![4.0f64.into(), Operators::Negate.into()],
         -4.0
     );
@@ -25,7 +25,7 @@ fn parse_neg() {
 fn parse_mul() {
     assert_correct!(
         Parsed::infix("2*4").unwrap(),
-        Parsed::rpn("2 4*").unwrap(),
+        Parsed::rpn("2 4 *").unwrap(),
         vec![2.0f64.into(), 4.0f64.into(), Operators::Mul.into()],
         8.0
     );
@@ -34,7 +34,7 @@ fn parse_mul() {
 fn parse_add() {
     assert_correct!(
         Parsed::infix("2+4").unwrap(),
-        Parsed::rpn("2 4+").unwrap(),
+        Parsed::rpn("2 4 +").unwrap(),
         vec![2.0f64.into(), 4.0f64.into(), Operators::Add.into()],
         6.0
     );
@@ -43,7 +43,7 @@ fn parse_add() {
 fn parse_sub() {
     assert_correct!(
         Parsed::infix("2-4").unwrap(),
-        Parsed::rpn("2 4-").unwrap(),
+        Parsed::rpn("2 4 -").unwrap(),
         vec![2.0f64.into(), 4.0f64.into(), Operators::Sub.into()],
         -2.0
     );
@@ -52,7 +52,7 @@ fn parse_sub() {
 fn parse_div() {
     assert_correct!(
         Parsed::infix("2/4").unwrap(),
-        Parsed::rpn("2 4/").unwrap(),
+        Parsed::rpn("2 4 /").unwrap(),
         vec![2.0f64.into(), 4.0f64.into(), Operators::Div.into()],
         0.5
     );
@@ -61,7 +61,7 @@ fn parse_div() {
 fn parse_pow() {
     assert_correct!(
         Parsed::infix("2^4").unwrap(),
-        Parsed::rpn("2 4^").unwrap(),
+        Parsed::rpn("2 4 ^").unwrap(),
         vec![2.0f64.into(), 4.0f64.into(), Operators::Pow.into()],
         16.0
     );
@@ -70,7 +70,7 @@ fn parse_pow() {
 fn parse_min() {
     assert_correct!(
         Parsed::infix("min(1,2)").unwrap(),
-        Parsed::rpn("1 2min").unwrap(),
+        Parsed::rpn("1 2 min").unwrap(),
         vec![1.0f64.into(), 2.0f64.into(), Function::Min.into()],
         1.0
     );
@@ -88,7 +88,7 @@ fn parse_ln() {
 fn parse_max() {
     assert_correct!(
         Parsed::infix("max(1,2)").unwrap(),
-        Parsed::rpn("1 2max").unwrap(),
+        Parsed::rpn("1 2 max").unwrap(),
         vec![1.0f64.into(), 2.0f64.into(), Function::Max.into()],
         2.0
     );
@@ -97,7 +97,7 @@ fn parse_max() {
 fn parse_cos() {
     assert_correct!(
         Parsed::infix("cos(pi/6)").unwrap(),
-        Parsed::rpn("pi 6/cos").unwrap(),
+        Parsed::rpn("pi 6 / cos").unwrap(),
         vec![
             PI.into(),
             6.0f64.into(),
@@ -111,7 +111,7 @@ fn parse_cos() {
 fn parse_sin() {
     assert_correct!(
         Parsed::infix("sin(pi/6)").unwrap(),
-        Parsed::rpn("pi 6/sin").unwrap(),
+        Parsed::rpn("pi 6 / sin").unwrap(),
         vec![
             PI.into(),
             6.0f64.into(),
@@ -125,7 +125,7 @@ fn parse_sin() {
 fn parse_atan() {
     assert_correct!(
         Parsed::infix("atan(1,1)").unwrap(),
-        Parsed::rpn("1 1atan").unwrap(),
+        Parsed::rpn("1 1 atan").unwrap(),
         vec![1.0f64.into(), 1.0f64.into(), Function::Atan.into()],
         std::f64::consts::FRAC_PI_4
     );
@@ -134,7 +134,7 @@ fn parse_atan() {
 fn parse_quadratic() {
     assert_correct!(
         Parsed::infix("quadratic(1,-2,-1)").unwrap(),
-        Parsed::rpn("1 2_1_quadratic").unwrap(),
+        Parsed::rpn("1 2 _ 1 _ quadratic").unwrap(),
         vec![
             1.0f64.into(),
             2.0f64.into(),
@@ -159,7 +159,7 @@ fn parse_number() {
 fn parse_order_of_operations() {
     assert_correct!(
         Parsed::infix("-2*3+4*7+-2^2^3").unwrap(),
-        Parsed::rpn("2_ 3*4 7*+2 2 3^^_+").unwrap(),
+        Parsed::rpn("2 _ 3 * 4 7 * + 2 2 3 ^ ^ _ +").unwrap(),
         vec![
             2.0f64.into(),
             Operators::Negate.into(),
@@ -181,7 +181,7 @@ fn parse_order_of_operations() {
     );
     assert_correct!(
         Parsed::infix("sin(max(2,3)/3*pi)").unwrap(),
-        Parsed::rpn("2 3max3/pi*sin").unwrap(),
+        Parsed::rpn("2 3 max 3 / pi * sin").unwrap(),
         vec![
             2.0f64.into(),
             3.0f64.into(),
