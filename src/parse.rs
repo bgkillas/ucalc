@@ -50,8 +50,6 @@ impl Token {
 }
 #[derive(Debug, PartialEq)]
 pub enum ParseError {}
-//TODO allocations
-//TODO consider tokenizer
 impl Parsed {
     pub fn rpn(value: &str) -> Result<Self, ParseError> {
         let mut parsed = Vec::with_capacity(value.len());
@@ -145,9 +143,9 @@ impl Parsed {
                     if operator != Operators::LeftParenthesis {
                         while let Some(top) = operator_stack.last()
                             && *top != Operators::LeftParenthesis
-                            && (top.precedence().unwrap() > operator.precedence().unwrap()
-                                || (top.precedence().unwrap() == operator.precedence().unwrap()
-                                    && operator.left_associative().unwrap()))
+                            && (top.precedence() > operator.precedence()
+                                || (top.precedence() == operator.precedence()
+                                    && operator.left_associative()))
                         {
                             parsed.push(Token::Operator(operator_stack.pop().unwrap()));
                         }
@@ -226,32 +224,34 @@ impl Function {
         }
     }
 }
-//TODO should not be options
 impl Operators {
     pub const MAX_INPUT: usize = 3;
-    pub fn inputs(self) -> Option<usize> {
-        Some(match self {
+    pub fn inputs(self) -> usize {
+        match self {
             Operators::Mul | Operators::Div | Operators::Add | Operators::Sub | Operators::Pow => 2,
             Operators::Negate => 1,
             Operators::Fun(fun) => fun.inputs(),
-            Operators::LeftParenthesis => return None,
-        })
+            Operators::LeftParenthesis => unreachable!(),
+        }
     }
-    pub fn precedence(self) -> Option<u8> {
-        Some(match self {
+    pub fn precedence(self) -> u8 {
+        match self {
             Operators::Add | Operators::Sub => 0,
             Operators::Mul | Operators::Div => 1,
             Operators::Negate => 2,
             Operators::Pow => 3,
-            Operators::LeftParenthesis | Operators::Fun(_) => return None,
-        })
+            Operators::LeftParenthesis | Operators::Fun(_) => unreachable!(),
+        }
     }
-    pub fn left_associative(self) -> Option<bool> {
-        Some(match self {
+    pub fn left_associative(self) -> bool {
+        match self {
             Operators::Add | Operators::Sub | Operators::Mul | Operators::Div => true,
             Operators::Pow | Operators::Negate => false,
-            Operators::LeftParenthesis | Operators::Fun(_) => return None,
-        })
+            Operators::LeftParenthesis | Operators::Fun(_) => unreachable!(),
+        }
+    }
+    pub fn is_operator(self) -> bool {
+        !matches!(self, Operators::Fun(_) | Operators::LeftParenthesis)
     }
     pub fn compute<T>(self, a: &mut f64, b: T)
     where
