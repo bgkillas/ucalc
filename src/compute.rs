@@ -3,15 +3,12 @@ use std::ops::Neg;
 impl Parsed {
     pub fn compute(mut self) -> f64 {
         let mut i = 0;
+        let mut b = Vec::with_capacity(self.parsed.len());
         while i < self.parsed.len() {
             if let NumOp::Operator(operator) = self.parsed[i] {
                 self.parsed.remove(i);
                 let inputs = operator.inputs().unwrap();
-                let b: Vec<f64> = self
-                    .parsed
-                    .drain(i - (inputs - 1)..i)
-                    .map(|a| a.num())
-                    .collect();
+                b.extend(self.parsed.drain(i - (inputs - 1)..i).map(|a| a.num()));
                 let a = self.parsed.get_mut(i - inputs).unwrap().num_mut();
                 match operator {
                     Operators::Add => {
@@ -53,6 +50,7 @@ impl Parsed {
                         unreachable!()
                     }
                 }
+                b.clear();
                 i -= inputs;
             }
             i += 1;
