@@ -1,5 +1,5 @@
 use std::env::args;
-use ucalc::parse::Parsed;
+use ucalc_lib::parse::Parsed;
 fn main() {
     for arg in args().skip(1) {
         let mut parsed = tmr(|| Parsed::infix(arg.as_str()).unwrap());
