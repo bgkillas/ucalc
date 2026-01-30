@@ -7,6 +7,26 @@ pub enum NumOp {
     Num(f64),
     Operator(Operators),
 }
+impl From<f64> for NumOp {
+    fn from(value: f64) -> Self {
+        Self::Num(value)
+    }
+}
+impl From<Operators> for NumOp {
+    fn from(value: Operators) -> Self {
+        Self::Operator(value)
+    }
+}
+impl From<Function> for Operators {
+    fn from(value: Function) -> Self {
+        Self::Fun(value)
+    }
+}
+impl From<Function> for NumOp {
+    fn from(value: Function) -> Self {
+        Self::Operator(value.into())
+    }
+}
 impl NumOp {
     pub fn num(self) -> f64 {
         let NumOp::Num(num) = self else {
@@ -40,9 +60,13 @@ impl Parsed {
                         break;
                     }
                 }
-                parsed.push(NumOp::Operator(Operators::Fun(
-                    Function::try_from(n.as_str()).unwrap(),
-                )));
+                if let Some(value) = Constants::get(n.as_str()) {
+                    parsed.push(NumOp::Num(value));
+                } else {
+                    parsed.push(NumOp::Operator(Operators::Fun(
+                        Function::try_from(n.as_str()).unwrap(),
+                    )));
+                }
             } else if c.is_ascii_digit() {
                 let mut n = c.to_string();
                 while let Some(t) = chars.peek() {
@@ -77,8 +101,12 @@ impl Parsed {
                         break;
                     }
                 }
-                operator_stack.push(Operators::Fun(Function::try_from(n.as_str()).unwrap()));
-                negate = true;
+                if let Some(value) = Constants::get(n.as_str()) {
+                    parsed.push(NumOp::Num(value));
+                } else {
+                    operator_stack.push(Operators::Fun(Function::try_from(n.as_str()).unwrap()));
+                }
+                negate = false;
             } else if c.is_ascii_digit() {
                 let mut n = c.to_string();
                 while let Some(t) = chars.peek() {
@@ -156,12 +184,18 @@ pub enum Function {
     Sin,
     Cos,
     Atan,
+    Max,
+    Min,
     Quadratic,
+    Ln,
 }
 impl TryFrom<&str> for Function {
     type Error = ();
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         Ok(match value {
+            "ln" => Function::Ln,
+            "min" => Function::Min,
+            "max" => Function::Max,
             "sin" => Function::Sin,
             "cos" => Function::Cos,
             "atan" => Function::Atan,
@@ -179,6 +213,7 @@ impl TryFrom<char> for Operators {
             '/' => Operators::Div,
             '+' => Operators::Add,
             '-' => Operators::Sub,
+            '_' => Operators::Negate,
             '(' => Operators::LeftParenthesis,
             _ => return Err(()),
         })
@@ -199,8 +234,10 @@ pub enum Associativity {
 impl Function {
     pub fn inputs(self) -> usize {
         match self {
-            Function::Cos | Function::Sin => 1,
+            Function::Cos | Function::Sin | Function::Ln => 1,
             Function::Atan => 2,
+            Function::Max => 2,
+            Function::Min => 2,
             Function::Quadratic => 3,
         }
     }
@@ -231,5 +268,31 @@ impl Operators {
             Operators::Pow => Associativity::Right,
             Operators::LeftParenthesis | Operators::Fun(_) | Operators::Negate => return None,
         })
+    }
+}
+pub enum Constants {
+    Pi,
+    E,
+}
+impl TryFrom<&str> for Constants {
+    type Error = ();
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Ok(match value {
+            "pi" => Constants::Pi,
+            "e" => Constants::E,
+            _ => return Err(()),
+        })
+    }
+}
+impl Constants {
+    pub fn get(value: &str) -> Option<f64> {
+        if let Ok(c) = Self::try_from(value) {
+            Some(match c {
+                Constants::Pi => std::f64::consts::PI,
+                Constants::E => std::f64::consts::E,
+            })
+        } else {
+            None
+        }
     }
 }

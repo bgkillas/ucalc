@@ -34,9 +34,16 @@ impl Parsed {
                     }
                     Operators::Fun(fun) => match fun {
                         Function::Sin => *a = a.sin(),
+                        Function::Ln => *a = a.ln(),
                         Function::Cos => *a = a.cos(),
                         Function::Atan => {
                             *a = a.atan2(b[0]);
+                        }
+                        Function::Max => {
+                            *a = a.max(b[0]);
+                        }
+                        Function::Min => {
+                            *a = a.min(b[0]);
                         }
                         Function::Quadratic => {
                             *a = ((b[0] * b[0] - 4.0 * *a * b[1]).sqrt() - b[0]) / (2.0 * *a);
