@@ -199,6 +199,27 @@ fn parse_quadratic() {
         ],
         1.0 + 2.0f64.sqrt()
     );
+    assert_correct!(
+        Parsed::infix("quadratic((4-2)/2,3-2-3,-ln(e))").unwrap(),
+        Parsed::rpn("4 2 - 2 / 3 2 - 3 - e ln _ quadratic").unwrap(),
+        vec![
+            4.0f64.into(),
+            2.0f64.into(),
+            Operators::Sub.into(),
+            2.0f64.into(),
+            Operators::Div.into(),
+            3.0f64.into(),
+            2.0f64.into(),
+            Operators::Sub.into(),
+            3.0f64.into(),
+            Operators::Sub.into(),
+            E.into(),
+            Function::Ln.into(),
+            Operators::Negate.into(),
+            Function::Quadratic.into()
+        ],
+        1.0 + 2.0f64.sqrt()
+    );
 }
 #[test]
 fn parse_number() {
