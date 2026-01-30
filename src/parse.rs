@@ -1,8 +1,8 @@
-#[derive(Default, Debug)]
+#[derive(Default, Debug, PartialEq)]
 pub struct Parsed {
     pub parsed: Vec<NumOp>,
 }
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum NumOp {
     Num(f64),
     Operator(Operators),
@@ -21,14 +21,16 @@ impl NumOp {
         num
     }
 }
-impl TryFrom<&str> for Parsed {
-    type Error = ();
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
+#[derive(Debug, PartialEq)]
+pub enum ParseError {}
+impl Parsed {
+    pub fn rpn(value: &str) -> Result<Self, ParseError> {
         let mut parsed = Vec::new();
-        let mut operator_stack: Vec<Operators> = Vec::new();
         let mut chars = value.chars().peekable();
-        let mut negate = true;
         while let Some(c) = chars.next() {
+            if c.is_ascii_whitespace() {
+                continue;
+            }
             if c.is_ascii_alphabetic() {
                 let mut n = c.to_string();
                 while let Some(t) = chars.peek() {
@@ -38,7 +40,44 @@ impl TryFrom<&str> for Parsed {
                         break;
                     }
                 }
-                operator_stack.push(Operators::Fun(Function::try_from(n.as_str())?));
+                parsed.push(NumOp::Operator(Operators::Fun(
+                    Function::try_from(n.as_str()).unwrap(),
+                )));
+            } else if c.is_ascii_digit() {
+                let mut n = c.to_string();
+                while let Some(t) = chars.peek() {
+                    if t.is_ascii_digit() || *t == '.' {
+                        n.push(chars.next().unwrap());
+                    } else {
+                        break;
+                    }
+                }
+                parsed.push(NumOp::Num(n.parse().unwrap()));
+            } else if let Ok(operator) = Operators::try_from(c) {
+                parsed.push(NumOp::Operator(operator));
+            }
+        }
+        Ok(Self { parsed })
+    }
+    pub fn infix(value: &str) -> Result<Self, ParseError> {
+        let mut parsed = Vec::new();
+        let mut operator_stack: Vec<Operators> = Vec::new();
+        let mut chars = value.chars().peekable();
+        let mut negate = true;
+        while let Some(c) = chars.next() {
+            if c.is_ascii_whitespace() {
+                continue;
+            }
+            if c.is_ascii_alphabetic() {
+                let mut n = c.to_string();
+                while let Some(t) = chars.peek() {
+                    if t.is_ascii_alphabetic() {
+                        n.push(chars.next().unwrap());
+                    } else {
+                        break;
+                    }
+                }
+                operator_stack.push(Operators::Fun(Function::try_from(n.as_str()).unwrap()));
                 negate = true;
             } else if c.is_ascii_digit() {
                 let mut n = c.to_string();

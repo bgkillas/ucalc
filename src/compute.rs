@@ -46,7 +46,7 @@ impl Parsed {
                         unreachable!()
                     }
                 }
-                i -= 2;
+                i -= inputs;
             }
             i += 1;
         }
