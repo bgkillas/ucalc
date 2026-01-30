@@ -1,4 +1,4 @@
-use crate::parse::{Function, Operators, Parsed};
+use crate::parse::{Function, Operators, ParseError, Parsed};
 use std::f64::consts::{E, PI};
 macro_rules! assert_teq {
     ($a:expr, $b:expr, $c:expr) => {
@@ -247,5 +247,26 @@ fn parse_order_of_operations() {
             Function::Sin.into(),
         ],
         PI.sin()
+    );
+}
+#[test]
+fn test_err() {
+    assert_eq!(
+        Parsed::infix("(2+3))"),
+        Err(ParseError::LeftParenthesisNotFound)
+    );
+    assert_eq!(
+        Parsed::infix("((2+3)"),
+        Err(ParseError::RightParenthesisNotFound)
+    );
+    assert_teq!(
+        Parsed::infix("2.3.4"),
+        Parsed::rpn("2.3.4"),
+        Err(ParseError::UnknownToken("2.3.4".to_string()))
+    );
+    assert_teq!(
+        Parsed::infix("abc(2)"),
+        Parsed::rpn("2 abc"),
+        Err(ParseError::UnknownToken("abc".to_string()))
     );
 }

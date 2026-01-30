@@ -145,16 +145,7 @@ impl Parsed {
                     negate = false;
                 }
                 '(' => {
-                    let operator = Operators::LeftParenthesis;
-                    while let Some(top) = operator_stack.last()
-                        && *top != Operators::LeftParenthesis
-                        && (top.precedence() > operator.precedence()
-                            || (top.precedence() == operator.precedence()
-                                && operator.left_associative()))
-                    {
-                        parsed.push(operator_stack.pop().unwrap().into());
-                    }
-                    operator_stack.push(operator);
+                    operator_stack.push(Operators::LeftParenthesis);
                     negate = true;
                 }
                 _ => {
