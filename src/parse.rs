@@ -63,7 +63,7 @@ impl Parsed {
                 parsed.push(Token::Operator(operator));
             } else if let Ok(n) = token.parse() {
                 parsed.push(Token::Num(n));
-            } else if let Some(value) = Constants::get(token) {
+            } else if let Some(value) = get_constant(token) {
                 parsed.push(Token::Num(value));
             } else {
                 parsed.push(Token::Operator(Operators::Fun(
@@ -113,7 +113,7 @@ impl Parsed {
                         }
                     }
                     let l = l + c.len_utf8();
-                    if let Some(value) = Constants::get(&value[i..i + l]) {
+                    if let Some(value) = get_constant(&value[i..i + l]) {
                         parsed.push(Token::Num(value));
                     } else {
                         operator_stack.push(Operators::Fun(
@@ -253,25 +253,22 @@ impl Operators {
     pub fn is_operator(self) -> bool {
         !matches!(self, Operators::Fun(_) | Operators::LeftParenthesis)
     }
-    pub fn compute<T>(self, a: &mut f64, b: T)
-    where
-        T: Fn(usize) -> f64,
-    {
+    pub fn compute(self, a: &mut f64, b: &[f64]) {
         match self {
             Operators::Add => {
-                *a += b(0);
+                *a += b[0];
             }
             Operators::Sub => {
-                *a -= b(0);
+                *a -= b[0];
             }
             Operators::Mul => {
-                *a *= b(0);
+                *a *= b[0];
             }
             Operators::Div => {
-                *a /= b(0);
+                *a /= b[0];
             }
             Operators::Pow => {
-                *a = a.powf(b(0));
+                *a = a.powf(b[0]);
             }
             Operators::Negate => {
                 *a = a.neg();
@@ -281,16 +278,16 @@ impl Operators {
                 Function::Ln => *a = a.ln(),
                 Function::Cos => *a = a.cos(),
                 Function::Atan => {
-                    *a = a.atan2(b(0));
+                    *a = a.atan2(b[0]);
                 }
                 Function::Max => {
-                    *a = a.max(b(0));
+                    *a = a.max(b[0]);
                 }
                 Function::Min => {
-                    *a = a.min(b(0));
+                    *a = a.min(b[0]);
                 }
                 Function::Quadratic => {
-                    *a = ((b(0) * b(0) - 4.0 * *a * b(1)).sqrt() - b(0)) / (2.0 * *a);
+                    *a = ((b[0] * b[0] - 4.0 * *a * b[1]).sqrt() - b[0]) / (2.0 * *a);
                 }
             },
             Operators::LeftParenthesis => {
@@ -299,29 +296,10 @@ impl Operators {
         }
     }
 }
-pub enum Constants {
-    Pi,
-    E,
-}
-impl TryFrom<&str> for Constants {
-    type Error = ();
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        Ok(match value {
-            "pi" => Constants::Pi,
-            "e" => Constants::E,
-            _ => return Err(()),
-        })
-    }
-}
-impl Constants {
-    pub fn get(value: &str) -> Option<f64> {
-        if let Ok(c) = Self::try_from(value) {
-            Some(match c {
-                Constants::Pi => std::f64::consts::PI,
-                Constants::E => std::f64::consts::E,
-            })
-        } else {
-            None
-        }
-    }
+pub fn get_constant(value: &str) -> Option<f64> {
+    Some(match value {
+        "pi" => std::f64::consts::PI,
+        "e" => std::f64::consts::E,
+        _ => return None,
+    })
 }

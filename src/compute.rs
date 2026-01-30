@@ -9,7 +9,7 @@ impl Parsed {
                 let inputs = operator.inputs();
                 b.extend(self.parsed.drain(i - (inputs - 1)..i).map(|a| a.num()));
                 let a = self.parsed.get_mut(i - inputs).unwrap().num_mut();
-                operator.compute(a, |k| b[k]);
+                operator.compute(a, &b);
                 b.clear();
                 i -= inputs;
             }
