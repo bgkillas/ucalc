@@ -65,6 +65,21 @@ fn parse_pow() {
         vec![2.0f64.into(), 4.0f64.into(), Operators::Pow.into()],
         16.0
     );
+    assert_correct!(
+        Parsed::infix("2**4").unwrap(),
+        Parsed::rpn("2 4 **").unwrap(),
+        vec![2.0f64.into(), 4.0f64.into(), Operators::Pow.into()],
+        16.0
+    );
+}
+#[test]
+fn parse_root() {
+    assert_correct!(
+        Parsed::infix("4//2").unwrap(),
+        Parsed::rpn("4 2 //").unwrap(),
+        vec![4.0f64.into(), 2.0f64.into(), Operators::Root.into()],
+        2.0
+    );
 }
 #[test]
 fn parse_min() {
@@ -82,6 +97,15 @@ fn parse_ln() {
         Parsed::rpn("e ln").unwrap(),
         vec![E.into(), Function::Ln.into()],
         1.0
+    );
+}
+#[test]
+fn parse_exp() {
+    assert_correct!(
+        Parsed::infix("exp(1)").unwrap(),
+        Parsed::rpn("1 exp").unwrap(),
+        vec![1.0f64.into(), Function::Exp.into()],
+        E
     );
 }
 #[test]
@@ -108,6 +132,22 @@ fn parse_cos() {
     );
 }
 #[test]
+fn parse_acos() {
+    assert_correct!(
+        Parsed::infix("acos(3//2/2)").unwrap(),
+        Parsed::rpn("3 2 // 2 / acos").unwrap(),
+        vec![
+            3.0f64.into(),
+            2.0f64.into(),
+            Operators::Root.into(),
+            2.0f64.into(),
+            Operators::Div.into(),
+            Function::Acos.into()
+        ],
+        (3.0f64.sqrt() / 2.0).acos()
+    );
+}
+#[test]
 fn parse_sin() {
     assert_correct!(
         Parsed::infix("sin(pi/6)").unwrap(),
@@ -119,6 +159,20 @@ fn parse_sin() {
             Function::Sin.into()
         ],
         (PI / 6.0).sin()
+    );
+}
+#[test]
+fn parse_asin() {
+    assert_correct!(
+        Parsed::infix("asin(1/2)").unwrap(),
+        Parsed::rpn("1 2 / asin").unwrap(),
+        vec![
+            1.0f64.into(),
+            2.0f64.into(),
+            Operators::Div.into(),
+            Function::Asin.into()
+        ],
+        (1.0f64 / 2.0).asin()
     );
 }
 #[test]
