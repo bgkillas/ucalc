@@ -49,7 +49,11 @@ impl Token {
     }
 }
 #[derive(Debug, PartialEq)]
-pub enum ParseError {}
+pub enum ParseError {
+    UnknownToken(String),
+    LeftParenthesisNotFound,
+    RightParenthesisNotFound,
+}
 impl Parsed {
     pub fn rpn(value: &str) -> Result<Self, ParseError> {
         let mut parsed = Vec::with_capacity(value.len());
@@ -63,8 +67,10 @@ impl Parsed {
                 parsed.push(n.into());
             } else if let Some(value) = get_constant(token) {
                 parsed.push(value.into());
+            } else if let Ok(fun) = Function::try_from(token) {
+                parsed.push(fun.into());
             } else {
-                parsed.push(Function::try_from(token).unwrap().into());
+                return Err(ParseError::UnknownToken(token.to_string()));
             }
         }
         Ok(Self { parsed })
@@ -91,7 +97,9 @@ impl Parsed {
                     {
                         parsed.push(operator_stack.pop().unwrap().into());
                     }
-                    operator_stack.pop();
+                    if operator_stack.pop() != Some(Operators::LeftParenthesis) {
+                        return Err(ParseError::LeftParenthesisNotFound);
+                    }
                     if let Some(top) = operator_stack.last()
                         && matches!(top, Operators::Fun(_))
                     {
@@ -112,8 +120,10 @@ impl Parsed {
                     }
                     if let Some(value) = get_constant(&value[i..i + l]) {
                         parsed.push(value.into());
+                    } else if let Ok(fun) = Function::try_from(&value[i..i + l]) {
+                        operator_stack.push(fun.into());
                     } else {
-                        operator_stack.push(Function::try_from(&value[i..i + l]).unwrap().into());
+                        return Err(ParseError::UnknownToken(value[i..i + l].to_string()));
                     }
                     let _ = chars.advance_by(count - 1);
                     negate = false;
@@ -127,9 +137,25 @@ impl Parsed {
                             break;
                         }
                     }
-                    parsed.push(value[i..i + l].parse::<f64>().unwrap().into());
+                    let Ok(float) = value[i..i + l].parse::<f64>() else {
+                        return Err(ParseError::UnknownToken(value[i..i + l].to_string()));
+                    };
+                    parsed.push(float.into());
                     let _ = chars.advance_by(l - 1);
                     negate = false;
+                }
+                '(' => {
+                    let operator = Operators::LeftParenthesis;
+                    while let Some(top) = operator_stack.last()
+                        && *top != Operators::LeftParenthesis
+                        && (top.precedence() > operator.precedence()
+                            || (top.precedence() == operator.precedence()
+                                && operator.left_associative()))
+                    {
+                        parsed.push(operator_stack.pop().unwrap().into());
+                    }
+                    operator_stack.push(operator);
+                    negate = true;
                 }
                 _ => {
                     let mut l = c.len_utf8();
@@ -143,15 +169,13 @@ impl Parsed {
                         if negate && Operators::Sub == operator {
                             operator = Operators::Negate;
                         }
-                        if operator != Operators::LeftParenthesis {
-                            while let Some(top) = operator_stack.last()
-                                && *top != Operators::LeftParenthesis
-                                && (top.precedence() > operator.precedence()
-                                    || (top.precedence() == operator.precedence()
-                                        && operator.left_associative()))
-                            {
-                                parsed.push(operator_stack.pop().unwrap().into());
-                            }
+                        while let Some(top) = operator_stack.last()
+                            && *top != Operators::LeftParenthesis
+                            && (top.precedence() > operator.precedence()
+                                || (top.precedence() == operator.precedence()
+                                    && operator.left_associative()))
+                        {
+                            parsed.push(operator_stack.pop().unwrap().into());
                         }
                         operator_stack.push(operator);
                         negate = true;
@@ -162,6 +186,9 @@ impl Parsed {
             }
         }
         while let Some(operator) = operator_stack.pop() {
+            if operator == Operators::LeftParenthesis {
+                return Err(ParseError::RightParenthesisNotFound);
+            }
             parsed.push(operator.into());
         }
         Ok(Self { parsed })

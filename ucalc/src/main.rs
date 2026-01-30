@@ -2,9 +2,13 @@ use std::env::args;
 use ucalc_lib::parse::Parsed;
 fn main() {
     for arg in args().skip(1) {
-        let mut parsed = tmr(|| Parsed::infix(arg.as_str()).unwrap());
-        let compute = tmr(|| parsed.compute());
-        println!("{}", compute);
+        match tmr(|| Parsed::infix(arg.as_str())) {
+            Ok(mut parsed) => {
+                let compute = tmr(|| parsed.compute());
+                println!("{}", compute);
+            }
+            Err(e) => println!("{e:?}"),
+        }
     }
 }
 fn tmr<T, W>(fun: T) -> W
