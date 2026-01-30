@@ -1,18 +1,19 @@
+use std::ops::Neg;
 #[derive(Default, Debug, PartialEq, Clone)]
 pub struct Parsed {
-    pub parsed: Vec<NumOp>,
+    pub parsed: Vec<Token>,
 }
 #[derive(Debug, PartialEq, Clone)]
-pub enum NumOp {
+pub enum Token {
     Num(f64),
     Operator(Operators),
 }
-impl From<f64> for NumOp {
+impl From<f64> for Token {
     fn from(value: f64) -> Self {
         Self::Num(value)
     }
 }
-impl From<Operators> for NumOp {
+impl From<Operators> for Token {
     fn from(value: Operators) -> Self {
         Self::Operator(value)
     }
@@ -22,20 +23,26 @@ impl From<Function> for Operators {
         Self::Fun(value)
     }
 }
-impl From<Function> for NumOp {
+impl From<Function> for Token {
     fn from(value: Function) -> Self {
         Self::Operator(value.into())
     }
 }
-impl NumOp {
+impl Token {
     pub fn num(self) -> f64 {
-        let NumOp::Num(num) = self else {
+        let Token::Num(num) = self else {
             unreachable!()
         };
         num
     }
+    pub fn num_ref(&self) -> f64 {
+        let Token::Num(num) = self else {
+            unreachable!()
+        };
+        *num
+    }
     pub fn num_mut(&mut self) -> &mut f64 {
-        let NumOp::Num(num) = self else {
+        let Token::Num(num) = self else {
             unreachable!()
         };
         num
@@ -55,13 +62,13 @@ impl Parsed {
             if token.len() == 1
                 && let Ok(operator) = Operators::try_from(token.chars().next().unwrap())
             {
-                parsed.push(NumOp::Operator(operator));
+                parsed.push(Token::Operator(operator));
             } else if let Ok(n) = token.parse() {
-                parsed.push(NumOp::Num(n));
+                parsed.push(Token::Num(n));
             } else if let Some(value) = Constants::get(token) {
-                parsed.push(NumOp::Num(value));
+                parsed.push(Token::Num(value));
             } else {
-                parsed.push(NumOp::Operator(Operators::Fun(
+                parsed.push(Token::Operator(Operators::Fun(
                     Function::try_from(token).unwrap(),
                 )));
             }
@@ -80,7 +87,7 @@ impl Parsed {
                     while let Some(top) = operator_stack.last()
                         && *top != Operators::LeftParenthesis
                     {
-                        parsed.push(NumOp::Operator(operator_stack.pop().unwrap()));
+                        parsed.push(Token::Operator(operator_stack.pop().unwrap()));
                     }
                     negate = true;
                 }
@@ -88,13 +95,13 @@ impl Parsed {
                     while let Some(top) = operator_stack.last()
                         && *top != Operators::LeftParenthesis
                     {
-                        parsed.push(NumOp::Operator(operator_stack.pop().unwrap()));
+                        parsed.push(Token::Operator(operator_stack.pop().unwrap()));
                     }
                     operator_stack.pop();
                     if let Some(top) = operator_stack.last()
                         && matches!(top, Operators::Fun(_))
                     {
-                        parsed.push(NumOp::Operator(operator_stack.pop().unwrap()));
+                        parsed.push(Token::Operator(operator_stack.pop().unwrap()));
                     }
                     negate = false;
                 }
@@ -109,7 +116,7 @@ impl Parsed {
                     }
                     let l = l + c.len_utf8();
                     if let Some(value) = Constants::get(&value[i..i + l]) {
-                        parsed.push(NumOp::Num(value));
+                        parsed.push(Token::Num(value));
                     } else {
                         operator_stack.push(Operators::Fun(
                             Function::try_from(&value[i..i + l]).unwrap(),
@@ -127,7 +134,7 @@ impl Parsed {
                             break;
                         }
                     }
-                    parsed.push(NumOp::Num(value[i..i + l].parse().unwrap()));
+                    parsed.push(Token::Num(value[i..i + l].parse().unwrap()));
                     let _ = chars.advance_by(l - 1);
                     negate = false;
                 }
@@ -142,7 +149,7 @@ impl Parsed {
                                 || (top.precedence().unwrap() == operator.precedence().unwrap()
                                     && operator.left_associative().unwrap()))
                         {
-                            parsed.push(NumOp::Operator(operator_stack.pop().unwrap()));
+                            parsed.push(Token::Operator(operator_stack.pop().unwrap()));
                         }
                     }
                     operator_stack.push(operator);
@@ -152,7 +159,7 @@ impl Parsed {
             }
         }
         while let Some(operator) = operator_stack.pop() {
-            parsed.push(NumOp::Operator(operator));
+            parsed.push(Token::Operator(operator));
         }
         Ok(Self { parsed })
     }
@@ -221,6 +228,7 @@ impl Function {
 }
 //TODO should not be options
 impl Operators {
+    pub const MAX_INPUT: usize = 3;
     pub fn inputs(self) -> Option<usize> {
         Some(match self {
             Operators::Mul | Operators::Div | Operators::Add | Operators::Sub | Operators::Pow => 2,
@@ -244,6 +252,51 @@ impl Operators {
             Operators::Pow | Operators::Negate => false,
             Operators::LeftParenthesis | Operators::Fun(_) => return None,
         })
+    }
+    pub fn compute<T>(self, a: &mut f64, b: T)
+    where
+        T: Fn(usize) -> f64,
+    {
+        match self {
+            Operators::Add => {
+                *a += b(0);
+            }
+            Operators::Sub => {
+                *a -= b(0);
+            }
+            Operators::Mul => {
+                *a *= b(0);
+            }
+            Operators::Div => {
+                *a /= b(0);
+            }
+            Operators::Pow => {
+                *a = a.powf(b(0));
+            }
+            Operators::Negate => {
+                *a = a.neg();
+            }
+            Operators::Fun(fun) => match fun {
+                Function::Sin => *a = a.sin(),
+                Function::Ln => *a = a.ln(),
+                Function::Cos => *a = a.cos(),
+                Function::Atan => {
+                    *a = a.atan2(b(0));
+                }
+                Function::Max => {
+                    *a = a.max(b(0));
+                }
+                Function::Min => {
+                    *a = a.min(b(0));
+                }
+                Function::Quadratic => {
+                    *a = ((b(0) * b(0) - 4.0 * *a * b(1)).sqrt() - b(0)) / (2.0 * *a);
+                }
+            },
+            Operators::LeftParenthesis => {
+                unreachable!()
+            }
+        }
     }
 }
 pub enum Constants {
