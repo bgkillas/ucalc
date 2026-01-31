@@ -1,0 +1,16 @@
+[package]
+name = "ucalc_numbers"
+version.workspace = true
+edition.workspace = true
+
+[features]
+default=["f64"]
+f16 = ["float"]
+f32 = ["float"]
+f64 = ["float"]
+f128 = ["float"]
+float = []
+rug = []
+fastrand = []
+
+[dependencies]

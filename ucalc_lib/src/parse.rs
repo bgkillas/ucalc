@@ -1,5 +1,6 @@
 use crate::variable::{Functions, Variables};
 use std::ops::{Deref, DerefMut, Neg};
+use ucalc_numbers::{Complex, Pow};
 #[derive(Default, Debug, PartialEq, Clone)]
 pub struct Tokens(pub Vec<Token>);
 #[derive(Default, Debug, PartialEq, Clone)]
@@ -10,7 +11,7 @@ pub struct Parsed {
 }
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
-    Num(f64),
+    Num(Complex),
     InnerVar(usize),
     Var(usize),
     Fun(usize),
@@ -31,7 +32,7 @@ impl Parsed {
             }
             if let Ok(operator) = Operators::try_from(token) {
                 parsed.push(operator.into());
-            } else if let Ok(n) = token.parse::<f64>() {
+            } else if let Ok(n) = Complex::parse_radix(token, 10) {
                 parsed.push(n.into());
             } else if let Ok(fun) = Function::try_from(token) {
                 parsed.push(fun.into());
@@ -125,7 +126,7 @@ impl Parsed {
                         }
                     }
                     let s = &value[i..i + l];
-                    let Ok(float) = s.parse::<f64>() else {
+                    let Ok(float) = Complex::parse_radix(s, 10) else {
                         return Err(ParseError::UnknownToken(s.to_string()));
                     };
                     parsed.push(float.into());
@@ -250,25 +251,25 @@ impl Function {
             Function::Custom(_) => unreachable!(),
         }
     }
-    pub fn compute(self, a: &mut f64, b: &[f64]) {
+    pub fn compute(self, a: &mut Complex, b: &[Complex]) {
         match self {
-            Function::Sin => *a = a.sin(),
-            Function::Ln => *a = a.ln(),
-            Function::Cos => *a = a.cos(),
-            Function::Acos => *a = a.acos(),
-            Function::Asin => *a = a.asin(),
-            Function::Exp => *a = a.exp(),
+            Function::Sin => a.sin_mut(),
+            Function::Ln => a.ln_mut(),
+            Function::Cos => a.cos_mut(),
+            Function::Acos => a.acos_mut(),
+            Function::Asin => a.asin_mut(),
+            Function::Exp => a.exp_mut(),
             Function::Atan => {
-                *a = a.atan2(b[0]);
+                a.atan2_mut(&b[0]);
             }
             Function::Max => {
-                *a = a.max(b[0]);
+                a.max_mut(&b[0]);
             }
             Function::Min => {
-                *a = a.min(b[0]);
+                a.min_mut(&b[0]);
             }
             Function::Quadratic => {
-                *a = ((b[0] * b[0] - 4.0 * *a * b[1]).sqrt() - b[0]) / (2.0 * *a);
+                *a = ((b[0] * b[0] - *a * b[1] * 4).sqrt() - b[0]) / (*a * 2);
             }
             Function::Custom(_) => unreachable!(),
         }
@@ -333,7 +334,7 @@ impl Operators {
     pub fn is_operator(self) -> bool {
         !matches!(self, Operators::Fun(_) | Operators::LeftParenthesis)
     }
-    pub fn compute(self, a: &mut f64, b: &[f64]) {
+    pub fn compute(self, a: &mut Complex, b: &[Complex]) {
         match self {
             Operators::Add => {
                 *a += b[0];
@@ -348,10 +349,10 @@ impl Operators {
                 *a /= b[0];
             }
             Operators::Pow => {
-                *a = a.powf(b[0]);
+                *a = a.pow(b[0]);
             }
             Operators::Root => {
-                *a = a.powf(b[0].recip());
+                *a = a.pow(b[0].recip());
             }
             Operators::Negate => {
                 *a = a.neg();
@@ -363,8 +364,8 @@ impl Operators {
         }
     }
 }
-impl From<f64> for Token {
-    fn from(value: f64) -> Self {
+impl From<Complex> for Token {
+    fn from(value: Complex) -> Self {
         Self::Num(value)
     }
 }
@@ -384,13 +385,13 @@ impl From<Function> for Token {
     }
 }
 impl Token {
-    pub fn num(self) -> f64 {
+    pub fn num(self) -> Complex {
         let Token::Num(num) = self else {
             unreachable!()
         };
         num
     }
-    pub fn num_mut(&mut self) -> &mut f64 {
+    pub fn num_mut(&mut self) -> &mut Complex {
         let Token::Num(num) = self else {
             unreachable!()
         };

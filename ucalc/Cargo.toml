@@ -3,5 +3,14 @@ name = "ucalc"
 version.workspace = true
 edition.workspace = true
 
+[features]
+default=["f64"]
+f16 = ["ucalc_lib/f16"]
+f32 = ["ucalc_lib/f32"]
+f64 = ["ucalc_lib/f64"]
+f128 = ["ucalc_lib/f128"]
+rug = ["ucalc_lib/rug"]
+fastrand = ["ucalc_lib/fastrand"]
+
 [dependencies]
-ucalc-lib = {path = "../ucalc_lib"}
+ucalc_lib = {path = "../ucalc_lib", default-features=false}

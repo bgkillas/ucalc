@@ -1,22 +1,23 @@
 use crate::InnerVariables;
 use crate::parse::{Operators, Parsed, Token};
+use ucalc_numbers::Complex;
 impl Parsed {
-    pub fn clone_compute(&mut self) -> f64 {
+    pub fn clone_compute(&mut self) -> Complex {
         let parsed = self.parsed.clone();
         let ret = self.compute();
         self.parsed = parsed;
         ret
     }
-    pub fn clone_compute_inner(&mut self, vars: Option<InnerVariables>) -> f64 {
+    pub fn clone_compute_inner(&mut self, vars: Option<InnerVariables>) -> Complex {
         let parsed = self.parsed.clone();
         let ret = self.compute_inner(vars);
         self.parsed = parsed;
         ret
     }
-    pub fn compute(&mut self) -> f64 {
+    pub fn compute(&mut self) -> Complex {
         self.compute_inner(None)
     }
-    pub fn compute_inner(&mut self, vars: Option<InnerVariables>) -> f64 {
+    pub fn compute_inner(&mut self, vars: Option<InnerVariables>) -> Complex {
         let mut b = Vec::with_capacity(Operators::MAX_INPUT - 1);
         let mut i = 0;
         while i < self.parsed.len() {

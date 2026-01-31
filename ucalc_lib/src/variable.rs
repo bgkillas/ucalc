@@ -1,15 +1,15 @@
 use crate::parse::Tokens;
-use std::f64::consts::{E, PI};
 use std::ops::{Deref, DerefMut};
+use ucalc_numbers::{Complex, Constant};
 #[derive(Debug, PartialEq, Clone)]
 pub struct Variable {
     pub name: String,
-    pub value: f64,
+    pub value: Complex,
     pub place: bool,
 }
 #[derive(Debug, PartialEq, Clone)]
 pub struct InnerVariable {
-    pub value: f64,
+    pub value: Complex,
 }
 #[derive(Debug, PartialEq, Clone)]
 pub struct FunctionVar {
@@ -27,7 +27,7 @@ impl FunctionVar {
     }
 }
 impl Variable {
-    pub fn new(name: impl Into<String>, value: f64, place: bool) -> Self {
+    pub fn new(name: impl Into<String>, value: Complex, place: bool) -> Self {
         Self {
             name: name.into(),
             value,
@@ -36,7 +36,7 @@ impl Variable {
     }
 }
 impl InnerVariable {
-    pub fn new(value: f64) -> Self {
+    pub fn new(value: Complex) -> Self {
         Self { value }
     }
 }
@@ -49,8 +49,11 @@ pub struct Functions(pub Vec<FunctionVar>);
 impl Default for Variables {
     fn default() -> Self {
         Self(vec![
-            Variable::new("pi", PI, true),
-            Variable::new("e", E, true),
+            Variable::new("pi", Complex::from(Constant::Pi), true),
+            Variable::new("tau", Complex::from(Constant::Tau), true),
+            Variable::new("e", Complex::from(Constant::E), true),
+            Variable::new("inf", Complex::from(Constant::Infinity), true),
+            Variable::new("nan", Complex::from(Constant::Nan), true),
         ])
     }
 }
