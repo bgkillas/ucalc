@@ -11,10 +11,11 @@ impl Parsed {
                 let a = self.parsed.get_mut(i - inputs).unwrap().num_mut();
                 operator.compute(a, &b);
                 b.clear();
-                i -= inputs;
+                i -= inputs - 1;
+            } else {
+                i += 1;
             }
-            i += 1;
         }
-        self.parsed[0].num_ref()
+        self.parsed.remove(0).num()
     }
 }
