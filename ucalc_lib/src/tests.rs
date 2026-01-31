@@ -86,6 +86,18 @@ fn parse_rem() {
         vec![num(7), num(4), Operators::Rem.into()],
         res(3)
     );
+    assert_correct!(
+        infix("7%4^2"),
+        rpn("7 4 % 2 ^"),
+        vec![
+            num(7),
+            num(4),
+            Operators::Rem.into(),
+            num(2),
+            Operators::Pow.into()
+        ],
+        res(9)
+    );
 }
 #[test]
 fn parse_pow() {

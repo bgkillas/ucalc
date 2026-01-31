@@ -49,8 +49,15 @@ impl Display for Float {
     }
 }
 impl Float {
+    pub fn sin_cos(self) -> (Self, Self) {
+        let (sin, cos) = self.0.sin_cos();
+        (Self(sin), Self(cos))
+    }
     pub fn is_sign_negative(&self) -> bool {
         self.0.is_sign_negative()
+    }
+    pub fn is_zero(&self) -> bool {
+        self.0 == 0.0
     }
     pub fn is_sign_positive(&self) -> bool {
         self.0.is_sign_positive()
@@ -78,6 +85,30 @@ impl Float {
     }
     pub fn acos(self) -> Self {
         Self(self.0.acos())
+    }
+    pub fn sinh_mut(&mut self) {
+        *self = self.sinh();
+    }
+    pub fn sinh(self) -> Self {
+        Self(self.0.sinh())
+    }
+    pub fn cosh_mut(&mut self) {
+        *self = self.cosh();
+    }
+    pub fn cosh(self) -> Self {
+        Self(self.0.cosh())
+    }
+    pub fn asinh_mut(&mut self) {
+        *self = self.asinh();
+    }
+    pub fn asinh(self) -> Self {
+        Self(self.0.asinh())
+    }
+    pub fn acosh_mut(&mut self) {
+        *self = self.acosh();
+    }
+    pub fn acosh(self) -> Self {
+        Self(self.0.acosh())
     }
     pub fn ln_mut(&mut self) {
         *self = self.ln();
@@ -121,6 +152,9 @@ impl Float {
     pub fn sqrt(self) -> Self {
         Self(self.0.sqrt())
     }
+    pub fn hypot_mut(&mut self, other: &Self) {
+        self.0 = self.0.hypot(other.0);
+    }
 }
 impl Complex {
     pub fn parse_radix(src: &str, _: i32) -> Result<Self, ()> {
@@ -140,13 +174,25 @@ impl Complex {
         self.norm_mut();
         self
     }
+    pub fn abs_mut(&mut self) {
+        self.real.hypot_mut(&self.imag);
+        self.imag = Float(0.0);
+    }
+    pub fn abs(mut self) -> Self {
+        self.abs_mut();
+        self
+    }
     pub fn sin_mut(&mut self) {
-        //TODO
-        self.real.sin_mut();
+        *self = Self {
+            real: self.real.sin() * self.imag.cosh(),
+            imag: self.imag.sinh() * self.real.cos(),
+        }
     }
     pub fn cos_mut(&mut self) {
-        //TODO
-        self.real.cos_mut();
+        *self = Self {
+            real: self.real.cos() * self.imag.cosh(),
+            imag: -self.imag.sinh() * self.real.sin(),
+        }
     }
     pub fn sin(mut self) -> Self {
         self.sin_mut();
@@ -157,12 +203,13 @@ impl Complex {
         self
     }
     pub fn asin_mut(&mut self) {
-        //TODO
-        self.real.asin_mut();
+        *self = (self.mul_i(false) + (-*self * *self + 1).sqrt())
+            .ln()
+            .mul_i(true);
     }
     pub fn acos_mut(&mut self) {
-        //TODO
-        self.real.acos_mut();
+        self.asin_mut();
+        *self = -*self + consts::FRAC_PI_2
     }
     pub fn asin(mut self) -> Self {
         self.asin_mut();
@@ -172,32 +219,71 @@ impl Complex {
         self.acos_mut();
         self
     }
+    pub fn arg_mut(&mut self) {
+        self.real = self.imag.atan2(&self.real);
+        self.imag = Float(0.0)
+    }
+    pub fn arg(mut self) -> Self {
+        self.arg_mut();
+        self
+    }
     pub fn ln_mut(&mut self) {
-        //TODO
-        self.real.ln_mut();
+        *self = Self {
+            real: self.abs().real.ln(),
+            imag: self.arg().real,
+        }
+    }
+    pub fn ln(mut self) -> Self {
+        self.ln_mut();
+        self
     }
     pub fn exp_mut(&mut self) {
-        //TODO
-        self.real.exp_mut();
+        let (imag, real) = self.imag.sin_cos();
+        *self = Self { real, imag } * self.real.exp();
+    }
+    pub fn exp(mut self) -> Self {
+        self.exp_mut();
+        self
     }
     pub fn atan2_mut(&mut self, other: &Self) {
-        //TODO
-        self.real.atan2_mut(&other.real);
+        if self.imag.is_zero() && other.imag.is_zero() {
+            self.real.atan2_mut(&other.real);
+        } else {
+            *self = ((self.mul_i(false) + *other) / (*self * *self + *other * *other).sqrt())
+                .ln()
+                .mul_i(true)
+        }
+    }
+    pub fn atan2(mut self, other: &Self) -> Self {
+        self.atan2_mut(other);
+        self
+    }
+    pub fn mul_i_mut(&mut self, negative: bool) {
+        *self *= Complex::from(if negative { (0, -1) } else { (0, 1) })
+    }
+    pub fn mul_i(mut self, negative: bool) -> Self {
+        self.mul_i_mut(negative);
+        self
     }
     pub fn sqrt_mut(&mut self) {
-        //TODO
-        self.real.sqrt_mut();
+        *self = self.pow(Float(0.5))
     }
     pub fn sqrt(mut self) -> Self {
         self.sqrt_mut();
         self
     }
     pub fn recip_mut(&mut self) {
-        //TODO
-        self.real.recip_mut();
+        *self = self.conj() / self.norm()
     }
     pub fn recip(mut self) -> Self {
         self.recip_mut();
+        self
+    }
+    pub fn conj_mut(&mut self) {
+        self.imag = self.imag.neg();
+    }
+    pub fn conj(mut self) -> Self {
+        self.conj_mut();
         self
     }
     pub fn min_mut(&mut self, other: &Self) {
@@ -277,8 +363,25 @@ impl Neg for Float {
 }
 impl Pow<Self> for Complex {
     fn pow(self, rhs: Self) -> Self {
-        //TODO
-        self.real.pow(rhs.real).into()
+        if rhs.imag.is_zero() {
+            self.pow(rhs.real)
+        } else if self.imag.is_zero() {
+            (rhs * self.real.ln()).exp()
+        } else {
+            (self.ln() * rhs).exp()
+        }
+    }
+}
+impl Pow<Float> for Complex {
+    fn pow(self, rhs: Float) -> Self {
+        if self.imag.is_zero() {
+            Self {
+                real: self.real.pow(rhs),
+                imag: Float(0.0),
+            }
+        } else {
+            (self.ln() * rhs).exp()
+        }
     }
 }
 impl Mul<Self> for Complex {

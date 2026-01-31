@@ -2,6 +2,9 @@
 #![feature(f128)]
 #[cfg(feature = "float")]
 mod float;
+#[cfg(feature = "float")]
+#[cfg(test)]
+mod float_test;
 #[cfg(feature = "rug")]
 mod rug;
 #[cfg(feature = "float")]
