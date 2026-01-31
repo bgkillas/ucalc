@@ -200,6 +200,7 @@ pub enum Function {
     Max,
     Min,
     Quadratic,
+    Sqrt,
     Custom(usize),
 }
 impl TryFrom<&str> for Function {
@@ -215,6 +216,7 @@ impl TryFrom<&str> for Function {
             "sin" => Function::Sin,
             "cos" => Function::Cos,
             "atan" => Function::Atan,
+            "sqrt" => Function::Sqrt,
             "quadratic" => Function::Quadratic,
             _ => return Err(()),
         })
@@ -245,7 +247,8 @@ impl Function {
             | Function::Ln
             | Function::Acos
             | Function::Asin
-            | Function::Exp => 1,
+            | Function::Exp
+            | Function::Sqrt => 1,
             Function::Atan => 2,
             Function::Max => 2,
             Function::Min => 2,
@@ -261,6 +264,7 @@ impl Function {
             Function::Acos => a.acos_mut(),
             Function::Asin => a.asin_mut(),
             Function::Exp => a.exp_mut(),
+            Function::Sqrt => a.sqrt_mut(),
             Function::Atan => {
                 a.atan2_mut(&b[0]);
             }
@@ -284,7 +288,11 @@ impl Function {
             Function::Asin => Function::Sin,
             Function::Acos => Function::Cos,
             Function::Exp => Function::Ln,
-            Function::Max | Function::Min | Function::Quadratic | Function::Atan => return None,
+            Function::Max
+            | Function::Min
+            | Function::Quadratic
+            | Function::Atan
+            | Function::Sqrt => return None,
             Function::Custom(_) => unreachable!(),
         })
     }
