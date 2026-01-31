@@ -52,6 +52,7 @@ impl Default for Variables {
             Variable::new("pi", Complex::from(Constant::Pi), true),
             Variable::new("tau", Complex::from(Constant::Tau), true),
             Variable::new("e", Complex::from(Constant::E), true),
+            Variable::new("i", Complex::from((0, 1)), true),
             Variable::new("inf", Complex::from(Constant::Infinity), true),
             Variable::new("nan", Complex::from(Constant::Nan), true),
         ])

@@ -148,6 +148,34 @@ fn parse_max() {
     );
 }
 #[test]
+fn parse_vars() {
+    assert_correct!(
+        infix("pi"),
+        rpn("pi"),
+        vec![num(Constant::Pi)],
+        res(Constant::Pi)
+    );
+    assert_correct!(
+        infix("e"),
+        rpn("e"),
+        vec![num(Constant::E)],
+        res(Constant::E)
+    );
+    assert_correct!(
+        infix("tau"),
+        rpn("tau"),
+        vec![num(Constant::Tau)],
+        res(Constant::Tau)
+    );
+    assert_correct!(
+        infix("inf"),
+        rpn("inf"),
+        vec![num(Constant::Infinity)],
+        res(Constant::Infinity)
+    );
+    assert_correct!(infix("i"), rpn("i"), vec![num((0, 1))], res((0, 1)));
+}
+#[test]
 fn parse_cos() {
     assert_correct!(
         infix("cos(pi/6)"),
