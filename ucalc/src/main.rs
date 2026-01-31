@@ -1,8 +1,10 @@
 use std::env::args;
-use ucalc_lib::parse::Parsed;
+use ucalc_lib::{Functions, Parsed, Variables};
 fn main() {
     for arg in args().skip(1) {
-        match tmr(|| Parsed::infix(arg.as_str())) {
+        let vars = Variables::default();
+        let funs = Functions::default();
+        match tmr(|| Parsed::infix(arg.as_str(), vars, funs)) {
             Ok(mut parsed) => {
                 let compute = tmr(|| parsed.compute());
                 println!("{}", compute);

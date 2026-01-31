@@ -1,52 +1,20 @@
-use std::ops::Neg;
+use crate::variable::{Functions, Variables};
+use std::ops::{Deref, DerefMut, Neg};
+#[derive(Default, Debug, PartialEq, Clone)]
+pub struct Tokens(pub Vec<Token>);
 #[derive(Default, Debug, PartialEq, Clone)]
 pub struct Parsed {
-    pub parsed: Vec<Token>,
+    pub parsed: Tokens,
+    pub vars: Variables,
+    pub funs: Functions,
 }
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     Num(f64),
+    InnerVar(usize),
+    Var(usize),
+    Fun(usize),
     Operator(Operators),
-}
-impl From<f64> for Token {
-    fn from(value: f64) -> Self {
-        Self::Num(value)
-    }
-}
-impl From<Operators> for Token {
-    fn from(value: Operators) -> Self {
-        Self::Operator(value)
-    }
-}
-impl From<Function> for Operators {
-    fn from(value: Function) -> Self {
-        Self::Fun(value)
-    }
-}
-impl From<Function> for Token {
-    fn from(value: Function) -> Self {
-        Self::Operator(value.into())
-    }
-}
-impl Token {
-    pub fn num(self) -> f64 {
-        let Token::Num(num) = self else {
-            unreachable!()
-        };
-        num
-    }
-    pub fn num_ref(&self) -> f64 {
-        let Token::Num(num) = self else {
-            unreachable!()
-        };
-        *num
-    }
-    pub fn num_mut(&mut self) -> &mut f64 {
-        let Token::Num(num) = self else {
-            unreachable!()
-        };
-        num
-    }
 }
 #[derive(Debug, PartialEq)]
 pub enum ParseError {
@@ -55,8 +23,8 @@ pub enum ParseError {
     RightParenthesisNotFound,
 }
 impl Parsed {
-    pub fn rpn(value: &str) -> Result<Self, ParseError> {
-        let mut parsed = Vec::with_capacity(value.len());
+    pub fn rpn(value: &str, vars: Variables, funs: Functions) -> Result<Self, ParseError> {
+        let mut parsed = Tokens(Vec::with_capacity(value.len()));
         for token in value.split(' ') {
             if token.is_empty() {
                 continue;
@@ -65,18 +33,24 @@ impl Parsed {
                 parsed.push(operator.into());
             } else if let Ok(n) = token.parse::<f64>() {
                 parsed.push(n.into());
-            } else if let Some(value) = get_constant(token) {
-                parsed.push(value.into());
             } else if let Ok(fun) = Function::try_from(token) {
                 parsed.push(fun.into());
+            } else if let Some((i, v)) = vars.iter().enumerate().find(|(_, v)| v.name == token) {
+                if v.place {
+                    parsed.push(Token::Num(v.value));
+                } else {
+                    parsed.push(Token::Var(i));
+                }
+            } else if let Some(i) = funs.iter().position(|v| v.name == token) {
+                parsed.push(Token::Fun(i))
             } else {
                 return Err(ParseError::UnknownToken(token.to_string()));
             }
         }
-        Ok(Self { parsed })
+        Ok(Self { parsed, vars, funs })
     }
-    pub fn infix(value: &str) -> Result<Self, ParseError> {
-        let mut parsed = Vec::with_capacity(value.len());
+    pub fn infix(value: &str, vars: Variables, funs: Functions) -> Result<Self, ParseError> {
+        let mut parsed = Tokens(Vec::with_capacity(value.len()));
         let mut operator_stack: Vec<Operators> = Vec::with_capacity(value.len());
         let mut chars = value.char_indices();
         let mut negate = true;
@@ -100,10 +74,15 @@ impl Parsed {
                     if operator_stack.pop() != Some(Operators::LeftParenthesis) {
                         return Err(ParseError::LeftParenthesisNotFound);
                     }
-                    if let Some(top) = operator_stack.last()
-                        && matches!(top, Operators::Fun(_))
-                    {
-                        parsed.push(operator_stack.pop().unwrap().into());
+                    if let Some(top) = operator_stack.last() {
+                        match top {
+                            Operators::Fun(Function::Custom(i)) => {
+                                parsed.push(Token::Fun(*i));
+                                operator_stack.pop();
+                            }
+                            Operators::Fun(_) => parsed.push(operator_stack.pop().unwrap().into()),
+                            _ => {}
+                        }
                     }
                     negate = false;
                 }
@@ -118,12 +97,20 @@ impl Parsed {
                             break;
                         }
                     }
-                    if let Some(value) = get_constant(&value[i..i + l]) {
-                        parsed.push(value.into());
-                    } else if let Ok(fun) = Function::try_from(&value[i..i + l]) {
+                    let s = &value[i..i + l];
+                    if let Ok(fun) = Function::try_from(s) {
                         operator_stack.push(fun.into());
+                    } else if let Some((i, v)) = vars.iter().enumerate().find(|(_, v)| v.name == s)
+                    {
+                        if v.place {
+                            parsed.push(Token::Num(v.value));
+                        } else {
+                            parsed.push(Token::Var(i));
+                        }
+                    } else if let Some(i) = funs.iter().position(|v| v.name == s) {
+                        operator_stack.push(Operators::Fun(Function::Custom(i)));
                     } else {
-                        return Err(ParseError::UnknownToken(value[i..i + l].to_string()));
+                        return Err(ParseError::UnknownToken(s.to_string()));
                     }
                     let _ = chars.advance_by(count - 1);
                     negate = false;
@@ -137,8 +124,9 @@ impl Parsed {
                             break;
                         }
                     }
-                    let Ok(float) = value[i..i + l].parse::<f64>() else {
-                        return Err(ParseError::UnknownToken(value[i..i + l].to_string()));
+                    let s = &value[i..i + l];
+                    let Ok(float) = s.parse::<f64>() else {
+                        return Err(ParseError::UnknownToken(s.to_string()));
                     };
                     parsed.push(float.into());
                     let _ = chars.advance_by(l - 1);
@@ -156,7 +144,8 @@ impl Parsed {
                         chars.next();
                         l += next.len_utf8();
                     }
-                    if let Ok(mut operator) = Operators::try_from(&value[i..i + l]) {
+                    let s = &value[i..i + l];
+                    if let Ok(mut operator) = Operators::try_from(s) {
                         if negate && Operators::Sub == operator {
                             operator = Operators::Negate;
                         }
@@ -182,7 +171,7 @@ impl Parsed {
             }
             parsed.push(operator.into());
         }
-        Ok(Self { parsed })
+        Ok(Self { parsed, vars, funs })
     }
 }
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -209,6 +198,7 @@ pub enum Function {
     Max,
     Min,
     Quadratic,
+    Custom(usize),
 }
 impl TryFrom<&str> for Function {
     type Error = ();
@@ -257,6 +247,7 @@ impl Function {
             Function::Max => 2,
             Function::Min => 2,
             Function::Quadratic => 3,
+            Function::Custom(_) => unreachable!(),
         }
     }
     pub fn compute(self, a: &mut f64, b: &[f64]) {
@@ -279,6 +270,7 @@ impl Function {
             Function::Quadratic => {
                 *a = ((b[0] * b[0] - 4.0 * *a * b[1]).sqrt() - b[0]) / (2.0 * *a);
             }
+            Function::Custom(_) => unreachable!(),
         }
     }
     pub fn inverse(self) -> Option<Self> {
@@ -290,6 +282,7 @@ impl Function {
             Function::Acos => Function::Cos,
             Function::Exp => Function::Ln,
             Function::Max | Function::Min | Function::Quadratic | Function::Atan => return None,
+            Function::Custom(_) => unreachable!(),
         })
     }
 }
@@ -370,10 +363,48 @@ impl Operators {
         }
     }
 }
-pub fn get_constant(value: &str) -> Option<f64> {
-    Some(match value {
-        "pi" => std::f64::consts::PI,
-        "e" => std::f64::consts::E,
-        _ => return None,
-    })
+impl From<f64> for Token {
+    fn from(value: f64) -> Self {
+        Self::Num(value)
+    }
+}
+impl From<Operators> for Token {
+    fn from(value: Operators) -> Self {
+        Self::Operator(value)
+    }
+}
+impl From<Function> for Operators {
+    fn from(value: Function) -> Self {
+        Self::Fun(value)
+    }
+}
+impl From<Function> for Token {
+    fn from(value: Function) -> Self {
+        Self::Operator(value.into())
+    }
+}
+impl Token {
+    pub fn num(self) -> f64 {
+        let Token::Num(num) = self else {
+            unreachable!()
+        };
+        num
+    }
+    pub fn num_mut(&mut self) -> &mut f64 {
+        let Token::Num(num) = self else {
+            unreachable!()
+        };
+        num
+    }
+}
+impl Deref for Tokens {
+    type Target = Vec<Token>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl DerefMut for Tokens {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
 }
