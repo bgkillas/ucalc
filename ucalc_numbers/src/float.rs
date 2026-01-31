@@ -343,7 +343,7 @@ impl Rem<Self> for Complex {
     fn rem(self, rhs: Self) -> Self::Output {
         Self {
             real: self.real % rhs.real,
-            imag: self.imag % rhs.imag,
+            imag: self.imag % rhs.real,
         }
     }
 }
@@ -510,7 +510,7 @@ where
         let rhs = rhs.into();
         Self {
             real: self.real % rhs,
-            imag: self.imag,
+            imag: self.imag % rhs,
         }
     }
 }

@@ -183,6 +183,7 @@ pub enum Operators {
     Div,
     Pow,
     Root,
+    Rem,
     LeftParenthesis,
     Negate,
     Fun(Function),
@@ -224,6 +225,7 @@ impl TryFrom<&str> for Operators {
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         Ok(match value {
             "//" => Operators::Root,
+            "%" => Operators::Rem,
             "^" | "**" => Operators::Pow,
             "*" => Operators::Mul,
             "/" => Operators::Div,
@@ -297,7 +299,7 @@ impl Operators {
             Operators::Div => Operators::Mul,
             Operators::Pow => Operators::Root,
             Operators::Root => Operators::Pow,
-            Operators::LeftParenthesis => return None,
+            Operators::LeftParenthesis | Operators::Rem => return None,
             Operators::Negate => Operators::Negate,
             Operators::Fun(fun) => return fun.inverse().map(|a| a.into()),
         })
@@ -309,7 +311,8 @@ impl Operators {
             | Operators::Add
             | Operators::Sub
             | Operators::Pow
-            | Operators::Root => 2,
+            | Operators::Root
+            | Operators::Rem => 2,
             Operators::Negate => 1,
             Operators::Fun(fun) => fun.inputs(),
             Operators::LeftParenthesis => unreachable!(),
@@ -321,12 +324,15 @@ impl Operators {
             Operators::Mul | Operators::Div => 1,
             Operators::Negate => 2,
             Operators::Pow | Operators::Root => 3,
+            Operators::Rem => 4,
             Operators::LeftParenthesis | Operators::Fun(_) => unreachable!(),
         }
     }
     pub fn left_associative(self) -> bool {
         match self {
-            Operators::Add | Operators::Sub | Operators::Mul | Operators::Div => true,
+            Operators::Add | Operators::Sub | Operators::Mul | Operators::Div | Operators::Rem => {
+                true
+            }
             Operators::Pow | Operators::Root | Operators::Negate => false,
             Operators::LeftParenthesis | Operators::Fun(_) => unreachable!(),
         }
@@ -347,6 +353,9 @@ impl Operators {
             }
             Operators::Div => {
                 *a /= b[0];
+            }
+            Operators::Rem => {
+                *a %= b[0];
             }
             Operators::Pow => {
                 *a = a.pow(b[0]);

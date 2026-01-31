@@ -79,6 +79,15 @@ fn parse_div() {
     );
 }
 #[test]
+fn parse_rem() {
+    assert_correct!(
+        infix("7%4"),
+        rpn("7 4 %"),
+        vec![num(7), num(4), Operators::Rem.into()],
+        res(3)
+    );
+}
+#[test]
 fn parse_pow() {
     assert_correct!(
         infix("2^4"),
