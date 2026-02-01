@@ -56,13 +56,13 @@ impl Parsed {
                     self.parsed.remove(i);
                     let inputs = operator.inputs();
                     match operator {
-                        Operators::Fun(Function::Sum) => {
+                        Operators::Function(Function::Sum) => {
                             self.range(i, vars, |iter| iter.sum::<Complex>().into());
                         }
-                        Operators::Fun(Function::Prod) => {
+                        Operators::Function(Function::Prod) => {
                             self.range(i, vars, |iter| iter.product::<Complex>().into());
                         }
-                        Operators::Fun(Function::Iter) => {
+                        Operators::Function(Function::Iter) => {
                             let steps = self.parsed.remove(i - 2).num().real.to_usize();
                             let tokens = self.parsed.remove(i - 2).tokens();
                             let first = self.parsed.get_mut(i - 3).unwrap();

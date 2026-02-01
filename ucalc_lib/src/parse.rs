@@ -1,5 +1,5 @@
 use crate::functions::Function;
-use crate::operators::Operators;
+use crate::operators::{Bracket, Operators};
 use crate::variable::{Functions, Variables};
 use std::fmt::{Display, Formatter};
 use std::ops::{Deref, DerefMut};
@@ -26,7 +26,7 @@ impl Display for Token {
         match self {
             Token::Num(n) => write!(f, "{}", n),
             Token::Tokens(t) => write!(f, "[{}]", t),
-            Token::Operator(Operators::Fun(fun)) => write!(f, "{:?}", fun),
+            Token::Operator(Operators::Function(fun)) => write!(f, "{:?}", fun),
             _ => write!(f, "{:?}", self),
         }
     }
@@ -36,6 +36,8 @@ pub enum ParseError {
     UnknownToken(String),
     LeftParenthesisNotFound,
     RightParenthesisNotFound,
+    AbsoluteBracketFailed,
+    MissingInput,
 }
 impl Display for Tokens {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -120,46 +122,12 @@ impl Parsed {
         let mut inner_vars: Vec<&str> = Vec::with_capacity(value.len());
         let mut chars = value.char_indices();
         let mut negate = true;
+        let mut last_abs = false;
+        let mut req_input = false;
+        let mut abs = 0;
         while let Some((i, c)) = chars.next() {
             match c {
                 ' ' => {}
-                ',' => {
-                    while let Some(top) = operator_stack.last()
-                        && *top != Operators::LeftParenthesis
-                    {
-                        parsed.push(operator_stack.pop().unwrap().into());
-                    }
-                    negate = true;
-                }
-                ')' => {
-                    while let Some(top) = operator_stack.last()
-                        && *top != Operators::LeftParenthesis
-                    {
-                        parsed.push(operator_stack.pop().unwrap().into());
-                    }
-                    if operator_stack.pop() != Some(Operators::LeftParenthesis) {
-                        return Err(ParseError::LeftParenthesisNotFound);
-                    }
-                    if let Some(top) = operator_stack.last() {
-                        match top {
-                            Operators::Fun(Function::Custom(i)) => {
-                                parsed.push(Token::Fun(*i));
-                                operator_stack.pop();
-                            }
-                            Operators::Fun(fun) => {
-                                if fun.has_var() {
-                                    let last = parsed.get_last(&funs);
-                                    let tokens = Tokens(parsed.drain(last..).collect());
-                                    parsed.push(Token::Tokens(tokens));
-                                    inner_vars.pop();
-                                }
-                                parsed.push(operator_stack.pop().unwrap().into())
-                            }
-                            _ => {}
-                        }
-                    }
-                    negate = false;
-                }
                 'a'..='z' => {
                     let mut l = c.len_utf8();
                     let mut count = 1;
@@ -182,7 +150,7 @@ impl Parsed {
                             parsed.push(Token::Var(i));
                         }
                     } else if let Some(i) = funs.iter().position(|v| v.name == s) {
-                        operator_stack.push(Operators::Fun(Function::Custom(i)));
+                        operator_stack.push(Operators::Function(Function::Custom(i)));
                     } else if let Some(i) = inner_vars.iter().position(|v| *v == s) {
                         parsed.push(Token::InnerVar(i));
                     } else if s.chars().all(|c| c.is_ascii_alphabetic()) {
@@ -192,6 +160,8 @@ impl Parsed {
                     }
                     let _ = chars.advance_by(count - 1);
                     negate = false;
+                    last_abs = false;
+                    req_input = false;
                 }
                 '0'..='9' if c.is_ascii_digit() => {
                     let mut l = 1;
@@ -209,14 +179,73 @@ impl Parsed {
                     parsed.push(float.into());
                     let _ = chars.advance_by(l - 1);
                     negate = false;
+                    last_abs = false;
+                    req_input = false;
+                }
+                ',' => {
+                    while let Some(top) = operator_stack.last()
+                        && !matches!(top, Operators::Bracket(_))
+                    {
+                        parsed.push(operator_stack.pop().unwrap().into());
+                    }
+                    negate = true;
+                    last_abs = false;
+                }
+                ')' => {
+                    if req_input {
+                        return Err(ParseError::MissingInput);
+                    }
+                    while let Some(top) = operator_stack.last()
+                        && !matches!(top, Operators::Bracket(_))
+                    {
+                        parsed.push(operator_stack.pop().unwrap().into());
+                    }
+                    if !matches!(
+                        operator_stack.pop(),
+                        Some(Operators::Bracket(Bracket::Parenthesis))
+                    ) {
+                        return Err(ParseError::LeftParenthesisNotFound);
+                    }
+                    parsed.close_off_bracket(&mut operator_stack, &mut inner_vars, &funs);
+                    negate = false;
+                    last_abs = false;
                 }
                 '(' => {
-                    operator_stack.push(Operators::LeftParenthesis);
+                    operator_stack.push(Bracket::Parenthesis.into());
                     negate = true;
+                    last_abs = false;
+                    req_input = false;
                 }
                 '!' => {
                     operator_stack.push(Operators::Factorial);
                     negate = false;
+                    last_abs = false;
+                }
+                '|' => {
+                    if abs == 0 || last_abs || req_input {
+                        operator_stack.push(Bracket::Absolute.into());
+                        abs += 1;
+                        negate = true;
+                        last_abs = true;
+                        req_input = false;
+                    } else {
+                        while let Some(top) = operator_stack.last()
+                            && !matches!(top, Operators::Bracket(_))
+                        {
+                            parsed.push(operator_stack.pop().unwrap().into());
+                        }
+                        if !matches!(
+                            operator_stack.pop(),
+                            Some(Operators::Bracket(Bracket::Absolute))
+                        ) {
+                            return Err(ParseError::AbsoluteBracketFailed);
+                        }
+                        parsed.close_off_bracket(&mut operator_stack, &mut inner_vars, &funs);
+                        parsed.push(Function::Abs.into());
+                        abs -= 1;
+                        negate = false;
+                        last_abs = false;
+                    }
                 }
                 _ => {
                     let mut l = c.len_utf8();
@@ -232,7 +261,7 @@ impl Parsed {
                             operator = Operators::Negate;
                         }
                         while let Some(top) = operator_stack.last()
-                            && *top != Operators::LeftParenthesis
+                            && !matches!(top, Operators::Bracket(_))
                             && (top.precedence() > operator.precedence()
                                 || (top.precedence() == operator.precedence()
                                     && operator.left_associative()))
@@ -240,7 +269,11 @@ impl Parsed {
                             parsed.push(operator_stack.pop().unwrap().into());
                         }
                         operator_stack.push(operator);
+                        if operator.inputs() == 2 {
+                            req_input = true;
+                        }
                         negate = true;
+                        last_abs = false;
                     } else {
                         unreachable!()
                     }
@@ -248,12 +281,39 @@ impl Parsed {
             }
         }
         while let Some(operator) = operator_stack.pop() {
-            if operator == Operators::LeftParenthesis {
+            if operator == Bracket::Parenthesis.into() {
                 return Err(ParseError::RightParenthesisNotFound);
             }
             parsed.push(operator.into());
         }
         Ok(Self { parsed, vars, funs })
+    }
+}
+impl Tokens {
+    pub fn close_off_bracket(
+        &mut self,
+        operator_stack: &mut Vec<Operators>,
+        inner_vars: &mut Vec<&str>,
+        funs: &Functions,
+    ) {
+        if let Some(top) = operator_stack.last() {
+            match top {
+                Operators::Function(Function::Custom(i)) => {
+                    self.push(Token::Fun(*i));
+                    operator_stack.pop();
+                }
+                Operators::Function(fun) => {
+                    if fun.has_var() {
+                        let last = self.get_last(funs);
+                        let tokens = Tokens(self.drain(last..).collect());
+                        self.push(Token::Tokens(tokens));
+                        inner_vars.pop();
+                    }
+                    self.push(operator_stack.pop().unwrap().into())
+                }
+                _ => {}
+            }
+        }
     }
 }
 impl From<Complex> for Token {
@@ -269,11 +329,6 @@ impl From<Operators> for Token {
 impl From<Tokens> for Token {
     fn from(value: Tokens) -> Self {
         Self::Tokens(value)
-    }
-}
-impl From<Function> for Operators {
-    fn from(value: Function) -> Self {
-        Self::Fun(value)
     }
 }
 impl From<Function> for Token {

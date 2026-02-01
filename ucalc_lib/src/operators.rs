@@ -10,10 +10,25 @@ pub enum Operators {
     Pow,
     Root,
     Rem,
-    LeftParenthesis,
     Negate,
     Factorial,
-    Fun(Function),
+    Bracket(Bracket),
+    Function(Function),
+}
+impl From<Function> for Operators {
+    fn from(value: Function) -> Self {
+        Self::Function(value)
+    }
+}
+impl From<Bracket> for Operators {
+    fn from(value: Bracket) -> Self {
+        Self::Bracket(value)
+    }
+}
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Bracket {
+    Absolute,
+    Parenthesis,
 }
 impl TryFrom<&str> for Operators {
     type Error = ();
@@ -28,13 +43,14 @@ impl TryFrom<&str> for Operators {
             "-" => Operators::Sub,
             "_" => Operators::Negate,
             "!" => Operators::Factorial,
-            "(" => Operators::LeftParenthesis,
+            "(" => Operators::Bracket(Bracket::Parenthesis),
+            "|" => Operators::Bracket(Bracket::Absolute),
             _ => return Err(()),
         })
     }
 }
 impl Operators {
-    pub const MAX_INPUT: usize = 3;
+    pub const MAX_INPUT: usize = Function::MAX_INPUT;
     pub fn inverse(self) -> Option<Self> {
         Some(match self {
             Operators::Add => Operators::Sub,
@@ -44,8 +60,8 @@ impl Operators {
             Operators::Pow => Operators::Root,
             Operators::Root => Operators::Pow,
             Operators::Negate => Operators::Negate,
-            Operators::Fun(fun) => return fun.inverse().map(|a| a.into()),
-            Operators::LeftParenthesis | Operators::Rem | Operators::Factorial => return None,
+            Operators::Function(fun) => return fun.inverse().map(|a| a.into()),
+            Operators::Bracket(_) | Operators::Rem | Operators::Factorial => return None,
         })
     }
     pub fn inputs(self) -> usize {
@@ -58,8 +74,8 @@ impl Operators {
             | Operators::Root
             | Operators::Rem => 2,
             Operators::Negate | Operators::Factorial => 1,
-            Operators::Fun(fun) => fun.inputs(),
-            Operators::LeftParenthesis => unreachable!(),
+            Operators::Function(fun) => fun.inputs(),
+            Operators::Bracket(_) => unreachable!(),
         }
     }
     pub fn precedence(self) -> u8 {
@@ -70,7 +86,7 @@ impl Operators {
             Operators::Pow | Operators::Root => 3,
             Operators::Rem => 4,
             Operators::Factorial => 5,
-            Operators::LeftParenthesis | Operators::Fun(_) => unreachable!(),
+            Operators::Bracket(_) | Operators::Function(_) => unreachable!(),
         }
     }
     pub fn left_associative(self) -> bool {
@@ -79,11 +95,11 @@ impl Operators {
                 true
             }
             Operators::Pow | Operators::Root | Operators::Negate => false,
-            Operators::LeftParenthesis | Operators::Factorial | Operators::Fun(_) => unreachable!(),
+            Operators::Bracket(_) | Operators::Factorial | Operators::Function(_) => unreachable!(),
         }
     }
     pub fn is_operator(self) -> bool {
-        !matches!(self, Operators::Fun(_) | Operators::LeftParenthesis)
+        !matches!(self, Operators::Function(_) | Operators::Bracket(_))
     }
     pub fn compute(self, a: &mut Complex, b: &[Complex]) {
         match self {
@@ -96,8 +112,8 @@ impl Operators {
             Operators::Pow => *a = a.pow(b[0]),
             Operators::Root => *a = a.pow(b[0].recip()),
             Operators::Negate => *a = a.neg(),
-            Operators::Fun(fun) => fun.compute(a, b),
-            Operators::LeftParenthesis => {
+            Operators::Function(fun) => fun.compute(a, b),
+            Operators::Bracket(_) => {
                 unreachable!()
             }
         }

@@ -382,6 +382,50 @@ fn parse_abs() {
         ],
         res(8).sqrt()
     );
+    assert_correct!(
+        infix("|1|"),
+        rpn("1 abs"),
+        vec![num(1), Function::Abs.into(),],
+        res(1)
+    );
+    assert_correct!(
+        infix("||0|-0|"),
+        rpn("0 abs 0 - abs"),
+        vec![
+            num(0),
+            Function::Abs.into(),
+            num(0),
+            Operators::Sub.into(),
+            Function::Abs.into()
+        ],
+        res(0)
+    );
+    assert_correct!(
+        infix("||0!|-|0^1*|0|-|-2|||+|0|"),
+        rpn("0 ! abs 0 1 ^ 0 abs * 2 _ abs - abs - abs 0 abs +"),
+        vec![
+            num(0),
+            Operators::Factorial.into(),
+            Function::Abs.into(),
+            num(0),
+            num(1),
+            Operators::Pow.into(),
+            num(0),
+            Function::Abs.into(),
+            Operators::Mul.into(),
+            num(2),
+            Operators::Negate.into(),
+            Function::Abs.into(),
+            Operators::Sub.into(),
+            Function::Abs.into(),
+            Operators::Sub.into(),
+            Function::Abs.into(),
+            num(0),
+            Function::Abs.into(),
+            Operators::Add.into(),
+        ],
+        res(1)
+    );
 }
 #[test]
 fn parse_arg() {
@@ -707,6 +751,10 @@ fn test_err() {
         Parsed::infix("2.3.4", Variables::default(), Functions::default()),
         Parsed::rpn("2.3.4", Variables::default(), Functions::default()),
         Err(ParseError::UnknownToken("2.3.4".to_string()))
+    );
+    assert_eq!(
+        Parsed::infix("(2+)", Variables::default(), Functions::default()),
+        Err(ParseError::MissingInput)
     );
     /*assert_teq!(
         Parsed::infix("abc(2)", Variables::default(), Functions::default()),

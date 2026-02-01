@@ -17,6 +17,7 @@ fn main() {
             }
         }) {
             Ok(mut parsed) => {
+                println!("{}", parsed.parsed);
                 let compute = tmr(|| parsed.compute());
                 println!("{}", compute);
             }

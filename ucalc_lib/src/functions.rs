@@ -76,6 +76,7 @@ impl TryFrom<&str> for Function {
     }
 }
 impl Function {
+    pub const MAX_INPUT: usize = 3;
     pub fn inputs(self) -> usize {
         match self {
             Function::Cos
