@@ -106,8 +106,10 @@ impl Parsed {
                 parsed.push(Token::Fun(i))
             } else if let Some(i) = inner_vars.iter().position(|v| *v == token) {
                 parsed.push(Token::InnerVar(i));
-            } else {
+            } else if token.chars().all(|c| c.is_ascii_alphabetic()) {
                 inner_vars.push(token);
+            } else {
+                return Err(ParseError::UnknownToken(token.to_string()));
             }
         }
         Ok(Self { parsed, vars, funs })
@@ -183,8 +185,10 @@ impl Parsed {
                         operator_stack.push(Operators::Fun(Function::Custom(i)));
                     } else if let Some(i) = inner_vars.iter().position(|v| *v == s) {
                         parsed.push(Token::InnerVar(i));
-                    } else {
+                    } else if s.chars().all(|c| c.is_ascii_alphabetic()) {
                         inner_vars.push(s);
+                    } else {
+                        return Err(ParseError::UnknownToken(s.to_string()));
                     }
                     let _ = chars.advance_by(count - 1);
                     negate = false;

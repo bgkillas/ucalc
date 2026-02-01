@@ -60,6 +60,7 @@ impl TryFrom<&str> for Function {
             "conj" => Function::Conj,
             "atanh" => Function::Atanh,
             "tanh" => Function::Tanh,
+            "tan" => Function::Tan,
             _ => return Err(()),
         })
     }

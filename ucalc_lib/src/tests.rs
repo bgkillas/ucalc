@@ -46,6 +46,26 @@ fn parse_neg() {
     );
 }
 #[test]
+fn parse_fact() {
+    assert_correct!(
+        infix("5!"),
+        rpn("5 !"),
+        vec![num(5), Operators::Factorial.into()],
+        res(120)
+    );
+    assert_correct!(
+        infix("3!^2"),
+        rpn("3 ! 2 ^"),
+        vec![
+            num(3),
+            Operators::Factorial.into(),
+            num(2),
+            Operators::Pow.into()
+        ],
+        res(36)
+    );
+}
+#[test]
 fn parse_mul() {
     assert_correct!(
         infix("2*4"),
@@ -150,7 +170,7 @@ fn parse_exp() {
         infix("exp(1)"),
         rpn("1 exp"),
         vec![num(1), Function::Exp.into()],
-        Complex::from(Constant::E)
+        res(Constant::E)
     );
 }
 #[test]
@@ -201,7 +221,7 @@ fn parse_cos() {
             Operators::Div.into(),
             Function::Cos.into()
         ],
-        (Complex::from(Constant::Pi) / 6).cos()
+        (res(Constant::Pi) / 6).cos()
     );
 }
 #[test]
@@ -231,7 +251,177 @@ fn parse_sin() {
             Operators::Div.into(),
             Function::Sin.into()
         ],
-        (Complex::from(Constant::Pi) / 6).sin()
+        (res(Constant::Pi) / 6).sin()
+    );
+}
+#[test]
+fn parse_sinh() {
+    assert_correct!(
+        infix("2*sinh(1)"),
+        rpn("2 1 sinh *"),
+        vec![num(2), num(1), Function::Sinh.into(), Operators::Mul.into(),],
+        res(Constant::E) - res(Constant::E).recip()
+    );
+    assert_correct!(
+        infix("asinh((e-1/e)/2)"),
+        rpn("e 1 e / - 2 / asinh"),
+        vec![
+            num(Constant::E),
+            num(1),
+            num(Constant::E),
+            Operators::Div.into(),
+            Operators::Sub.into(),
+            num(2),
+            Operators::Div.into(),
+            Function::Asinh.into(),
+        ],
+        res(1)
+    );
+}
+#[test]
+fn parse_cosh() {
+    assert_correct!(
+        infix("2*cosh(1)"),
+        rpn("2 1 cosh *"),
+        vec![num(2), num(1), Function::Cosh.into(), Operators::Mul.into(),],
+        res(Constant::E) + res(Constant::E).recip()
+    );
+    assert_correct!(
+        infix("acosh((e+1/e)/2)"),
+        rpn("e 1 e / + 2 / acosh"),
+        vec![
+            num(Constant::E),
+            num(1),
+            num(Constant::E),
+            Operators::Div.into(),
+            Operators::Add.into(),
+            num(2),
+            Operators::Div.into(),
+            Function::Acosh.into(),
+        ],
+        res(1)
+    );
+}
+#[test]
+fn parse_tanh() {
+    assert_correct!(
+        infix("tanh(1)"),
+        rpn("1 tanh"),
+        vec![num(1), Function::Tanh.into(),],
+        res(1).sinh() / res(1).cosh()
+    );
+    assert_correct!(
+        infix("atanh(1)"),
+        rpn("1 atanh"),
+        vec![num(1), Function::Atanh.into(),],
+        res(1).atanh()
+    );
+}
+#[test]
+fn parse_tan() {
+    assert_correct!(
+        infix("tan(pi/6)"),
+        rpn("pi 6 / tan"),
+        vec![
+            num(Constant::Pi),
+            num(6),
+            Operators::Div.into(),
+            Function::Tan.into()
+        ],
+        (res(Constant::Pi) / 6).tan()
+    );
+}
+#[test]
+fn parse_sqrt() {
+    assert_correct!(
+        infix("sqrt(4)"),
+        rpn("4 sqrt"),
+        vec![num(4), Function::Sqrt.into()],
+        res(2)
+    );
+}
+#[test]
+fn parse_gamma() {
+    assert_correct!(
+        infix("gamma(4)"),
+        rpn("4 gamma"),
+        vec![num(4), Function::Gamma.into()],
+        res(6)
+    );
+}
+#[test]
+fn parse_erf() {
+    assert_correct!(
+        infix("erf(100)"),
+        rpn("100 erf"),
+        vec![num(100), Function::Erf.into()],
+        res(1)
+    );
+}
+#[test]
+fn parse_erfc() {
+    assert_correct!(
+        infix("erfc(100)"),
+        rpn("100 erfc"),
+        vec![num(100), Function::Erfc.into()],
+        res(0)
+    );
+}
+#[test]
+fn parse_abs() {
+    assert_correct!(
+        infix("abs(2+2*i)"),
+        rpn("2 2 i * + abs"),
+        vec![
+            num(2),
+            num(2),
+            num((0, 1)),
+            Operators::Mul.into(),
+            Operators::Add.into(),
+            Function::Abs.into()
+        ],
+        res(8).sqrt()
+    );
+}
+#[test]
+fn parse_arg() {
+    assert_correct!(
+        infix("arg(2+2*i)"),
+        rpn("2 2 i * + arg"),
+        vec![
+            num(2),
+            num(2),
+            num((0, 1)),
+            Operators::Mul.into(),
+            Operators::Add.into(),
+            Function::Arg.into()
+        ],
+        res(Constant::Pi) / 4
+    );
+}
+#[test]
+fn parse_conj() {
+    assert_correct!(
+        infix("conj(2+2*i)"),
+        rpn("2 2 i * + conj"),
+        vec![
+            num(2),
+            num(2),
+            num((0, 1)),
+            Operators::Mul.into(),
+            Operators::Add.into(),
+            Function::Conj.into()
+        ],
+        res((2, -2))
+    );
+}
+#[test]
+fn parse_recip() {
+    assert_correct!(
+        infix("recip(2)"),
+        rpn("2 recip"),
+        vec![num(2), Function::Recip.into()],
+        res(0.5)
     );
 }
 #[test]
@@ -330,7 +520,7 @@ fn parse_order_of_operations() {
             Operators::Mul.into(),
             Function::Sin.into(),
         ],
-        Complex::from(Constant::Pi).sin()
+        res(Constant::Pi).sin()
     );
 }
 #[test]
@@ -504,11 +694,11 @@ fn test_err() {
         Parsed::infix("((2+3)", Variables::default(), Functions::default()),
         Err(ParseError::RightParenthesisNotFound)
     );
-    /*assert_teq!(
+    assert_teq!(
         Parsed::infix("2.3.4", Variables::default(), Functions::default()),
         Parsed::rpn("2.3.4", Variables::default(), Functions::default()),
         Err(ParseError::UnknownToken("2.3.4".to_string()))
-    );*/
+    );
     /*assert_teq!(
         Parsed::infix("abc(2)", Variables::default(), Functions::default()),
         Parsed::rpn("2 abc", Variables::default(), Functions::default()),
