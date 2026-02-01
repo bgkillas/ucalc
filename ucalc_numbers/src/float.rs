@@ -20,6 +20,8 @@ pub type F = f32;
 pub type F = f64;
 #[cfg(feature = "f128")]
 pub type F = f128;
+#[cfg(feature = "fastnum")]
+pub type F = fastnum::D1024;
 #[derive(Clone, Copy, Default, Debug, PartialEq, PartialOrd)]
 pub struct Integer(pub i128);
 #[derive(Clone, Copy, Default, Debug, PartialEq, PartialOrd)]
@@ -124,6 +126,34 @@ impl Float {
     pub fn acosh(self) -> Self {
         Self(self.0.acosh())
     }
+    pub fn tan_mut(&mut self) {
+        self.0 = self.0.tan()
+    }
+    pub fn tan(mut self) -> Self {
+        self.tan_mut();
+        self
+    }
+    pub fn tanh_mut(&mut self) {
+        self.0 = self.0.tanh()
+    }
+    pub fn tanh(mut self) -> Self {
+        self.tanh_mut();
+        self
+    }
+    pub fn atan_mut(&mut self) {
+        self.0 = self.0.atan()
+    }
+    pub fn atan(mut self) -> Self {
+        self.atan_mut();
+        self
+    }
+    pub fn atanh_mut(&mut self) {
+        self.0 = self.0.atanh()
+    }
+    pub fn atanh(mut self) -> Self {
+        self.atanh_mut();
+        self
+    }
     pub fn ln_mut(&mut self) {
         *self = self.ln();
     }
@@ -176,6 +206,27 @@ impl Float {
         self.abs_mut();
         self
     }
+    pub fn gamma_mut(&mut self) {
+        self.0 = self.0.gamma();
+    }
+    pub fn gamma(mut self) -> Self {
+        self.gamma_mut();
+        self
+    }
+    pub fn erf_mut(&mut self) {
+        self.0 = self.0.erf();
+    }
+    pub fn erf(mut self) -> Self {
+        self.erf_mut();
+        self
+    }
+    pub fn erfc_mut(&mut self) {
+        self.0 = self.0.erfc();
+    }
+    pub fn erfc(mut self) -> Self {
+        self.erfc_mut();
+        self
+    }
 }
 impl Complex {
     pub fn parse_radix(src: &str, _: i32) -> Result<Self, ()> {
@@ -186,6 +237,79 @@ impl Complex {
                 imag: Float(0.0),
             })
             .map_err(|_| ())
+    }
+    pub fn tan_mut(&mut self) {
+        self.real.tan_mut()
+    }
+    pub fn tan(mut self) -> Self {
+        self.tan_mut();
+        self
+    }
+    pub fn tanh_mut(&mut self) {
+        self.real.tanh_mut()
+    }
+    pub fn tanh(mut self) -> Self {
+        self.tanh_mut();
+        self
+    }
+    pub fn atanh_mut(&mut self) {
+        self.real.atanh_mut()
+    }
+    pub fn atanh(mut self) -> Self {
+        self.atanh_mut();
+        self
+    }
+    pub fn asinh_mut(&mut self) {
+        self.real.asinh_mut()
+    }
+    pub fn asinh(mut self) -> Self {
+        self.asinh_mut();
+        self
+    }
+    pub fn acosh_mut(&mut self) {
+        self.real.acosh_mut()
+    }
+    pub fn acosh(mut self) -> Self {
+        self.acosh_mut();
+        self
+    }
+    pub fn sinh_mut(&mut self) {
+        self.real.sinh_mut()
+    }
+    pub fn sinh(mut self) -> Self {
+        self.sinh_mut();
+        self
+    }
+    pub fn cosh_mut(&mut self) {
+        self.real.cosh_mut()
+    }
+    pub fn cosh(mut self) -> Self {
+        self.cosh_mut();
+        self
+    }
+    pub fn gamma_mut(&mut self) {
+        //TODO
+        self.real.gamma_mut();
+    }
+    pub fn gamma(mut self) -> Self {
+        self.gamma_mut();
+        self
+    }
+    pub fn erf_mut(&mut self) {
+        //TODO
+        self.real.erf_mut();
+    }
+    pub fn erf(mut self) -> Self {
+        self.erf_mut();
+        self
+    }
+    pub fn erfc_mut(&mut self) {
+        //TODO
+        self.real.erfc_mut();
+    }
+    pub fn erfc(mut self) -> Self {
+        self.erfc_mut();
+        self
     }
     pub fn norm_mut(&mut self) {
         self.real = self.real * self.real + self.imag * self.imag;

@@ -1,5 +1,7 @@
 #![feature(f16)]
 #![feature(f128)]
+#![feature(float_gamma)]
+#![feature(float_erf)]
 #[cfg(feature = "float")]
 mod float;
 #[cfg(feature = "float")]

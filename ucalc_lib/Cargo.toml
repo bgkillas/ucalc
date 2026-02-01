@@ -4,13 +4,13 @@ version.workspace = true
 edition.workspace = true
 
 [features]
-default=["f64"]
+default = ["f64"]
 f16 = ["ucalc_numbers/f16"]
 f32 = ["ucalc_numbers/f32"]
 f64 = ["ucalc_numbers/f64"]
 f128 = ["ucalc_numbers/f128"]
 rug = ["ucalc_numbers/rug"]
-fastrand = ["ucalc_numbers/fastrand"]
+fastnum = ["ucalc_numbers/fastnum"]
 
 [dependencies]
 ucalc_numbers={path = "../ucalc_numbers", default-features=false}
