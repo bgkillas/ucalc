@@ -8,6 +8,7 @@ use std::f64::consts;
 #[cfg(feature = "f128")]
 use std::f128::consts;
 use std::fmt::{Display, Formatter};
+use std::iter::{Product, Sum};
 use std::ops::{
     Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub, SubAssign,
 };
@@ -48,7 +49,20 @@ impl Display for Float {
         write!(f, "{}", self.0)
     }
 }
+impl Sum for Complex {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.fold(Complex::default(), |sum, s| sum + s)
+    }
+}
+impl Product for Complex {
+    fn product<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.fold(Complex::from(1.0), |sum, s| sum * s)
+    }
+}
 impl Float {
+    pub fn to_usize(self) -> usize {
+        self.0 as usize
+    }
     pub fn sin_cos(self) -> (Self, Self) {
         let (sin, cos) = self.0.sin_cos();
         (Self(sin), Self(cos))
@@ -154,6 +168,13 @@ impl Float {
     }
     pub fn hypot_mut(&mut self, other: &Self) {
         self.0 = self.0.hypot(other.0);
+    }
+    pub fn abs_mut(&mut self) {
+        self.0 = self.0.abs();
+    }
+    pub fn abs(mut self) -> Self {
+        self.abs_mut();
+        self
     }
 }
 impl Complex {
@@ -375,9 +396,16 @@ impl Pow<Self> for Complex {
 impl Pow<Float> for Complex {
     fn pow(self, rhs: Float) -> Self {
         if self.imag.is_zero() {
-            Self {
-                real: self.real.pow(rhs),
-                imag: Float(0.0),
+            if self.real.is_sign_negative() {
+                Self {
+                    real: Float(0.0),
+                    imag: self.real.abs().pow(rhs),
+                }
+            } else {
+                Self {
+                    real: self.real.pow(rhs),
+                    imag: Float(0.0),
+                }
             }
         } else {
             (self.ln() * rhs).exp()

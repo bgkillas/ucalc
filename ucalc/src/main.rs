@@ -1,10 +1,21 @@
 use std::env::args;
 use ucalc_lib::{Functions, Parsed, Variables};
 fn main() {
+    let mut infix = true;
     for arg in args().skip(1) {
+        if arg == "--rpn" {
+            infix = false;
+            continue;
+        }
         let vars = Variables::default();
         let funs = Functions::default();
-        match tmr(|| Parsed::infix(arg.as_str(), vars, funs)) {
+        match tmr(|| {
+            if infix {
+                Parsed::infix(arg.as_str(), vars, funs)
+            } else {
+                Parsed::rpn(arg.as_str(), vars, funs)
+            }
+        }) {
             Ok(mut parsed) => {
                 let compute = tmr(|| parsed.compute());
                 println!("{}", compute);

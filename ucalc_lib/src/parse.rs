@@ -1,4 +1,5 @@
 use crate::variable::{Functions, Variables};
+use std::fmt::{Display, Formatter};
 use std::ops::{Deref, DerefMut, Neg};
 use ucalc_numbers::{Complex, Pow};
 #[derive(Default, Debug, PartialEq, Clone)]
@@ -15,7 +16,18 @@ pub enum Token {
     InnerVar(usize),
     Var(usize),
     Fun(usize),
+    Tokens(Tokens),
     Operator(Operators),
+}
+impl Display for Token {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Token::Num(n) => write!(f, "{}", n),
+            Token::Tokens(t) => write!(f, "[{}]", t),
+            Token::Operator(Operators::Fun(fun)) => write!(f, "{:?}", fun),
+            _ => write!(f, "{:?}", self),
+        }
+    }
 }
 #[derive(Debug, PartialEq)]
 pub enum ParseError {
@@ -23,9 +35,50 @@ pub enum ParseError {
     LeftParenthesisNotFound,
     RightParenthesisNotFound,
 }
+impl Display for Tokens {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let mut first = true;
+        for token in self.iter() {
+            if !first {
+                write!(f, " ")?;
+            }
+            write!(f, "{}", token)?;
+            first = false
+        }
+        Ok(())
+    }
+}
+impl Tokens {
+    pub fn get_last(&self, funs: &Functions) -> usize {
+        fn inner(tokens: &[Token], funs: &Functions) -> usize {
+            match tokens.last() {
+                //TODO
+                Some(Token::Fun(i)) => {
+                    let inputs = funs[*i].vars.len();
+                    let mut i = tokens.len() - 1;
+                    for _ in 0..inputs {
+                        i = inner(&tokens[..i], funs)
+                    }
+                    i
+                }
+                Some(Token::Operator(o)) => {
+                    let inputs = o.inputs();
+                    let mut i = tokens.len() - 1;
+                    for _ in 0..inputs {
+                        i = inner(&tokens[..i], funs)
+                    }
+                    i
+                }
+                _ => tokens.len() - 1,
+            }
+        }
+        inner(self, funs)
+    }
+}
 impl Parsed {
     pub fn rpn(value: &str, vars: Variables, funs: Functions) -> Result<Self, ParseError> {
         let mut parsed = Tokens(Vec::with_capacity(value.len()));
+        let mut inner_vars: Vec<&str> = Vec::with_capacity(value.len());
         for token in value.split(' ') {
             if token.is_empty() {
                 continue;
@@ -35,6 +88,12 @@ impl Parsed {
             } else if let Ok(n) = Complex::parse_radix(token, 10) {
                 parsed.push(n.into());
             } else if let Ok(fun) = Function::try_from(token) {
+                if fun.has_var() {
+                    let last = parsed.get_last(&funs);
+                    let tokens = Tokens(parsed.drain(last..).collect());
+                    parsed.push(Token::Tokens(tokens));
+                    inner_vars.pop();
+                }
                 parsed.push(fun.into());
             } else if let Some((i, v)) = vars.iter().enumerate().find(|(_, v)| v.name == token) {
                 if v.place {
@@ -44,8 +103,10 @@ impl Parsed {
                 }
             } else if let Some(i) = funs.iter().position(|v| v.name == token) {
                 parsed.push(Token::Fun(i))
+            } else if let Some(i) = inner_vars.iter().position(|v| *v == token) {
+                parsed.push(Token::InnerVar(i));
             } else {
-                return Err(ParseError::UnknownToken(token.to_string()));
+                inner_vars.push(token);
             }
         }
         Ok(Self { parsed, vars, funs })
@@ -201,6 +262,8 @@ pub enum Function {
     Min,
     Quadratic,
     Sqrt,
+    Sum,
+    Prod,
     Custom(usize),
 }
 impl TryFrom<&str> for Function {
@@ -217,6 +280,8 @@ impl TryFrom<&str> for Function {
             "cos" => Function::Cos,
             "atan" => Function::Atan,
             "sqrt" => Function::Sqrt,
+            "sum" => Function::Sum,
+            "prod" => Function::Prod,
             "quadratic" => Function::Quadratic,
             _ => return Err(()),
         })
@@ -249,11 +314,26 @@ impl Function {
             | Function::Asin
             | Function::Exp
             | Function::Sqrt => 1,
-            Function::Atan => 2,
-            Function::Max => 2,
-            Function::Min => 2,
-            Function::Quadratic => 3,
+            Function::Atan | Function::Max | Function::Min => 2,
+            Function::Quadratic | Function::Sum | Function::Prod => 3,
             Function::Custom(_) => unreachable!(),
+        }
+    }
+    pub fn has_var(self) -> bool {
+        match self {
+            Function::Cos
+            | Function::Sin
+            | Function::Ln
+            | Function::Acos
+            | Function::Asin
+            | Function::Exp
+            | Function::Sqrt
+            | Function::Custom(_)
+            | Function::Atan
+            | Function::Max
+            | Function::Min
+            | Function::Quadratic => false,
+            Function::Sum | Function::Prod => true,
         }
     }
     pub fn compute(self, a: &mut Complex, b: &[Complex]) {
@@ -277,7 +357,7 @@ impl Function {
             Function::Quadratic => {
                 *a = ((b[0] * b[0] - *a * b[1] * 4).sqrt() - b[0]) / (*a * 2);
             }
-            Function::Custom(_) => unreachable!(),
+            Function::Custom(_) | Function::Sum | Function::Prod => unreachable!(),
         }
     }
     pub fn inverse(self) -> Option<Self> {
@@ -292,7 +372,9 @@ impl Function {
             | Function::Min
             | Function::Quadratic
             | Function::Atan
-            | Function::Sqrt => return None,
+            | Function::Sqrt
+            | Function::Sum
+            | Function::Prod => return None,
             Function::Custom(_) => unreachable!(),
         })
     }
@@ -407,6 +489,24 @@ impl Token {
             unreachable!()
         };
         num
+    }
+    pub fn inner_var(self) -> usize {
+        let Token::InnerVar(n) = self else {
+            unreachable!()
+        };
+        n
+    }
+    pub fn tokens(self) -> Tokens {
+        let Token::Tokens(t) = self else {
+            unreachable!()
+        };
+        t
+    }
+    pub fn tokens_mut(&mut self) -> &mut Tokens {
+        let Token::Tokens(t) = self else {
+            unreachable!()
+        };
+        t
     }
     pub fn num_mut(&mut self) -> &mut Complex {
         let Token::Num(num) = self else {
