@@ -1,8 +1,11 @@
-use crate::parse::{Function, Operators, ParseError, Parsed};
+use crate::functions::Function;
+use crate::operators::Operators;
+use crate::parse::{ParseError, Parsed};
 use crate::parse::{Token, Tokens};
 use crate::variable::{Functions, Variables};
 use crate::{FunctionVar, InnerVariable, InnerVariables, Variable};
 use ucalc_numbers::{Complex, Constant};
+
 macro_rules! assert_teq {
     ($a:expr, $b:expr, $c:expr) => {
         assert_eq!($a, $b);

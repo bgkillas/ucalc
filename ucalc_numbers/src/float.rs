@@ -239,6 +239,7 @@ impl Complex {
             .map_err(|_| ())
     }
     pub fn tan_mut(&mut self) {
+        //TODO
         self.real.tan_mut()
     }
     pub fn tan(mut self) -> Self {
@@ -246,6 +247,7 @@ impl Complex {
         self
     }
     pub fn tanh_mut(&mut self) {
+        //TODO
         self.real.tanh_mut()
     }
     pub fn tanh(mut self) -> Self {
@@ -253,6 +255,7 @@ impl Complex {
         self
     }
     pub fn atanh_mut(&mut self) {
+        //TODO
         self.real.atanh_mut()
     }
     pub fn atanh(mut self) -> Self {
@@ -260,6 +263,7 @@ impl Complex {
         self
     }
     pub fn asinh_mut(&mut self) {
+        //TODO
         self.real.asinh_mut()
     }
     pub fn asinh(mut self) -> Self {
@@ -267,6 +271,7 @@ impl Complex {
         self
     }
     pub fn acosh_mut(&mut self) {
+        //TODO
         self.real.acosh_mut()
     }
     pub fn acosh(mut self) -> Self {
@@ -274,6 +279,7 @@ impl Complex {
         self
     }
     pub fn sinh_mut(&mut self) {
+        //TODO
         self.real.sinh_mut()
     }
     pub fn sinh(mut self) -> Self {
@@ -281,6 +287,7 @@ impl Complex {
         self
     }
     pub fn cosh_mut(&mut self) {
+        //TODO
         self.real.cosh_mut()
     }
     pub fn cosh(mut self) -> Self {

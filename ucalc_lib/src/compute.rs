@@ -1,4 +1,6 @@
-use crate::parse::{Function, Operators, Parsed, Token};
+use crate::functions::Function;
+use crate::operators::Operators;
+use crate::parse::{Parsed, Token};
 use crate::{InnerVariable, InnerVariables};
 use ucalc_numbers::{Complex, Float};
 impl Parsed {
