@@ -200,6 +200,10 @@ impl Parsed {
                     operator_stack.push(Operators::LeftParenthesis);
                     negate = true;
                 }
+                '!' => {
+                    operator_stack.push(Operators::Factorial);
+                    negate = false;
+                }
                 _ => {
                     let mut l = c.len_utf8();
                     if let Some(next) = value[i + l..].chars().next()
