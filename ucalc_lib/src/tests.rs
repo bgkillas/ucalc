@@ -377,7 +377,6 @@ fn test_sum() {
         )
         .unwrap(),
         vec![
-            Token::InnerVar(0),
             num(0),
             num(10),
             Token::Tokens(Tokens(vec![
@@ -391,23 +390,64 @@ fn test_sum() {
     );
 }
 #[test]
-fn test_prod() {
+fn test_inner_fn() {
     assert_correct!(
         Parsed::infix(
-            "prod(x,0,4,x^2)",
+            "sum(x,0,10,sum(y,3,6,x-y)+prod(y,3,6,x-y))",
             Variables::default(),
             Functions::default()
         )
         .unwrap(),
         Parsed::rpn(
-            "x 0 4 x 2 ^ prod",
+            "x 0 10 y 3 6 x y - sum y 3 6 x y - prod + sum",
             Variables::default(),
             Functions::default()
         )
         .unwrap(),
         vec![
-            Token::InnerVar(0),
             num(0),
+            num(10),
+            Token::Tokens(Tokens(vec![
+                num(3),
+                num(6),
+                Token::Tokens(Tokens(vec![
+                    Token::InnerVar(0),
+                    Token::InnerVar(1),
+                    Operators::Sub.into()
+                ])),
+                Function::Sum.into(),
+                num(3),
+                num(6),
+                Token::Tokens(Tokens(vec![
+                    Token::InnerVar(0),
+                    Token::InnerVar(1),
+                    Operators::Sub.into()
+                ])),
+                Function::Prod.into(),
+                Operators::Add.into()
+            ])),
+            Function::Sum.into()
+        ],
+        res(1870)
+    );
+}
+#[test]
+fn test_prod() {
+    assert_correct!(
+        Parsed::infix(
+            "prod(x,1,4,x^2)",
+            Variables::default(),
+            Functions::default()
+        )
+        .unwrap(),
+        Parsed::rpn(
+            "x 1 4 x 2 ^ prod",
+            Variables::default(),
+            Functions::default()
+        )
+        .unwrap(),
+        vec![
+            num(1),
             num(4),
             Token::Tokens(Tokens(vec![
                 Token::InnerVar(0),

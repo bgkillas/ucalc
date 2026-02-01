@@ -116,6 +116,7 @@ impl Parsed {
     pub fn infix(value: &str, vars: Variables, funs: Functions) -> Result<Self, ParseError> {
         let mut parsed = Tokens(Vec::with_capacity(value.len()));
         let mut operator_stack: Vec<Operators> = Vec::with_capacity(value.len());
+        let mut inner_vars: Vec<&str> = Vec::with_capacity(value.len());
         let mut chars = value.char_indices();
         let mut negate = true;
         while let Some((i, c)) = chars.next() {
@@ -144,7 +145,15 @@ impl Parsed {
                                 parsed.push(Token::Fun(*i));
                                 operator_stack.pop();
                             }
-                            Operators::Fun(_) => parsed.push(operator_stack.pop().unwrap().into()),
+                            Operators::Fun(fun) => {
+                                if fun.has_var() {
+                                    let last = parsed.get_last(&funs);
+                                    let tokens = Tokens(parsed.drain(last..).collect());
+                                    parsed.push(Token::Tokens(tokens));
+                                    inner_vars.pop();
+                                }
+                                parsed.push(operator_stack.pop().unwrap().into())
+                            }
                             _ => {}
                         }
                     }
@@ -173,8 +182,10 @@ impl Parsed {
                         }
                     } else if let Some(i) = funs.iter().position(|v| v.name == s) {
                         operator_stack.push(Operators::Fun(Function::Custom(i)));
+                    } else if let Some(i) = inner_vars.iter().position(|v| *v == s) {
+                        parsed.push(Token::InnerVar(i));
                     } else {
-                        return Err(ParseError::UnknownToken(s.to_string()));
+                        inner_vars.push(s);
                     }
                     let _ = chars.advance_by(count - 1);
                     negate = false;
