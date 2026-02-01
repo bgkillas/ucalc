@@ -11,14 +11,14 @@ fn main() {
         let funs = Functions::default();
         match tmr(|| {
             if infix {
-                Parsed::infix(arg.as_str(), vars, funs)
+                Parsed::infix(arg.as_str(), &vars, &funs)
             } else {
-                Parsed::rpn(arg.as_str(), vars, funs)
+                Parsed::rpn(arg.as_str(), &vars, &funs)
             }
         }) {
             Ok(mut parsed) => {
                 println!("{}", parsed.parsed);
-                let compute = tmr(|| parsed.compute());
+                let compute = tmr(|| parsed.compute(&vars, &funs));
                 println!("{}", compute);
             }
             Err(e) => println!("{e:?}"),

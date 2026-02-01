@@ -14,15 +14,20 @@ macro_rules! assert_teq {
 }
 macro_rules! assert_correct {
     ($a:expr, $b:expr, $c:expr, $d:expr) => {
+        assert_correct_with!($a, $b, Variables::default(), Functions::default(), $c, $d);
+    };
+}
+macro_rules! assert_correct_with {
+    ($a:expr, $b:expr, $v:expr, $f:expr, $c:expr, $d:expr) => {
         assert_teq!($a.parsed, $b.parsed, Tokens($c));
-        assert_teq!($a.clone_compute(), $b.compute(), $d);
+        assert_teq!($a.clone_compute(&$v, &$f), $b.compute(&$v, &$f), $d);
     };
 }
 fn infix(s: &str) -> Parsed {
-    Parsed::infix(s, Variables::default(), Functions::default()).unwrap()
+    Parsed::infix(s, &Variables::default(), &Functions::default()).unwrap()
 }
 fn rpn(s: &str) -> Parsed {
-    Parsed::rpn(s, Variables::default(), Functions::default()).unwrap()
+    Parsed::rpn(s, &Variables::default(), &Functions::default()).unwrap()
 }
 fn res<T>(f: T) -> Complex
 where
@@ -578,13 +583,26 @@ fn parse_order_of_operations() {
 }
 #[test]
 fn test_graph_vars() {
-    let vars = Variables(vec![Variable::new("x", res(0), false)]);
-    let mut infix = Parsed::infix("x", vars.clone(), Functions::default()).unwrap();
-    let mut rpn = Parsed::rpn("x", vars, Functions::default()).unwrap();
-    assert_correct!(infix.clone(), rpn.clone(), vec![Token::Var(0)], res(0));
-    rpn.vars[0].value = res(1);
-    infix.vars[0].value = res(1);
-    assert_correct!(infix, rpn, vec![Token::Var(0)], res(1));
+    let mut vars = Variables(vec![Variable::new("x", res(0), false)]);
+    let mut infix = Parsed::infix("x", &vars, &Functions::default()).unwrap();
+    let mut rpn = Parsed::rpn("x", &vars, &Functions::default()).unwrap();
+    assert_correct_with!(
+        infix.clone(),
+        rpn.clone(),
+        vars,
+        Functions::default(),
+        vec![Token::Var(0)],
+        res(0)
+    );
+    vars[0].value = res(1);
+    assert_correct_with!(
+        infix,
+        rpn,
+        vars,
+        Functions::default(),
+        vec![Token::Var(0)],
+        res(1)
+    );
 }
 #[test]
 fn test_custom_functions() {
@@ -597,25 +615,29 @@ fn test_custom_functions() {
             Operators::Sub.into(),
         ]),
     )]);
-    assert_correct!(
-        Parsed::infix("f(3,4)", Variables::default(), funs.clone()).unwrap(),
-        Parsed::rpn("3 4 f", Variables::default(), funs.clone()).unwrap(),
+    assert_correct_with!(
+        Parsed::infix("f(3,4)", &Variables::default(), &funs).unwrap(),
+        Parsed::rpn("3 4 f", &Variables::default(), &funs).unwrap(),
+        Variables::default(),
+        funs,
         vec![num(3), num(4), Token::Fun(0)],
         res(-1)
     );
-    assert_correct!(
+    assert_correct_with!(
         Parsed::infix(
             "sum(n,0,10,sum(k,3,6,f(n,k)^2+f(k,n)-2))",
-            Variables::default(),
-            funs.clone()
+            &Variables::default(),
+            &funs
         )
         .unwrap(),
         Parsed::rpn(
             "n 0 10 k 3 6 n k f 2 ^ k n f + 2 - sum sum",
-            Variables::default(),
-            funs.clone()
+            &Variables::default(),
+            &funs
         )
         .unwrap(),
+        Variables::default(),
+        funs,
         vec![
             num(0),
             num(10),
@@ -647,18 +669,8 @@ fn test_custom_functions() {
 #[test]
 fn test_sum() {
     assert_correct!(
-        Parsed::infix(
-            "sum(x,0,10,x^2)",
-            Variables::default(),
-            Functions::default()
-        )
-        .unwrap(),
-        Parsed::rpn(
-            "x 0 10 x 2 ^ sum",
-            Variables::default(),
-            Functions::default()
-        )
-        .unwrap(),
+        infix("sum(x,0,10,x^2)",),
+        rpn("x 0 10 x 2 ^ sum",),
         vec![
             num(0),
             num(10),
@@ -671,18 +683,8 @@ fn test_sum() {
 #[test]
 fn test_inner_fn() {
     assert_correct!(
-        Parsed::infix(
-            "sum(x,0,10,sum(y,3,6,x-y)+prod(y,3,6,x-y))",
-            Variables::default(),
-            Functions::default()
-        )
-        .unwrap(),
-        Parsed::rpn(
-            "x 0 10 y 3 6 x y - sum y 3 6 x y - prod + sum",
-            Variables::default(),
-            Functions::default()
-        )
-        .unwrap(),
+        infix("sum(x,0,10,sum(y,3,6,x-y)+prod(y,3,6,x-y))",),
+        rpn("x 0 10 y 3 6 x y - sum y 3 6 x y - prod + sum",),
         vec![
             num(0),
             num(10),
@@ -716,18 +718,8 @@ fn test_inner_fn() {
 #[test]
 fn test_prod() {
     assert_correct!(
-        Parsed::infix(
-            "prod(x,1,4,x^2)",
-            Variables::default(),
-            Functions::default()
-        )
-        .unwrap(),
-        Parsed::rpn(
-            "x 1 4 x 2 ^ prod",
-            Variables::default(),
-            Functions::default()
-        )
-        .unwrap(),
+        infix("prod(x,1,4,x^2)",),
+        rpn("x 1 4 x 2 ^ prod",),
         vec![
             num(1),
             num(4),
@@ -740,20 +732,20 @@ fn test_prod() {
 #[test]
 fn test_err() {
     assert_eq!(
-        Parsed::infix("(2+3))", Variables::default(), Functions::default()),
+        Parsed::infix("(2+3))", &Variables::default(), &Functions::default()),
         Err(ParseError::LeftParenthesisNotFound)
     );
     assert_eq!(
-        Parsed::infix("((2+3)", Variables::default(), Functions::default()),
+        Parsed::infix("((2+3)", &Variables::default(), &Functions::default()),
         Err(ParseError::RightParenthesisNotFound)
     );
     assert_teq!(
-        Parsed::infix("2.3.4", Variables::default(), Functions::default()),
-        Parsed::rpn("2.3.4", Variables::default(), Functions::default()),
+        Parsed::infix("2.3.4", &Variables::default(), &Functions::default()),
+        Parsed::rpn("2.3.4", &Variables::default(), &Functions::default()),
         Err(ParseError::UnknownToken("2.3.4".to_string()))
     );
     assert_eq!(
-        Parsed::infix("(2+)", Variables::default(), Functions::default()),
+        Parsed::infix("(2+)", &Variables::default(), &Functions::default()),
         Err(ParseError::MissingInput)
     );
     /*assert_teq!(

@@ -9,8 +9,6 @@ pub struct Tokens(pub Vec<Token>);
 #[derive(Default, Debug, PartialEq, Clone)]
 pub struct Parsed {
     pub parsed: Tokens,
-    pub vars: Variables,
-    pub funs: Functions,
 }
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
@@ -79,7 +77,7 @@ impl Tokens {
     }
 }
 impl Parsed {
-    pub fn rpn(value: &str, vars: Variables, funs: Functions) -> Result<Self, ParseError> {
+    pub fn rpn(value: &str, vars: &Variables, funs: &Functions) -> Result<Self, ParseError> {
         let mut parsed = Tokens(Vec::with_capacity(value.len()));
         let mut inner_vars: Vec<&str> = Vec::with_capacity(value.len());
         for token in value.split(' ') {
@@ -92,7 +90,7 @@ impl Parsed {
                 parsed.push(n.into());
             } else if let Ok(fun) = Function::try_from(token) {
                 if fun.has_var() {
-                    let last = parsed.get_last(&funs);
+                    let last = parsed.get_last(funs);
                     let tokens = Tokens(parsed.drain(last..).collect());
                     parsed.push(Token::Tokens(tokens));
                     inner_vars.pop();
@@ -114,9 +112,9 @@ impl Parsed {
                 return Err(ParseError::UnknownToken(token.to_string()));
             }
         }
-        Ok(Self { parsed, vars, funs })
+        Ok(Self { parsed })
     }
-    pub fn infix(value: &str, vars: Variables, funs: Functions) -> Result<Self, ParseError> {
+    pub fn infix(value: &str, vars: &Variables, funs: &Functions) -> Result<Self, ParseError> {
         let mut parsed = Tokens(Vec::with_capacity(value.len()));
         let mut operator_stack: Vec<Operators> = Vec::with_capacity(value.len());
         let mut inner_vars: Vec<&str> = Vec::with_capacity(value.len());
@@ -206,7 +204,7 @@ impl Parsed {
                     ) {
                         return Err(ParseError::LeftParenthesisNotFound);
                     }
-                    parsed.close_off_bracket(&mut operator_stack, &mut inner_vars, &funs);
+                    parsed.close_off_bracket(&mut operator_stack, &mut inner_vars, funs);
                     negate = false;
                     last_abs = false;
                 }
@@ -240,7 +238,7 @@ impl Parsed {
                         ) {
                             return Err(ParseError::AbsoluteBracketFailed);
                         }
-                        parsed.close_off_bracket(&mut operator_stack, &mut inner_vars, &funs);
+                        parsed.close_off_bracket(&mut operator_stack, &mut inner_vars, funs);
                         parsed.push(Function::Abs.into());
                         abs -= 1;
                         negate = false;
@@ -286,7 +284,7 @@ impl Parsed {
             }
             parsed.push(operator.into());
         }
-        Ok(Self { parsed, vars, funs })
+        Ok(Self { parsed })
     }
 }
 impl Tokens {
