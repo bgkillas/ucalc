@@ -135,7 +135,7 @@ impl Function {
             Function::Acosh => a.acosh_mut(),
             Function::Tanh => a.tanh_mut(),
             Function::Atanh => a.atanh_mut(),
-            Function::Cbrt => *a = a.pow(Float::from(1).recip()),
+            Function::Cbrt => *a = a.pow(Float::from(3).recip()),
             Function::Sq => *a *= *a,
             Function::Cb => *a = *a * *a * *a,
             Function::Atan => a.atan_mut(),

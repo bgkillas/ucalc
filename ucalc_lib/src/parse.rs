@@ -279,8 +279,11 @@ impl Parsed {
             }
         }
         while let Some(operator) = operator_stack.pop() {
-            if operator == Bracket::Parenthesis.into() {
-                return Err(ParseError::RightParenthesisNotFound);
+            if let Operators::Bracket(bracket) = operator {
+                return match bracket {
+                    Bracket::Absolute => Err(ParseError::AbsoluteBracketFailed),
+                    Bracket::Parenthesis => Err(ParseError::RightParenthesisNotFound),
+                };
             }
             parsed.push(operator.into());
         }

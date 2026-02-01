@@ -344,6 +344,27 @@ fn parse_sqrt() {
         vec![num(4), Function::Sqrt.into()],
         res(2)
     );
+    assert_correct!(
+        infix("sq(4)"),
+        rpn("4 sq"),
+        vec![num(4), Function::Sq.into()],
+        res(16)
+    );
+}
+#[test]
+fn parse_cbrt() {
+    assert_correct!(
+        infix("cbrt(8)"),
+        rpn("8 cbrt"),
+        vec![num(8), Function::Cbrt.into()],
+        res(2)
+    );
+    assert_correct!(
+        infix("cb(2)"),
+        rpn("2 cb"),
+        vec![num(2), Function::Cb.into()],
+        res(8)
+    );
 }
 #[test]
 fn parse_gamma() {
@@ -730,6 +751,53 @@ fn test_prod() {
     );
 }
 #[test]
+fn test_iter() {
+    assert_correct!(
+        infix("iter(x,1,4,x/2)",),
+        rpn("x 1 4 x 2 / iter",),
+        vec![
+            num(1),
+            num(4),
+            Tokens(vec![Token::InnerVar(0), num(2), Operators::Div.into()]).into(),
+            Function::Iter.into()
+        ],
+        res(1) / 16
+    );
+    assert_correct!(
+        infix("iter(x,1,0,x/2)",),
+        rpn("x 1 0 x 2 / iter",),
+        vec![
+            num(1),
+            num(0),
+            Tokens(vec![Token::InnerVar(0), num(2), Operators::Div.into()]).into(),
+            Function::Iter.into()
+        ],
+        res(1)
+    );
+    assert_correct!(
+        infix("iter(x,1,4,iter(y,2,5,x/y))",),
+        rpn("x 1 4 y 2 5 x y / iter iter",),
+        vec![
+            num(1),
+            num(4),
+            Tokens(vec![
+                num(2),
+                num(5),
+                Tokens(vec![
+                    Token::InnerVar(0),
+                    Token::InnerVar(1),
+                    Operators::Div.into()
+                ])
+                .into(),
+                Function::Iter.into()
+            ])
+            .into(),
+            Function::Iter.into()
+        ],
+        res(1) / 16
+    );
+}
+#[test]
 fn test_err() {
     assert_eq!(
         Parsed::infix("(2+3))", &Variables::default(), &Functions::default()),
@@ -747,6 +815,18 @@ fn test_err() {
     assert_eq!(
         Parsed::infix("(2+)", &Variables::default(), &Functions::default()),
         Err(ParseError::MissingInput)
+    );
+    assert_eq!(
+        Parsed::infix("|2", &Variables::default(), &Functions::default()),
+        Err(ParseError::AbsoluteBracketFailed)
+    );
+    assert_eq!(
+        Parsed::infix("|(|)", &Variables::default(), &Functions::default()),
+        Err(ParseError::AbsoluteBracketFailed)
+    );
+    assert_eq!(
+        Parsed::infix("(|)|", &Variables::default(), &Functions::default()),
+        Err(ParseError::LeftParenthesisNotFound)
     );
     /*assert_teq!(
         Parsed::infix("abc(2)", Variables::default(), Functions::default()),
