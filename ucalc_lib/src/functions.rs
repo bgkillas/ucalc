@@ -15,6 +15,7 @@ pub enum Function {
     Ln,
     Exp,
     Atan,
+    Atan2,
     Max,
     Min,
     Quadratic,
@@ -50,7 +51,8 @@ impl TryFrom<&str> for Function {
             "cos" => Function::Cos,
             "sinh" => Function::Sinh,
             "cosh" => Function::Cosh,
-            "atan" => Function::Atan,
+            "arctan" => Function::Atan,
+            "atan" => Function::Atan2,
             "sqrt" => Function::Sqrt,
             "sum" => Function::Sum,
             "prod" => Function::Prod,
@@ -99,8 +101,9 @@ impl Function {
             | Function::Cbrt
             | Function::Cb
             | Function::Sq
+            | Function::Atan
             | Function::Conj => 1,
-            Function::Atan | Function::Max | Function::Min => 2,
+            Function::Atan2 | Function::Max | Function::Min => 2,
             Function::Quadratic | Function::Sum | Function::Prod | Function::Iter => 3,
             Function::Custom(_) => unreachable!(),
         }
@@ -134,7 +137,8 @@ impl Function {
             Function::Cbrt => *a = a.pow(Float::from(1).recip()),
             Function::Sq => *a *= *a,
             Function::Cb => *a = *a * *a * *a,
-            Function::Atan => a.atan2_mut(&b[0]),
+            Function::Atan => a.atan_mut(),
+            Function::Atan2 => a.atan2_mut(&b[0]),
             Function::Max => a.max_mut(&b[0]),
             Function::Min => a.min_mut(&b[0]),
             Function::Quadratic => {
@@ -175,7 +179,8 @@ impl Function {
             | Function::Erfc
             | Function::Abs
             | Function::Arg
-            | Function::Iter => return None,
+            | Function::Iter
+            | Function::Atan2 => return None,
             Function::Custom(_) => unreachable!(),
         })
     }

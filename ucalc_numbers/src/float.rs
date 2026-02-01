@@ -262,6 +262,14 @@ impl Complex {
         self.atanh_mut();
         self
     }
+    pub fn atan_mut(&mut self) {
+        //TODO
+        self.real.atan_mut()
+    }
+    pub fn atan(mut self) -> Self {
+        self.atan_mut();
+        self
+    }
     pub fn asinh_mut(&mut self) {
         //TODO
         self.real.asinh_mut()
