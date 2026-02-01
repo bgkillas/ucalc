@@ -31,7 +31,7 @@ impl Parsed {
         let start = first.clone().num().real.to_usize();
         let mut parsed = Parsed {
             parsed: tokens,
-            vars: self.vars.clone(),
+            vars: self.vars.clone(), //TODO these dont need to be cloned
             funs: self.funs.clone(),
         };
         let mut vars = Vec::with_capacity(old_vars.map(|v| v.len()).unwrap_or(0) + 1);
@@ -61,6 +61,29 @@ impl Parsed {
                         }
                         Operators::Fun(Function::Prod) => {
                             self.range(i, vars, |iter| iter.product::<Complex>().into());
+                        }
+                        Operators::Fun(Function::Iter) => {
+                            let steps = self.parsed.remove(i - 2).num().real.to_usize();
+                            let tokens = self.parsed.remove(i - 2).tokens();
+                            let first = self.parsed.get_mut(i - 3).unwrap();
+                            let start = first.clone().num();
+                            let mut parsed = Parsed {
+                                parsed: tokens,
+                                vars: self.vars.clone(),
+                                funs: self.funs.clone(),
+                            };
+                            let mut inner_vars =
+                                Vec::with_capacity(vars.map(|v| v.len()).unwrap_or(0) + 1);
+                            if let Some(slice) = vars {
+                                inner_vars.extend_from_slice(slice)
+                            }
+                            inner_vars.push(InnerVariable::new(Complex::from(start)));
+                            let mut vars = InnerVariables(inner_vars);
+                            (0..steps).for_each(|_| {
+                                let next = parsed.clone_compute_inner(Some(&vars));
+                                vars.last_mut().unwrap().value = next;
+                            });
+                            *first.num_mut() = vars.last_mut().unwrap().value;
                         }
                         _ => {
                             b.extend(self.parsed.drain(i + 1 - inputs..i).map(|a| a.num()));

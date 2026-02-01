@@ -1,4 +1,4 @@
-use ucalc_numbers::Complex;
+use ucalc_numbers::{Complex, Float, Pow};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Function {
     Sin,
@@ -19,6 +19,9 @@ pub enum Function {
     Min,
     Quadratic,
     Sqrt,
+    Cbrt,
+    Sq,
+    Cb,
     Sum,
     Prod,
     Gamma,
@@ -28,6 +31,7 @@ pub enum Function {
     Arg,
     Recip,
     Conj,
+    Iter,
     Custom(usize),
 }
 impl TryFrom<&str> for Function {
@@ -61,6 +65,10 @@ impl TryFrom<&str> for Function {
             "atanh" => Function::Atanh,
             "tanh" => Function::Tanh,
             "tan" => Function::Tan,
+            "iter" => Function::Iter,
+            "sq" => Function::Sq,
+            "cbrt" => Function::Cbrt,
+            "cb" => Function::Cb,
             _ => return Err(()),
         })
     }
@@ -88,14 +96,17 @@ impl Function {
             | Function::Abs
             | Function::Arg
             | Function::Recip
+            | Function::Cbrt
+            | Function::Cb
+            | Function::Sq
             | Function::Conj => 1,
             Function::Atan | Function::Max | Function::Min => 2,
-            Function::Quadratic | Function::Sum | Function::Prod => 3,
+            Function::Quadratic | Function::Sum | Function::Prod | Function::Iter => 3,
             Function::Custom(_) => unreachable!(),
         }
     }
     pub fn has_var(self) -> bool {
-        matches!(self, Function::Sum | Function::Prod)
+        matches!(self, Function::Sum | Function::Prod | Function::Iter)
     }
     pub fn compute(self, a: &mut Complex, b: &[Complex]) {
         match self {
@@ -120,13 +131,16 @@ impl Function {
             Function::Acosh => a.acosh_mut(),
             Function::Tanh => a.tanh_mut(),
             Function::Atanh => a.atanh_mut(),
+            Function::Cbrt => *a = a.pow(Float::from(1).recip()),
+            Function::Sq => *a *= *a,
+            Function::Cb => *a = *a * *a * *a,
             Function::Atan => a.atan2_mut(&b[0]),
             Function::Max => a.max_mut(&b[0]),
             Function::Min => a.min_mut(&b[0]),
             Function::Quadratic => {
                 *a = ((b[0] * b[0] - *a * b[1] * 4).sqrt() - b[0]) / (*a * 2);
             }
-            Function::Custom(_) | Function::Sum | Function::Prod => unreachable!(),
+            Function::Custom(_) | Function::Sum | Function::Prod | Function::Iter => unreachable!(),
         }
     }
     pub fn inverse(self) -> Option<Self> {
@@ -145,19 +159,23 @@ impl Function {
             Function::Acosh => Function::Cosh,
             Function::Tanh => Function::Atanh,
             Function::Atanh => Function::Tanh,
-            Function::Tan => return None,
+            Function::Tan => Function::Atan,
+            Function::Atan => Function::Tan,
+            Function::Sqrt => Function::Sq,
+            Function::Sq => Function::Sqrt,
+            Function::Cbrt => Function::Cb,
+            Function::Cb => Function::Cbrt,
             Function::Max
             | Function::Min
             | Function::Quadratic
-            | Function::Atan
-            | Function::Sqrt
             | Function::Sum
             | Function::Prod
             | Function::Gamma
             | Function::Erf
             | Function::Erfc
             | Function::Abs
-            | Function::Arg => return None,
+            | Function::Arg
+            | Function::Iter => return None,
             Function::Custom(_) => unreachable!(),
         })
     }
