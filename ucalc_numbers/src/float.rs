@@ -239,64 +239,62 @@ impl Complex {
             .map_err(|_| ())
     }
     pub fn tan_mut(&mut self) {
-        //TODO
-        self.real.tan_mut()
+        let cos = self.cos();
+        self.sin_mut();
+        *self /= cos;
     }
     pub fn tan(mut self) -> Self {
         self.tan_mut();
         self
     }
     pub fn tanh_mut(&mut self) {
-        //TODO
-        self.real.tanh_mut()
+        let cosh = self.cosh();
+        self.sinh_mut();
+        *self /= cosh;
     }
     pub fn tanh(mut self) -> Self {
         self.tanh_mut();
         self
     }
     pub fn atanh_mut(&mut self) {
-        //TODO
-        self.real.atanh_mut()
+        *self = ((*self + 1).ln() - (-*self + 1).ln()) / 2
     }
     pub fn atanh(mut self) -> Self {
         self.atanh_mut();
         self
     }
     pub fn atan_mut(&mut self) {
-        //TODO
-        self.real.atan_mut()
+        *self = ((-self.mul_i(false) + 1).ln().mul_i(false)
+            - (self.mul_i(false) + 1).ln().mul_i(false))
+            / 2
     }
     pub fn atan(mut self) -> Self {
         self.atan_mut();
         self
     }
     pub fn asinh_mut(&mut self) {
-        //TODO
-        self.real.asinh_mut()
+        *self = (*self + (*self * *self + 1).sqrt()).ln();
     }
     pub fn asinh(mut self) -> Self {
         self.asinh_mut();
         self
     }
     pub fn acosh_mut(&mut self) {
-        //TODO
-        self.real.acosh_mut()
+        *self = (*self + (*self * *self - 1).sqrt()).ln();
     }
     pub fn acosh(mut self) -> Self {
         self.acosh_mut();
         self
     }
     pub fn sinh_mut(&mut self) {
-        //TODO
-        self.real.sinh_mut()
+        *self = (self.exp() - self.neg().exp()) / 2;
     }
     pub fn sinh(mut self) -> Self {
         self.sinh_mut();
         self
     }
     pub fn cosh_mut(&mut self) {
-        //TODO
-        self.real.cosh_mut()
+        *self = (self.exp() + self.neg().exp()) / 2;
     }
     pub fn cosh(mut self) -> Self {
         self.cosh_mut();

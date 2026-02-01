@@ -438,7 +438,16 @@ fn parse_atan() {
     assert_correct!(
         infix("atan(1,1)"),
         rpn("1 1 atan"),
-        vec![num(1), num(1), Function::Atan.into()],
+        vec![num(1), num(1), Function::Atan2.into()],
+        res(Constant::Pi) / 4
+    );
+}
+#[test]
+fn parse_arctan() {
+    assert_correct!(
+        infix("arctan(1)"),
+        rpn("1 arctan"),
+        vec![num(1), Function::Atan.into()],
         res(Constant::Pi) / 4
     );
 }
