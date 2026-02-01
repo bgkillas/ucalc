@@ -528,10 +528,7 @@ impl Pow<Float> for Complex {
     fn pow(self, rhs: Float) -> Self {
         if self.imag.is_zero() {
             if self.real.is_sign_negative() {
-                Self {
-                    real: Float(0.0),
-                    imag: self.real.abs().pow(rhs),
-                }
+                (Complex::from(self.real.abs().ln()) * rhs).exp()
             } else {
                 Self {
                     real: self.real.pow(rhs),

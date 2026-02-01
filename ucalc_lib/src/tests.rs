@@ -360,6 +360,46 @@ fn test_custom_functions() {
         vec![num(3), num(4), Token::Fun(0)],
         res(-1)
     );
+    assert_correct!(
+        Parsed::infix(
+            "sum(n,0,10,sum(k,3,6,f(n,k)^2+f(k,n)-2))",
+            Variables::default(),
+            funs.clone()
+        )
+        .unwrap(),
+        Parsed::rpn(
+            "n 0 10 k 3 6 n k f 2 ^ k n f + 2 - sum sum",
+            Variables::default(),
+            funs.clone()
+        )
+        .unwrap(),
+        vec![
+            num(0),
+            num(10),
+            Tokens(vec![
+                num(3),
+                num(6),
+                Tokens(vec![
+                    Token::InnerVar(0),
+                    Token::InnerVar(1),
+                    Token::Fun(0),
+                    num(2),
+                    Operators::Pow.into(),
+                    Token::InnerVar(1),
+                    Token::InnerVar(0),
+                    Token::Fun(0),
+                    Operators::Add.into(),
+                    num(2),
+                    Operators::Sub.into()
+                ])
+                .into(),
+                Function::Sum.into()
+            ])
+            .into(),
+            Function::Sum.into()
+        ],
+        res(396)
+    );
 }
 #[test]
 fn test_sum() {
@@ -379,11 +419,7 @@ fn test_sum() {
         vec![
             num(0),
             num(10),
-            Token::Tokens(Tokens(vec![
-                Token::InnerVar(0),
-                num(2),
-                Operators::Pow.into()
-            ])),
+            Tokens(vec![Token::InnerVar(0), num(2), Operators::Pow.into()]).into(),
             Function::Sum.into()
         ],
         res(385)
@@ -407,25 +443,28 @@ fn test_inner_fn() {
         vec![
             num(0),
             num(10),
-            Token::Tokens(Tokens(vec![
+            Tokens(vec![
                 num(3),
                 num(6),
-                Token::Tokens(Tokens(vec![
+                Tokens(vec![
                     Token::InnerVar(0),
                     Token::InnerVar(1),
                     Operators::Sub.into()
-                ])),
+                ])
+                .into(),
                 Function::Sum.into(),
                 num(3),
                 num(6),
-                Token::Tokens(Tokens(vec![
+                Tokens(vec![
                     Token::InnerVar(0),
                     Token::InnerVar(1),
                     Operators::Sub.into()
-                ])),
+                ])
+                .into(),
                 Function::Prod.into(),
                 Operators::Add.into()
-            ])),
+            ])
+            .into(),
             Function::Sum.into()
         ],
         res(1870)
@@ -449,11 +488,7 @@ fn test_prod() {
         vec![
             num(1),
             num(4),
-            Token::Tokens(Tokens(vec![
-                Token::InnerVar(0),
-                num(2),
-                Operators::Pow.into()
-            ])),
+            Tokens(vec![Token::InnerVar(0), num(2), Operators::Pow.into()]).into(),
             Function::Prod.into()
         ],
         res(576)

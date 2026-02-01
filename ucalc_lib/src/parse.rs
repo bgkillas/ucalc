@@ -54,7 +54,6 @@ impl Tokens {
     pub fn get_last(&self, funs: &Functions) -> usize {
         fn inner(tokens: &[Token], funs: &Functions) -> usize {
             match tokens.last() {
-                //TODO
                 Some(Token::Fun(i)) => {
                     let inputs = funs[*i].vars.len();
                     let mut i = tokens.len() - 1;
@@ -261,6 +260,11 @@ impl From<Complex> for Token {
 impl From<Operators> for Token {
     fn from(value: Operators) -> Self {
         Self::Operator(value)
+    }
+}
+impl From<Tokens> for Token {
+    fn from(value: Tokens) -> Self {
+        Self::Tokens(value)
     }
 }
 impl From<Function> for Operators {
