@@ -46,7 +46,12 @@ impl Display for Tokens {
     }
 }
 impl Tokens {
-    pub fn rpn(value: &str, vars: &Variables, funs: &Functions) -> Result<Self, ParseError> {
+    pub fn rpn(
+        value: &str,
+        vars: &Variables,
+        graph_vars: &[&str],
+        funs: &Functions,
+    ) -> Result<Self, ParseError> {
         let mut tokens = Tokens(Vec::with_capacity(value.len()));
         let mut inner_vars: Vec<&str> = Vec::with_capacity(value.len());
         for token in value.split(' ') {
@@ -60,12 +65,10 @@ impl Tokens {
             } else if let Ok(fun) = Function::try_from(token) {
                 tokens.compact_args(&fun, &mut inner_vars, funs);
                 tokens.push(fun.into());
-            } else if let Some((i, v)) = vars.iter().enumerate().find(|(_, v)| v.name == token) {
-                if v.place {
-                    tokens.push(Token::Num(v.value));
-                } else {
-                    tokens.push(Token::Var(i));
-                }
+            } else if let Some(v) = vars.iter().find(|v| v.name == token) {
+                tokens.push(Token::Num(v.value));
+            } else if let Some(i) = graph_vars.iter().position(|v| v == &token) {
+                tokens.push(Token::Var(i));
             } else if let Some(i) = funs.iter().position(|v| v.name == token) {
                 tokens.push(Token::Fun(i))
             } else if let Some(i) = inner_vars.iter().position(|v| *v == token) {
@@ -78,7 +81,12 @@ impl Tokens {
         }
         Ok(tokens)
     }
-    pub fn infix(value: &str, vars: &Variables, funs: &Functions) -> Result<Self, ParseError> {
+    pub fn infix(
+        value: &str,
+        vars: &Variables,
+        graph_vars: &[&str],
+        funs: &Functions,
+    ) -> Result<Self, ParseError> {
         let mut tokens = Tokens(Vec::with_capacity(value.len()));
         let mut operator_stack: Vec<Operators> = Vec::with_capacity(value.len());
         let mut inner_vars: Vec<&str> = Vec::with_capacity(value.len());
@@ -104,13 +112,10 @@ impl Tokens {
                     let s = &value[i..i + l];
                     if let Ok(fun) = Function::try_from(s) {
                         operator_stack.push(fun.into());
-                    } else if let Some((i, v)) = vars.iter().enumerate().find(|(_, v)| v.name == s)
-                    {
-                        if v.place {
-                            tokens.push(Token::Num(v.value));
-                        } else {
-                            tokens.push(Token::Var(i));
-                        }
+                    } else if let Some(v) = vars.iter().find(|v| v.name == s) {
+                        tokens.push(Token::Num(v.value));
+                    } else if let Some(i) = graph_vars.iter().position(|v| v == &s) {
+                        tokens.push(Token::Var(i));
                     } else if let Some(i) = funs.iter().position(|v| v.name == s) {
                         operator_stack.push(Operators::Function(Function::Custom(i)));
                     } else if let Some(i) = inner_vars.iter().position(|v| *v == s) {

@@ -1,11 +1,11 @@
+use crate::Functions;
 use crate::functions::Function;
 use crate::operators::Operators;
 use crate::parse::{Token, Tokens};
-use crate::{Functions, Variables};
 use std::{array, iter};
 use ucalc_numbers::{Complex, Constant, Float};
 impl Tokens {
-    pub fn compute(&self, vars: &Variables, funs: &Functions) -> Complex {
+    pub fn compute(&self, vars: &[Complex], funs: &Functions) -> Complex {
         self.compute_inner(None, vars, funs)
     }
     pub fn get_skip_var<const N: usize>(&self, end: usize) -> [&Token; N] {
@@ -28,7 +28,7 @@ impl Tokens {
     pub fn range(
         &mut self,
         fun_vars: Option<&[Complex]>,
-        vars: &Variables,
+        vars: &[Complex],
         funs: &Functions,
         fun: impl FnOnce(&mut dyn Iterator<Item = Complex>) -> Token,
     ) {
@@ -53,7 +53,7 @@ impl Tokens {
     pub fn compute_inner(
         &self,
         fun_vars: Option<&[Complex]>,
-        vars: &Variables,
+        vars: &[Complex],
         funs: &Functions,
     ) -> Complex {
         inner(self.as_slice(), fun_vars, vars, funs)
@@ -62,7 +62,7 @@ impl Tokens {
 fn inner(
     tokens: &[Token],
     fun_vars: Option<&[Complex]>,
-    vars: &Variables,
+    vars: &[Complex],
     funs: &Functions,
 ) -> Complex {
     let mut stack = Tokens(Vec::with_capacity(tokens.len()));
@@ -189,7 +189,7 @@ fn inner(
                 stack.push(Token::Num(fun_vars.as_ref().unwrap()[*index]));
             }
             Token::Var(index) => {
-                stack.push(Token::Num(vars[*index].value));
+                stack.push(Token::Num(vars[*index]));
             }
             Token::Skip(to) => {
                 let back = stack.len();

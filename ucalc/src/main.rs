@@ -1,24 +1,24 @@
 use std::env::args;
 use ucalc_lib::{Functions, Tokens, Variables};
 fn main() {
+    let vars = Variables::default();
+    let funs = Functions::default();
     let mut infix = true;
     for arg in args().skip(1) {
         if arg == "--rpn" {
             infix = false;
             continue;
         }
-        let vars = Variables::default();
-        let funs = Functions::default();
         match tmr(|| {
             if infix {
-                Tokens::infix(arg.as_str(), &vars, &funs)
+                Tokens::infix(arg.as_str(), &vars, &[], &funs)
             } else {
-                Tokens::rpn(arg.as_str(), &vars, &funs)
+                Tokens::rpn(arg.as_str(), &vars, &[], &funs)
             }
         }) {
-            Ok(parsed) => {
-                println!("{}", parsed);
-                let compute = tmr(|| parsed.compute(&vars, &funs));
+            Ok(tokens) => {
+                println!("{}", tokens);
+                let compute = tmr(|| tokens.compute(&[], &funs));
                 println!("{}", compute);
             }
             Err(e) => println!("{e:?}"),

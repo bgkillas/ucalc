@@ -8,4 +8,5 @@ mod parse;
 mod tests;
 mod variable;
 pub use parse::Tokens;
+pub use ucalc_numbers::Complex;
 pub use variable::{FunctionVar, Functions, Variable, Variables};

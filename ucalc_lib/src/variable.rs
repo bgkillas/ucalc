@@ -5,7 +5,6 @@ use ucalc_numbers::{Complex, Constant};
 pub struct Variable {
     pub name: String,
     pub value: Complex,
-    pub place: bool,
 }
 #[derive(Debug, PartialEq, Clone)]
 pub struct FunctionVar {
@@ -23,11 +22,10 @@ impl FunctionVar {
     }
 }
 impl Variable {
-    pub fn new(name: impl Into<String>, value: Complex, place: bool) -> Self {
+    pub fn new(name: impl Into<String>, value: Complex) -> Self {
         Self {
             name: name.into(),
             value,
-            place,
         }
     }
 }
@@ -38,12 +36,12 @@ pub struct Functions(pub Vec<FunctionVar>);
 impl Default for Variables {
     fn default() -> Self {
         Self(vec![
-            Variable::new("pi", Complex::from(Constant::Pi), true),
-            Variable::new("tau", Complex::from(Constant::Tau), true),
-            Variable::new("e", Complex::from(Constant::E), true),
-            Variable::new("i", Complex::from((0, 1)), true),
-            Variable::new("inf", Complex::from(Constant::Infinity), true),
-            Variable::new("nan", Complex::from(Constant::Nan), true),
+            Variable::new("pi", Complex::from(Constant::Pi)),
+            Variable::new("tau", Complex::from(Constant::Tau)),
+            Variable::new("e", Complex::from(Constant::E)),
+            Variable::new("i", Complex::from((0, 1))),
+            Variable::new("inf", Complex::from(Constant::Infinity)),
+            Variable::new("nan", Complex::from(Constant::Nan)),
         ])
     }
 }
