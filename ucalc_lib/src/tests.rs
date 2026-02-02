@@ -871,6 +871,54 @@ fn test_cmp() {
         vec![num(1), Operators::Not.into()],
         res(0)
     );
+    assert_correct!(
+        infix("1==1==1"),
+        rpn("1 1 1 == =="),
+        vec![
+            num(1),
+            num(1),
+            num(1),
+            Operators::Equal.into(),
+            Operators::Equal.into()
+        ],
+        res(1)
+    );
+    assert_correct!(
+        infix("3!=2!=1"),
+        rpn("3 2 1 != !="),
+        vec![
+            num(3),
+            num(2),
+            num(1),
+            Operators::NotEqual.into(),
+            Operators::NotEqual.into()
+        ],
+        res(1)
+    );
+    assert_correct!(
+        infix("3>2<4"),
+        rpn("3 2 4 < >"),
+        vec![
+            num(3),
+            num(2),
+            num(4),
+            Operators::Less.into(),
+            Operators::Greater.into()
+        ],
+        res(1)
+    );
+    assert_correct!(
+        infix("3>2>4"),
+        rpn("3 2 4 > >"),
+        vec![
+            num(3),
+            num(2),
+            num(4),
+            Operators::Greater.into(),
+            Operators::Greater.into()
+        ],
+        res(0)
+    );
 }
 #[test]
 fn test_tetration() {

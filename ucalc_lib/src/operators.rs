@@ -171,8 +171,6 @@ impl Operators {
                 | Self::Less
                 | Self::LessEqual
                 | Self::GreaterEqual
-                | Self::And
-                | Self::Or
         )
     }
     pub fn is_operator(self) -> bool {
@@ -191,7 +189,6 @@ impl Operators {
             Self::Negate => *a = a.neg(),
             Self::Tetration => a.tetration_mut(&b[0]),
             Self::SubFactorial => a.subfactorial_mut(),
-            //TODO chaining
             Self::Equal => *a = Complex::from(*a == b[0]),
             Self::NotEqual => *a = Complex::from(*a != b[0]),
             Self::Greater => *a = Complex::from(a.total_cmp(&b[0]).is_gt()),

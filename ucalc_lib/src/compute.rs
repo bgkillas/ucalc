@@ -2,7 +2,7 @@ use crate::functions::Function;
 use crate::operators::Operators;
 use crate::parse::{Parsed, Token};
 use crate::{Functions, InnerVariable, InnerVariables, Variables};
-use ucalc_numbers::{Complex, Float};
+use ucalc_numbers::{Complex, Constant, Float};
 impl Parsed {
     pub fn clone_compute(&mut self, vars: &Variables, funs: &Functions) -> Complex {
         let parsed = self.parsed.clone();
@@ -94,9 +94,28 @@ impl Parsed {
                             *first.num_mut() = new_vars.last_mut().unwrap().value;
                         }
                         _ => {
+                            let chain = if operator.is_chainable()
+                                && self.parsed.get(i).is_some_and(|o| {
+                                    if let Token::Operator(o) = o {
+                                        o.is_chainable()
+                                    } else {
+                                        false
+                                    }
+                                }) {
+                                self.parsed.get(i - inputs).map(|n| n.clone().num())
+                            } else {
+                                None
+                            };
                             b.extend(self.parsed.drain(i + 1 - inputs..i).map(|a| a.num()));
                             let a = self.parsed.get_mut(i - inputs).unwrap().num_mut();
                             operator.compute(a, &b);
+                            if let Some(b) = chain {
+                                *a = if a.is_zero() {
+                                    Complex::from(Constant::Nan)
+                                } else {
+                                    b
+                                };
+                            }
                             b.clear();
                         }
                     }
