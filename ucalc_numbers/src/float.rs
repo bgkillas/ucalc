@@ -1,4 +1,5 @@
 use crate::{Constant, Pow};
+use std::cmp::Ordering;
 #[cfg(feature = "f16")]
 use std::f16::consts;
 #[cfg(feature = "f32")]
@@ -242,6 +243,44 @@ impl Float {
         self.erfc_mut();
         self
     }
+    pub fn total_cmp(&self, other: &Self) -> Ordering {
+        self.0.total_cmp(&other.0)
+    }
+    pub fn round_mut(&mut self) {
+        self.0 = self.0.round();
+    }
+    pub fn round(mut self) -> Self {
+        self.round_mut();
+        self
+    }
+    pub fn ceil_mut(&mut self) {
+        self.0 = self.0.ceil();
+    }
+    pub fn ceil(mut self) -> Self {
+        self.ceil_mut();
+        self
+    }
+    pub fn floor_mut(&mut self) {
+        self.0 = self.0.floor();
+    }
+    pub fn floor(mut self) -> Self {
+        self.floor_mut();
+        self
+    }
+    pub fn trunc_mut(&mut self) {
+        self.0 = self.0.trunc();
+    }
+    pub fn trunc(mut self) -> Self {
+        self.trunc_mut();
+        self
+    }
+    pub fn fract_mut(&mut self) {
+        self.0 = self.0.fract();
+    }
+    pub fn fract(mut self) -> Self {
+        self.fract_mut();
+        self
+    }
 }
 impl Complex {
     pub fn parse_radix(src: &str, _: i32) -> Result<Self, ()> {
@@ -252,6 +291,70 @@ impl Complex {
                 imag: Float(0.0),
             })
             .map_err(|_| ())
+    }
+    pub fn tetration_mut(&mut self, other: &Self) {
+        //TODO
+        *self = self.tetration(other)
+    }
+    pub fn tetration(self, other: &Self) -> Self {
+        let other = Complex::from(other.real.round());
+        if other.real.0 <= 0.0 {
+            Complex::from(1)
+        } else {
+            self.pow(self.tetration(&(other - 1)))
+        }
+    }
+    pub fn subfactorial_mut(&mut self) {
+        //TODO
+        if self.is_zero() {
+            *self = Self::from(1);
+        } else {
+            *self = ((*self + 1).gamma() / Constant::E).round()
+        }
+    }
+    pub fn subfactorial(mut self) -> Self {
+        self.subfactorial_mut();
+        self
+    }
+    pub fn round_mut(&mut self) {
+        self.real.round_mut();
+        self.imag.round_mut();
+    }
+    pub fn round(mut self) -> Self {
+        self.round_mut();
+        self
+    }
+    pub fn ceil_mut(&mut self) {
+        self.real.ceil_mut();
+        self.imag.ceil_mut();
+    }
+    pub fn ceil(mut self) -> Self {
+        self.ceil_mut();
+        self
+    }
+    pub fn floor_mut(&mut self) {
+        self.real.floor_mut();
+        self.imag.floor_mut();
+    }
+    pub fn floor(mut self) -> Self {
+        self.floor_mut();
+        self
+    }
+    pub fn trunc_mut(&mut self) {
+        self.real.trunc_mut();
+        self.imag.trunc_mut();
+    }
+    pub fn trunc(mut self) -> Self {
+        self.trunc_mut();
+        self
+    }
+    pub fn fract_mut(&mut self) {
+        self.real.fract_mut();
+        self.imag.fract_mut();
+    }
+    pub fn fract(mut self) -> Self {
+        self.fract_mut();
+        self
     }
     pub fn tan_mut(&mut self) {
         let cos = self.cos();
@@ -418,6 +521,9 @@ impl Complex {
         self.exp_mut();
         self
     }
+    pub fn is_zero(&self) -> bool {
+        self.real.is_zero() && self.imag.is_zero()
+    }
     pub fn atan2_mut(&mut self, other: &Self) {
         if self.imag.is_zero() && other.imag.is_zero() {
             self.real.atan2_mut(&other.real);
@@ -426,6 +532,11 @@ impl Complex {
                 .ln()
                 .mul_i(true)
         }
+    }
+    pub fn total_cmp(&self, other: &Self) -> Ordering {
+        self.real
+            .total_cmp(&other.real)
+            .then(self.imag.total_cmp(&other.imag))
     }
     pub fn atan2(mut self, other: &Self) -> Self {
         self.atan2_mut(other);
@@ -697,6 +808,11 @@ macro_rules! with_val {
 with_val!(
     i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f16, f32, f64, f128
 );
+impl From<bool> for Float {
+    fn from(value: bool) -> Self {
+        Self::from(value as u8)
+    }
+}
 impl<T> Mul<T> for Complex
 where
     Float: From<T>,

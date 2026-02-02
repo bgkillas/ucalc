@@ -798,6 +798,143 @@ fn test_iter() {
     );
 }
 #[test]
+fn test_cmp() {
+    assert_correct!(
+        infix("1>=0"),
+        rpn("1 0 >="),
+        vec![num(1), num(0), Operators::GreaterEqual.into()],
+        res(1)
+    );
+    assert_correct!(
+        infix("1<=0"),
+        rpn("1 0 <="),
+        vec![num(1), num(0), Operators::LessEqual.into()],
+        res(0)
+    );
+    assert_correct!(
+        infix("1==0"),
+        rpn("1 0 =="),
+        vec![num(1), num(0), Operators::Equal.into()],
+        res(0)
+    );
+    assert_correct!(
+        infix("1!=0"),
+        rpn("1 0 !="),
+        vec![num(1), num(0), Operators::NotEqual.into()],
+        res(1)
+    );
+    assert_correct!(
+        infix("1>0"),
+        rpn("1 0 >"),
+        vec![num(1), num(0), Operators::Greater.into()],
+        res(1)
+    );
+    assert_correct!(
+        infix("1<0"),
+        rpn("1 0 <"),
+        vec![num(1), num(0), Operators::Less.into()],
+        res(0)
+    );
+    assert_correct!(
+        infix("1&0"),
+        rpn("1 0 &"),
+        vec![num(1), num(0), Operators::And.into()],
+        res(0)
+    );
+    assert_correct!(
+        infix("1?0"),
+        rpn("1 0 ?"),
+        vec![num(1), num(0), Operators::Or.into()],
+        res(1)
+    );
+    assert_correct!(
+        infix("'1"),
+        rpn("1 '"),
+        vec![num(1), Operators::Not.into()],
+        res(0)
+    );
+}
+#[test]
+fn test_tetration() {
+    assert_correct!(
+        infix("2^^3"),
+        rpn("2 3 ^^"),
+        vec![num(2), num(3), Operators::Tetration.into()],
+        res(16)
+    );
+}
+#[test]
+fn test_subfactorial() {
+    assert_correct!(
+        infix("!4"),
+        rpn("4 ."),
+        vec![num(4), Operators::SubFactorial.into()],
+        res(9)
+    );
+}
+#[test]
+fn test_ceil() {
+    assert_correct!(
+        infix("ceil(4.5)"),
+        rpn("4.5 ceil"),
+        vec![num(4.5), Function::Ceil.into()],
+        res(5)
+    );
+    assert_correct!(
+        infix("floor(4.5)"),
+        rpn("4.5 floor"),
+        vec![num(4.5), Function::Floor.into()],
+        res(4)
+    );
+    assert_correct!(
+        infix("round(4.5)"),
+        rpn("4.5 round"),
+        vec![num(4.5), Function::Round.into()],
+        res(5)
+    );
+    assert_correct!(
+        infix("trunc(4.5)"),
+        rpn("4.5 trunc"),
+        vec![num(4.5), Function::Trunc.into()],
+        res(4)
+    );
+    assert_correct!(
+        infix("fract(4.5)"),
+        rpn("4.5 fract"),
+        vec![num(4.5), Function::Fract.into()],
+        res(0.5)
+    );
+}
+#[test]
+fn test_real() {
+    assert_correct!(
+        infix("real(1+2*i)"),
+        rpn("1 2 i * + real"),
+        vec![
+            num(1),
+            num(2),
+            num((0, 1)),
+            Operators::Mul.into(),
+            Operators::Add.into(),
+            Function::Real.into()
+        ],
+        res(1)
+    );
+    assert_correct!(
+        infix("imag(1+2*i)"),
+        rpn("1 2 i * + imag"),
+        vec![
+            num(1),
+            num(2),
+            num((0, 1)),
+            Operators::Mul.into(),
+            Operators::Add.into(),
+            Function::Imag.into()
+        ],
+        res(2)
+    );
+}
+#[test]
 fn test_err() {
     assert_eq!(
         Parsed::infix("(2+3))", &Variables::default(), &Functions::default()),

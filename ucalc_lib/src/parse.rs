@@ -151,10 +151,8 @@ impl Parsed {
                         operator_stack.push(Operators::Function(Function::Custom(i)));
                     } else if let Some(i) = inner_vars.iter().position(|v| *v == s) {
                         parsed.push(Token::InnerVar(i));
-                    } else if s.chars().all(|c| c.is_ascii_alphabetic()) {
-                        inner_vars.push(s);
                     } else {
-                        return Err(ParseError::UnknownToken(s.to_string()));
+                        inner_vars.push(s);
                     }
                     let _ = chars.advance_by(count - 1);
                     negate = false;
@@ -214,11 +212,6 @@ impl Parsed {
                     last_abs = false;
                     req_input = false;
                 }
-                '!' => {
-                    operator_stack.push(Operators::Factorial);
-                    negate = false;
-                    last_abs = false;
-                }
                 '|' => {
                     if abs == 0 || last_abs || req_input {
                         operator_stack.push(Bracket::Absolute.into());
@@ -248,15 +241,19 @@ impl Parsed {
                 _ => {
                     let mut l = c.len_utf8();
                     if let Some(next) = value[i + l..].chars().next()
-                        && c == next
+                        && Operators::try_from(&value[i..i + l + next.len_utf8()]).is_ok()
                     {
                         chars.next();
                         l += next.len_utf8();
                     }
                     let s = &value[i..i + l];
                     if let Ok(mut operator) = Operators::try_from(s) {
-                        if negate && Operators::Sub == operator {
-                            operator = Operators::Negate;
+                        if negate {
+                            match operator {
+                                Operators::Sub => operator = Operators::Negate,
+                                Operators::Factorial => operator = Operators::SubFactorial,
+                                _ => {}
+                            }
                         }
                         while let Some(top) = operator_stack.last()
                             && !matches!(top, Operators::Bracket(_))
@@ -270,7 +267,7 @@ impl Parsed {
                         if operator.inputs() == 2 {
                             req_input = true;
                         }
-                        negate = true;
+                        negate = operator != Operators::Factorial;
                         last_abs = false;
                     } else {
                         unreachable!()
