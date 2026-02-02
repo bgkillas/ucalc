@@ -124,27 +124,28 @@ impl Operators {
     }
     pub fn precedence(self) -> u8 {
         match self {
+            Self::Or => 0,
+            Self::And => 1,
             Self::Equal
             | Self::NotEqual
             | Self::Greater
             | Self::Less
             | Self::LessEqual
-            | Self::GreaterEqual
-            | Self::And
-            | Self::Or
-            | Self::Not => 0,
-            Self::Add | Self::Sub => 1,
-            Self::Mul | Self::Div => 2,
-            Self::Negate => 3,
-            Self::Pow | Self::Root | Self::Tetration => 4,
-            Self::Rem => 5,
-            Self::Factorial | Self::SubFactorial => 6,
+            | Self::GreaterEqual => 2,
+            Self::Add | Self::Sub => 3,
+            Self::Mul | Self::Div => 4,
+            Self::Negate | Self::Not => 5,
+            Self::Pow | Self::Root | Self::Tetration => 6,
+            Self::Rem => 7,
+            Self::Factorial | Self::SubFactorial => 8,
             Self::Bracket(_) | Self::Function(_) => unreachable!(),
         }
     }
     pub fn left_associative(self) -> bool {
         match self {
-            Self::Add | Self::Sub | Self::Mul | Self::Div | Self::Rem => true,
+            Self::Add | Self::Sub | Self::Mul | Self::Div | Self::Rem | Self::And | Self::Or => {
+                true
+            }
             Self::Pow
             | Self::Root
             | Self::Negate
@@ -155,9 +156,7 @@ impl Operators {
             | Self::Greater
             | Self::Less
             | Self::LessEqual
-            | Self::GreaterEqual
-            | Self::And
-            | Self::Or => false,
+            | Self::GreaterEqual => false,
             Self::Bracket(_) | Self::Factorial | Self::Function(_) | Self::SubFactorial => {
                 unreachable!()
             }

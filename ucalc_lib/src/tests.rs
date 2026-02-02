@@ -836,6 +836,24 @@ fn test_cmp() {
         res(0)
     );
     assert_correct!(
+        infix("1>0&2>1?0>1"),
+        rpn("1 0 > 2 1 > & 0 1 > ?"),
+        vec![
+            num(1),
+            num(0),
+            Operators::Greater.into(),
+            num(2),
+            num(1),
+            Operators::Greater.into(),
+            Operators::And.into(),
+            num(0),
+            num(1),
+            Operators::Greater.into(),
+            Operators::Or.into()
+        ],
+        res(1)
+    );
+    assert_correct!(
         infix("1&0"),
         rpn("1 0 &"),
         vec![num(1), num(0), Operators::And.into()],
