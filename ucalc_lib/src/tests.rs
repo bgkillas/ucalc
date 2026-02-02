@@ -632,7 +632,11 @@ fn test_graph_vars() {
         vars,
         &[Complex::from(2), Complex::from(3)],
         Functions::default(),
-        vec![Token::Var(0), Token::Var(1), Operators::Pow.into()],
+        vec![
+            Token::GraphVar(0),
+            Token::GraphVar(1),
+            Operators::Pow.into()
+        ],
         res(8)
     );
     assert_correct_with!(
@@ -641,7 +645,11 @@ fn test_graph_vars() {
         vars,
         &[Complex::from(3), Complex::from(2)],
         Functions::default(),
-        vec![Token::Var(0), Token::Var(1), Operators::Pow.into()],
+        vec![
+            Token::GraphVar(0),
+            Token::GraphVar(1),
+            Operators::Pow.into()
+        ],
         res(9)
     );
 }

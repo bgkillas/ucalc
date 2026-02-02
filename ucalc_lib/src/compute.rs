@@ -173,7 +173,7 @@ fn inner(
             Token::InnerVar(index) => {
                 stack.push(Token::Num(fun_vars[*index]));
             }
-            Token::Var(index) => {
+            Token::GraphVar(index) => {
                 stack.push(Token::Num(vars[*index]));
             }
             Token::Skip(to) => {

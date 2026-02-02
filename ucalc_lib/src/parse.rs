@@ -10,7 +10,7 @@ pub struct Tokens(pub Vec<Token>);
 pub enum Token {
     Num(Complex),
     InnerVar(usize),
-    Var(usize),
+    GraphVar(usize),
     Fun(usize),
     Skip(usize),
     Operator(Operators),
@@ -62,17 +62,17 @@ impl Tokens {
                 tokens.push(operator.into());
             } else if let Ok(n) = Complex::parse_radix(token, 10) {
                 tokens.push(n.into());
+            } else if let Some(i) = funs.iter().position(|v| v.name == token) {
+                tokens.push(Token::Fun(i))
             } else if let Ok(fun) = Function::try_from(token) {
                 tokens.compact_args(&fun, &mut inner_vars, funs);
                 tokens.push(fun.into());
+            } else if let Some(i) = inner_vars.iter().position(|v| *v == token) {
+                tokens.push(Token::InnerVar(i));
             } else if let Some(v) = vars.iter().find(|v| v.name == token) {
                 tokens.push(Token::Num(v.value));
             } else if let Some(i) = graph_vars.iter().position(|v| v == &token) {
-                tokens.push(Token::Var(i));
-            } else if let Some(i) = funs.iter().position(|v| v.name == token) {
-                tokens.push(Token::Fun(i))
-            } else if let Some(i) = inner_vars.iter().position(|v| *v == token) {
-                tokens.push(Token::InnerVar(i));
+                tokens.push(Token::GraphVar(i));
             } else if token.chars().all(|c| c.is_ascii_alphabetic()) {
                 inner_vars.push(token);
             } else {
@@ -110,16 +110,16 @@ impl Tokens {
                         }
                     }
                     let s = &value[i..i + l];
-                    if let Ok(fun) = Function::try_from(s) {
+                    if let Some(i) = funs.iter().position(|v| v.name == s) {
+                        operator_stack.push(Function::Custom(i).into());
+                    } else if let Ok(fun) = Function::try_from(s) {
                         operator_stack.push(fun.into());
+                    } else if let Some(i) = inner_vars.iter().position(|v| *v == s) {
+                        tokens.push(Token::InnerVar(i));
                     } else if let Some(v) = vars.iter().find(|v| v.name == s) {
                         tokens.push(Token::Num(v.value));
                     } else if let Some(i) = graph_vars.iter().position(|v| v == &s) {
-                        tokens.push(Token::Var(i));
-                    } else if let Some(i) = funs.iter().position(|v| v.name == s) {
-                        operator_stack.push(Operators::Function(Function::Custom(i)));
-                    } else if let Some(i) = inner_vars.iter().position(|v| *v == s) {
-                        tokens.push(Token::InnerVar(i));
+                        tokens.push(Token::GraphVar(i));
                     } else {
                         inner_vars.push(s);
                     }

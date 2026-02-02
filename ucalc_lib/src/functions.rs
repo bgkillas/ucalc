@@ -144,6 +144,13 @@ impl Function {
             _ => 0,
         }
     }
+    pub fn inner_vars(self) -> usize {
+        match self {
+            Self::Sum | Self::Prod | Self::Iter | Self::Set => 1,
+            Self::Fold => 2,
+            _ => 0,
+        }
+    }
     pub fn compute(self, a: &mut Complex, b: &[Complex]) {
         match self {
             Self::Sin => a.sin_mut(),
