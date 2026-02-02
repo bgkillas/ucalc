@@ -705,7 +705,91 @@ fn test_if() {
         res(3)
     );
 }
-//TODO test recursion and f composed g
+#[test]
+fn test_recursion() {
+    let funs = Functions(vec![FunctionVar::new(
+        "fact",
+        InnerVariables(vec![InnerVariable::new(res(0))]),
+        Tokens(vec![
+            Token::InnerVar(0),
+            num(0),
+            Operators::Greater.into(),
+            Tokens(vec![
+                Token::InnerVar(0),
+                Token::InnerVar(0),
+                num(1),
+                Operators::Sub.into(),
+                Token::Fun(0),
+                Operators::Mul.into(),
+            ])
+            .into(),
+            Tokens(vec![num(1)]).into(),
+            Function::If.into(),
+        ]),
+    )]);
+    assert_correct_with!(
+        Parsed::infix("fact(5)", &Variables::default(), &funs).unwrap(),
+        Parsed::rpn("5 fact", &Variables::default(), &funs).unwrap(),
+        Variables::default(),
+        funs,
+        vec![num(5), Token::Fun(0)],
+        res(120)
+    );
+}
+#[test]
+fn test_composed_functions() {
+    let funs = Functions(vec![
+        FunctionVar::new(
+            "f",
+            InnerVariables(vec![InnerVariable::new(res(0)), InnerVariable::new(res(0))]),
+            Tokens(vec![
+                Token::InnerVar(0),
+                Token::InnerVar(1),
+                Operators::Sub.into(),
+            ]),
+        ),
+        FunctionVar::new(
+            "g",
+            InnerVariables(vec![InnerVariable::new(res(0)), InnerVariable::new(res(0))]),
+            Tokens(vec![
+                Token::InnerVar(0),
+                Token::InnerVar(1),
+                Operators::Mul.into(),
+                Token::InnerVar(1),
+                Operators::Mul.into(),
+            ]),
+        ),
+    ]);
+    assert_correct_with!(
+        Parsed::infix("g(f(g(2,3)*2,g(3,2)*2)-1,2)", &Variables::default(), &funs).unwrap(),
+        Parsed::rpn(
+            "2 3 g 2 * 3 2 g 2 * f 1 - 2 g",
+            &Variables::default(),
+            &funs
+        )
+        .unwrap(),
+        Variables::default(),
+        funs,
+        vec![
+            num(2),
+            num(3),
+            Token::Fun(1),
+            num(2),
+            Operators::Mul.into(),
+            num(3),
+            num(2),
+            Token::Fun(1),
+            num(2),
+            Operators::Mul.into(),
+            Token::Fun(0),
+            num(1),
+            Operators::Sub.into(),
+            num(2),
+            Token::Fun(1)
+        ],
+        res(44)
+    );
+}
 #[test]
 fn test_custom_functions() {
     let funs = Functions(vec![FunctionVar::new(
