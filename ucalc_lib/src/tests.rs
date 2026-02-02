@@ -670,6 +670,23 @@ fn test_set() {
     );
 }
 #[test]
+fn test_solve() {
+    assert_correct!(
+        infix("solve(x,x^2-1)"),
+        rpn("x x 2 ^ 1 - solve"),
+        vec![
+            Token::Skip(5),
+            Token::InnerVar(0).into(),
+            num(2),
+            Operators::Pow.into(),
+            num(1),
+            Operators::Sub.into(),
+            Function::Solve.into()
+        ],
+        res(1)
+    );
+}
+#[test]
 fn test_fold() {
     assert_correct!(
         infix("fold(x,k,1,1,9,x*k)"),
