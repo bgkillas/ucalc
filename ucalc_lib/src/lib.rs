@@ -8,4 +8,4 @@ mod parse;
 mod tests;
 mod variable;
 pub use parse::Tokens;
-pub use variable::{FunctionVar, Functions, InnerVariable, InnerVariables, Variable, Variables};
+pub use variable::{FunctionVar, Functions, Variable, Variables};

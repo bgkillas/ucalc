@@ -3,7 +3,7 @@ use crate::operators::Operators;
 use crate::parse::ParseError;
 use crate::parse::{Token, Tokens};
 use crate::variable::{Functions, Variables};
-use crate::{FunctionVar, InnerVariable, InnerVariables, Variable};
+use crate::{FunctionVar, Variable};
 use ucalc_numbers::{Complex, Constant};
 
 macro_rules! assert_teq {
@@ -709,7 +709,7 @@ fn test_if() {
 fn test_recursion() {
     let funs = Functions(vec![FunctionVar::new(
         "fact",
-        InnerVariables(vec![InnerVariable::new(res(0))]),
+        1,
         Tokens(vec![
             Token::InnerVar(0),
             num(0),
@@ -741,7 +741,7 @@ fn test_composed_functions() {
     let funs = Functions(vec![
         FunctionVar::new(
             "f",
-            InnerVariables(vec![InnerVariable::new(res(0)), InnerVariable::new(res(0))]),
+            2,
             Tokens(vec![
                 Token::InnerVar(0),
                 Token::InnerVar(1),
@@ -750,7 +750,7 @@ fn test_composed_functions() {
         ),
         FunctionVar::new(
             "g",
-            InnerVariables(vec![InnerVariable::new(res(0)), InnerVariable::new(res(0))]),
+            2,
             Tokens(vec![
                 Token::InnerVar(0),
                 Token::InnerVar(1),
@@ -794,7 +794,7 @@ fn test_composed_functions() {
 fn test_custom_functions() {
     let funs = Functions(vec![FunctionVar::new(
         "f",
-        InnerVariables(vec![InnerVariable::new(res(0)), InnerVariable::new(res(0))]),
+        2,
         Tokens(vec![
             Token::InnerVar(0),
             Token::InnerVar(1),

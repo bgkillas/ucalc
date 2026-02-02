@@ -8,21 +8,16 @@ pub struct Variable {
     pub place: bool,
 }
 #[derive(Debug, PartialEq, Clone)]
-pub struct InnerVariable {
-    pub value: Complex,
-}
-#[derive(Debug, PartialEq, Clone)]
 pub struct FunctionVar {
     pub name: String,
-    //TODO prob nicer to not have this here
-    pub vars: InnerVariables,
+    pub inputs: usize,
     pub tokens: Tokens,
 }
 impl FunctionVar {
-    pub fn new(name: impl Into<String>, vars: InnerVariables, tokens: Tokens) -> Self {
+    pub fn new(name: impl Into<String>, inputs: usize, tokens: Tokens) -> Self {
         Self {
             name: name.into(),
-            vars,
+            inputs,
             tokens,
         }
     }
@@ -36,15 +31,8 @@ impl Variable {
         }
     }
 }
-impl InnerVariable {
-    pub fn new(value: Complex) -> Self {
-        Self { value }
-    }
-}
 #[derive(Debug, PartialEq, Clone)]
 pub struct Variables(pub Vec<Variable>);
-#[derive(Default, Debug, PartialEq, Clone)]
-pub struct InnerVariables(pub Vec<InnerVariable>);
 #[derive(Default, Debug, PartialEq, Clone)]
 pub struct Functions(pub Vec<FunctionVar>);
 impl Default for Variables {
@@ -66,17 +54,6 @@ impl Deref for Variables {
     }
 }
 impl DerefMut for Variables {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-impl Deref for InnerVariables {
-    type Target = Vec<InnerVariable>;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-impl DerefMut for InnerVariables {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }

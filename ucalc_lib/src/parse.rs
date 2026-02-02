@@ -256,7 +256,7 @@ impl Tokens {
     pub fn get_last(tokens: &[Token], funs: &Functions) -> usize {
         match tokens.last() {
             Some(Token::Fun(i)) => {
-                let inputs = funs[*i].vars.len();
+                let inputs = funs[*i].inputs;
                 let mut i = tokens.len() - 1;
                 for _ in 0..inputs {
                     i = Tokens::get_last(&tokens[..i], funs)

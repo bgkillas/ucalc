@@ -1,7 +1,8 @@
 use crate::functions::Function;
 use crate::operators::Operators;
 use crate::parse::{Token, Tokens};
-use crate::{Functions, InnerVariable, InnerVariables, Variables};
+use crate::{Functions, Variables};
+use std::iter;
 use ucalc_numbers::{Complex, Constant, Float};
 impl Tokens {
     pub fn compute(&self, vars: &Variables, funs: &Functions) -> Complex {
@@ -9,7 +10,7 @@ impl Tokens {
     }
     pub fn range(
         &mut self,
-        fun_vars: Option<&InnerVariables>,
+        fun_vars: Option<&[Complex]>,
         vars: &Variables,
         funs: &Functions,
         fun: impl FnOnce(&mut dyn Iterator<Item = Complex>) -> Token,
@@ -23,23 +24,27 @@ impl Tokens {
         if let Some(slice) = fun_vars {
             new_vars.extend_from_slice(slice)
         }
-        new_vars.push(InnerVariable::new(Complex::from(start)));
-        let mut new_vars = InnerVariables(new_vars);
+        new_vars.push(Complex::from(start));
         let mut iter = (start..=end).map(|_| {
             let ret = tokens.compute_inner(Some(&new_vars), vars, funs);
-            new_vars.last_mut().unwrap().value.real += Float::from(1);
+            new_vars.last_mut().unwrap().real += Float::from(1);
             ret
         });
         *first = fun(&mut iter);
     }
     pub fn compute_inner(
         &self,
-        fun_vars: Option<&InnerVariables>,
+        fun_vars: Option<&[Complex]>,
         vars: &Variables,
         funs: &Functions,
     ) -> Complex {
         let mut stack = Tokens(Vec::with_capacity(self.len()));
-        let mut b = Vec::with_capacity(Operators::MAX_INPUT - 1);
+        let mut b = Vec::with_capacity(
+            iter::once(Operators::MAX_INPUT - 1)
+                .chain(funs.iter().map(|f| f.inputs))
+                .max()
+                .unwrap(),
+        );
         for (i, op) in self.iter().enumerate() {
             let len = stack.len();
             match op {
@@ -64,16 +69,15 @@ impl Tokens {
                             if let Some(slice) = fun_vars {
                                 new_vars.extend_from_slice(slice)
                             }
-                            new_vars.push(InnerVariable::new(*value));
-                            new_vars.push(InnerVariable::new(Complex::from(start)));
-                            let mut new_vars = InnerVariables(new_vars);
+                            new_vars.push(*value);
+                            new_vars.push(Complex::from(start));
                             let len = new_vars.len();
                             (start..=end).for_each(|_| {
-                                new_vars.get_mut(len - 2).unwrap().value =
+                                *new_vars.get_mut(len - 2).unwrap() =
                                     tokens.compute_inner(Some(&new_vars), vars, funs);
-                                new_vars.last_mut().unwrap().value.real += Float::from(1);
+                                new_vars.last_mut().unwrap().real += Float::from(1);
                             });
-                            *value = new_vars.get(len - 2).unwrap().value;
+                            *value = *new_vars.get(len - 2).unwrap();
                         }
                         Operators::Function(Function::Set) => {
                             let tokens = stack.remove(len - 1).tokens();
@@ -83,8 +87,7 @@ impl Tokens {
                             if let Some(slice) = fun_vars {
                                 new_vars.extend_from_slice(slice)
                             }
-                            new_vars.push(InnerVariable::new(*value));
-                            let new_vars = InnerVariables(new_vars);
+                            new_vars.push(*value);
                             *value = tokens.compute_inner(Some(&new_vars), vars, funs);
                         }
                         Operators::Function(Function::Iter) => {
@@ -96,13 +99,12 @@ impl Tokens {
                             if let Some(slice) = fun_vars {
                                 inner_vars.extend_from_slice(slice)
                             }
-                            inner_vars.push(InnerVariable::new(Complex::from(*first)));
-                            let mut new_vars = InnerVariables(inner_vars);
+                            inner_vars.push(Complex::from(*first));
                             (0..steps).for_each(|_| {
-                                let next = tokens.compute_inner(Some(&new_vars), vars, funs);
-                                new_vars.last_mut().unwrap().value = next;
+                                let next = tokens.compute_inner(Some(&inner_vars), vars, funs);
+                                *inner_vars.last_mut().unwrap() = next;
                             });
-                            *first = new_vars.last_mut().unwrap().value;
+                            *first = *inner_vars.last().unwrap();
                         }
                         Operators::Function(Function::If) => {
                             let ifthen = stack.remove(len - 2).tokens();
@@ -139,20 +141,15 @@ impl Tokens {
                     }
                 }
                 Token::Fun(index) => {
-                    let inputs = funs[*index].vars.len();
-                    let mut inner = funs[*index].vars.clone();
-                    for (a, b) in inner[1..]
-                        .iter_mut()
-                        .zip(stack.drain(len + 1 - inputs..).map(|a| a.num()))
-                    {
-                        a.value = b;
-                    }
+                    let inputs = funs[*index].inputs;
+                    b.push(stack.get(len - inputs).unwrap().num_ref());
+                    b.extend(stack.drain(len + 1 - inputs..).map(|a| a.num()));
                     let a = stack.get_mut(len - inputs).unwrap().num_mut();
-                    inner[0].value = *a;
-                    *a = funs[*index].tokens.compute_inner(Some(&inner), vars, funs);
+                    *a = funs[*index].tokens.compute_inner(Some(&b), vars, funs);
+                    b.clear();
                 }
                 Token::InnerVar(index) => {
-                    stack.push(Token::Num(fun_vars.as_ref().unwrap()[*index].value));
+                    stack.push(Token::Num(fun_vars.as_ref().unwrap()[*index]));
                 }
                 Token::Var(index) => {
                     stack.push(Token::Num(vars[*index].value));
