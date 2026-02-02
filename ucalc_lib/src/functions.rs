@@ -313,7 +313,7 @@ impl Function {
             }
             Self::Solve => {
                 let ([tokens], l) = stack.get_skip_tokens();
-                stack[len - l] = tokens.get_inverse(fun_vars, vars).into();
+                stack[len - l] = tokens.get_inverse(fun_vars, vars, funs, offset).into();
                 stack.drain(len - (l - 1)..);
             }
             Self::Iter => {

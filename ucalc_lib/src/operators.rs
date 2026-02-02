@@ -180,6 +180,9 @@ impl Operators {
     pub fn compute(self, a: &mut [Token]) {
         let ([a], b) = a.split_first_chunk_mut().unwrap();
         let a = a.num_mut();
+        self.compute_on(a, b)
+    }
+    pub fn compute_on(self, a: &mut Complex, b: &[Token]) {
         match self {
             Self::Add => *a += b[0].num_ref(),
             Self::Sub => *a -= b[0].num_ref(),

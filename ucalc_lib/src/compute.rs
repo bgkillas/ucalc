@@ -99,7 +99,7 @@ impl TokensRef<'_> {
         let mut i = 0;
         while i < self.len() {
             let len = stack.len();
-            match &self[i] {
+            match self[i] {
                 Token::Operator(operator) => {
                     let inputs = operator.inputs();
                     match operator {
@@ -136,34 +136,28 @@ impl TokensRef<'_> {
                     }
                 }
                 Token::Fun(index) => {
-                    let inputs = funs[*index].inputs;
+                    let inputs = funs[index].inputs;
                     let end = fun_vars.len();
                     fun_vars.push(stack[len - inputs].num_ref());
                     fun_vars.extend(stack.drain(len + 1 - inputs..).map(|n| n.num()));
-                    *stack[len - inputs].num_mut() = funs[*index].tokens.compute_buffer_with(
+                    *stack[len - inputs].num_mut() = funs[index].tokens.compute_buffer_with(
                         fun_vars,
                         vars,
                         funs,
-                        &mut Tokens(Vec::with_capacity(funs[*index].tokens.len())),
+                        &mut Tokens(Vec::with_capacity(funs[index].tokens.len())),
                         end,
                     );
                     fun_vars.drain(end..);
                 }
-                Token::InnerVar(index) => {
-                    stack.push(Token::Num(fun_vars[offset + *index]));
-                }
-                Token::GraphVar(index) => {
-                    stack.push(Token::Num(vars[*index]));
-                }
+                Token::InnerVar(index) => stack.push(Token::Num(fun_vars[offset + index])),
+                Token::GraphVar(index) => stack.push(Token::Num(vars[index])),
                 Token::Skip(to) => {
                     let back = stack.len();
-                    stack.extend_from_slice(&self[i + 1..=i + *to]);
+                    stack.extend_from_slice(&self[i + 1..=i + to]);
                     stack.push(Token::Skip(back));
-                    i += *to;
+                    i += to;
                 }
-                Token::Num(n) => {
-                    stack.push(Token::Num(*n));
-                }
+                Token::Num(n) => stack.push(Token::Num(n)),
             }
             i += 1;
         }
