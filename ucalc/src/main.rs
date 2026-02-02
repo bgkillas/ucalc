@@ -1,13 +1,22 @@
 use std::env::args;
+use std::io::stdin;
 use ucalc_lib::{Functions, Tokens, Variables};
 fn main() {
     let vars = Variables::default();
     let funs = Functions::default();
     let mut infix = true;
-    for arg in args().skip(1) {
-        if arg == "--rpn" {
-            infix = false;
-            continue;
+    for mut arg in args().skip(1) {
+        match arg.as_str() {
+            "--rpn" => {
+                infix = false;
+                continue;
+            }
+            "-" => {
+                arg.clear();
+                stdin().read_line(&mut arg).unwrap();
+                arg.pop();
+            }
+            _ => {}
         }
         match tmr(|| {
             if infix {

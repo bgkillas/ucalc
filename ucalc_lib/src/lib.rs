@@ -9,6 +9,8 @@ mod polynomial;
 #[cfg(test)]
 mod tests;
 mod variable;
-pub use parse::Tokens;
+pub use functions::Function;
+pub use operators::Operators;
+pub use parse::{Token, Tokens};
 pub use ucalc_numbers::Complex;
 pub use variable::{FunctionVar, Functions, Variable, Variables};

@@ -1,0 +1,21 @@
+[package]
+name = "ucalc_lib_fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.ucalc_lib]
+path = "../ucalc_lib"
+
+[[bin]]
+name = "target_0"
+path = "targets/target_0.rs"
+test = false
+doc = false
+bench = false
