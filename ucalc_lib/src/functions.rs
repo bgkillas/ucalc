@@ -1,3 +1,4 @@
+use crate::{Functions, Tokens};
 use ucalc_numbers::{Complex, Float, Pow};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Function {
@@ -43,6 +44,7 @@ pub enum Function {
     If,
     Fold,
     Set,
+    Solve,
     Custom(usize),
 }
 impl TryFrom<&str> for Function {
@@ -91,6 +93,7 @@ impl TryFrom<&str> for Function {
             "if" => Self::If,
             "set" => Self::Set,
             "fold" => Self::Fold,
+            "solve" => Self::Solve,
             _ => return Err(()),
         })
     }
@@ -130,25 +133,12 @@ impl Function {
             | Self::Trunc
             | Self::Fract
             | Self::Real
-            | Self::Imag => 1,
+            | Self::Imag
+            | Self::Solve => 1,
             Self::Atan2 | Self::Max | Self::Min | Self::Set => 2,
             Self::Quadratic | Self::Sum | Self::Prod | Self::Iter | Self::If => 3,
             Self::Fold => 4,
             Self::Custom(_) => unreachable!(),
-        }
-    }
-    pub fn compact(self) -> usize {
-        match self {
-            Self::Sum | Self::Prod | Self::Iter | Self::Fold | Self::Set => 1,
-            Self::If => 2,
-            _ => 0,
-        }
-    }
-    pub fn inner_vars(self) -> usize {
-        match self {
-            Self::Sum | Self::Prod | Self::Iter | Self::Set => 1,
-            Self::Fold => 2,
-            _ => 0,
         }
     }
     pub fn compute(self, a: &mut Complex, b: &[Complex]) {
@@ -188,16 +178,15 @@ impl Function {
             Self::Fract => a.fract_mut(),
             Self::Real => *a = a.real.into(),
             Self::Imag => *a = a.imag.into(),
-            Self::Quadratic => {
-                *a = ((b[0] * b[0] - *a * b[1] * 4).sqrt() - b[0]) / (*a * 2);
-            }
+            Self::Quadratic => *a = ((b[0] * b[0] - *a * b[1] * 4).sqrt() - b[0]) / (*a * 2),
             Self::Custom(_)
             | Self::Sum
             | Self::Prod
             | Self::Iter
             | Self::If
             | Self::Fold
-            | Self::Set => unreachable!(),
+            | Self::Set
+            | Self::Solve => unreachable!(),
         }
     }
     pub fn inverse(self) -> Option<Self> {
@@ -243,8 +232,100 @@ impl Function {
             | Self::Imag
             | Self::If
             | Self::Fold
-            | Self::Set => return None,
+            | Self::Set
+            | Self::Solve => return None,
             Self::Custom(_) => unreachable!(),
         })
+    }
+    pub fn compact(self) -> usize {
+        match self {
+            Self::Sum | Self::Prod | Self::Iter | Self::Fold | Self::Set | Self::Solve => 1,
+            Self::If => 2,
+            _ => 0,
+        }
+    }
+    pub fn inner_vars(self) -> usize {
+        match self {
+            Self::Sum | Self::Prod | Self::Iter | Self::Set | Self::Solve => 1,
+            Self::Fold => 2,
+            _ => 0,
+        }
+    }
+    pub fn has_var(self) -> bool {
+        matches!(
+            self,
+            Self::Sum | Self::Prod | Self::Iter | Self::Fold | Self::Set | Self::Solve | Self::If
+        )
+    }
+    pub fn compute_var(
+        self,
+        stack: &mut Tokens,
+        fun_vars: &mut Vec<Complex>,
+        vars: &[Complex],
+        funs: &Functions,
+    ) {
+        let len = stack.len();
+        match self {
+            Self::Sum => {
+                stack.range(fun_vars, vars, funs, |iter| iter.sum::<Complex>().into());
+            }
+            Self::Prod => {
+                stack.range(fun_vars, vars, funs, |iter| {
+                    iter.product::<Complex>().into()
+                });
+            }
+            Self::Fold => {
+                let ([tokens], l) = stack.get_skip_tokens();
+                let [end, start, value] = stack.get_skip_var(l);
+                let start = start.num_ref().real.to_usize();
+                let end = end.num_ref().real.to_usize();
+                fun_vars.push(value.num_ref());
+                fun_vars.push(Complex::from(start));
+                let nl = fun_vars.len();
+                (start..=end).for_each(|_| {
+                    fun_vars[nl - 2] = tokens.compute(fun_vars, vars, funs);
+                    fun_vars.last_mut().unwrap().real += Float::from(1);
+                });
+                *stack[len - (l + 3)].num_mut() = fun_vars[nl - 2];
+                stack.drain(len - (l + 2)..);
+                fun_vars.pop();
+                fun_vars.pop();
+            }
+            Self::Set => {
+                let ([tokens], l) = stack.get_skip_tokens();
+                let [value] = stack.get_skip_var(l);
+                fun_vars.push(value.num_ref());
+                *stack[len - (l + 1)].num_mut() = tokens.compute(fun_vars, vars, funs);
+                stack.drain(len - l..);
+                fun_vars.pop();
+            }
+            Self::Solve => {
+                let ([tokens], l) = stack.get_skip_tokens();
+                stack[len - l] = tokens.get_inverse(fun_vars, vars).into();
+                stack.drain(len - (l - 1)..);
+            }
+            Self::Iter => {
+                let ([tokens], l) = stack.get_skip_tokens();
+                let [steps, first] = stack.get_skip_var(l);
+                fun_vars.push(first.num_ref());
+                let steps = steps.num_ref().real.to_usize();
+                (0..steps).for_each(|_| {
+                    let next = tokens.compute(fun_vars, vars, funs);
+                    *fun_vars.last_mut().unwrap() = next;
+                });
+                *stack[len - (l + 2)].num_mut() = *fun_vars.last().unwrap();
+                stack.drain(len - (l + 1)..);
+                fun_vars.pop();
+            }
+            Self::If => {
+                let ([ifelse, ifthen], l) = stack.get_skip_tokens();
+                let [condition] = stack.get_skip_var(l);
+                let condition = condition.num_ref();
+                let tokens = if condition.is_zero() { ifelse } else { ifthen };
+                *stack[len - (l + 1)].num_mut() = tokens.compute(fun_vars, vars, funs);
+                stack.drain(len - l..);
+            }
+            _ => {}
+        }
     }
 }

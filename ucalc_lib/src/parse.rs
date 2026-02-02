@@ -7,6 +7,8 @@ use ucalc_numbers::Complex;
 #[derive(Default, Debug, PartialEq, Clone)]
 pub struct Tokens(pub Vec<Token>);
 #[derive(Debug, PartialEq, Clone)]
+pub struct TokensRef<'a>(pub &'a [Token]);
+#[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     Num(Complex),
     InnerVar(usize),
@@ -18,8 +20,8 @@ pub enum Token {
 impl Display for Token {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Token::Num(n) => write!(f, "{}", n),
-            Token::Operator(Operators::Function(fun)) => write!(f, "{:?}", fun),
+            Self::Num(n) => write!(f, "{}", n),
+            Self::Operator(Operators::Function(fun)) => write!(f, "{:?}", fun),
             _ => write!(f, "{:?}", self),
         }
     }
@@ -33,6 +35,11 @@ pub enum ParseError {
     MissingInput,
 }
 impl Display for Tokens {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", TokensRef(self))
+    }
+}
+impl<'a> Display for TokensRef<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let mut first = true;
         for token in self.iter() {
@@ -255,30 +262,6 @@ impl Tokens {
         }
         Ok(tokens)
     }
-}
-impl Tokens {
-    pub fn get_last(tokens: &[Token], funs: &Functions) -> usize {
-        match tokens.last() {
-            Some(Token::Fun(i)) => {
-                let inputs = funs[*i].inputs;
-                let mut i = tokens.len() - 1;
-                for _ in 0..inputs {
-                    i = Tokens::get_last(&tokens[..i], funs)
-                }
-                i
-            }
-            Some(Token::Operator(o)) => {
-                let inputs = o.inputs();
-                let mut i = tokens.len() - 1;
-                for _ in 0..inputs {
-                    i = Tokens::get_last(&tokens[..i], funs)
-                }
-                i
-            }
-            Some(Token::Skip(_)) => Tokens::get_last(&tokens[..tokens.len() - 1], funs),
-            _ => tokens.len() - 1,
-        }
-    }
     pub fn close_off_bracket(
         &mut self,
         operator_stack: &mut Vec<Operators>,
@@ -303,10 +286,34 @@ impl Tokens {
         let mut t = 0;
         for _ in 0..fun.compact() {
             let to = self.len() - t;
-            let last = Tokens::get_last(&self[0..to], funs);
+            let last = TokensRef(&self[0..to]).get_last(funs);
             self.insert(last, Token::Skip(to - last));
             t += to - last + 1;
             inner_vars.pop();
+        }
+    }
+}
+impl TokensRef<'_> {
+    pub fn get_last(self, funs: &Functions) -> usize {
+        match self.last() {
+            Some(Token::Fun(i)) => {
+                let inputs = funs[*i].inputs;
+                let mut i = self.len() - 1;
+                for _ in 0..inputs {
+                    i = TokensRef(&self[..i]).get_last(funs)
+                }
+                i
+            }
+            Some(Token::Operator(o)) => {
+                let inputs = o.inputs();
+                let mut i = self.len() - 1;
+                for _ in 0..inputs {
+                    i = TokensRef(&self[..i]).get_last(funs)
+                }
+                i
+            }
+            Some(Token::Skip(_)) => TokensRef(&self[..self.len() - 1]).get_last(funs),
+            _ => self.len() - 1,
         }
     }
 }
@@ -359,6 +366,12 @@ impl Token {
 }
 impl Deref for Tokens {
     type Target = Vec<Token>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl<'a> Deref for TokensRef<'a> {
+    type Target = &'a [Token];
     fn deref(&self) -> &Self::Target {
         &self.0
     }

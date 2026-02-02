@@ -1,9 +1,11 @@
 #![feature(if_let_guard)]
 #![feature(iter_advance_by)]
+mod cas;
 mod compute;
 mod functions;
 mod operators;
 mod parse;
+mod polynomial;
 #[cfg(test)]
 mod tests;
 mod variable;
