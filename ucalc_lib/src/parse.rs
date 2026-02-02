@@ -50,32 +50,6 @@ impl Display for Tokens {
         Ok(())
     }
 }
-impl Tokens {
-    pub fn get_last(&self, funs: &Functions) -> usize {
-        fn inner(tokens: &[Token], funs: &Functions) -> usize {
-            match tokens.last() {
-                Some(Token::Fun(i)) => {
-                    let inputs = funs[*i].vars.len();
-                    let mut i = tokens.len() - 1;
-                    for _ in 0..inputs {
-                        i = inner(&tokens[..i], funs)
-                    }
-                    i
-                }
-                Some(Token::Operator(o)) => {
-                    let inputs = o.inputs();
-                    let mut i = tokens.len() - 1;
-                    for _ in 0..inputs {
-                        i = inner(&tokens[..i], funs)
-                    }
-                    i
-                }
-                _ => tokens.len() - 1,
-            }
-        }
-        inner(self, funs)
-    }
-}
 impl Parsed {
     pub fn rpn(value: &str, vars: &Variables, funs: &Functions) -> Result<Self, ParseError> {
         let mut parsed = Tokens(Vec::with_capacity(value.len()));
@@ -89,12 +63,7 @@ impl Parsed {
             } else if let Ok(n) = Complex::parse_radix(token, 10) {
                 parsed.push(n.into());
             } else if let Ok(fun) = Function::try_from(token) {
-                if fun.has_var() {
-                    let last = parsed.get_last(funs);
-                    let tokens = Tokens(parsed.drain(last..).collect());
-                    parsed.push(Token::Tokens(tokens));
-                    inner_vars.pop();
-                }
+                parsed.compact_args(&fun, &mut inner_vars, funs);
                 parsed.push(fun.into());
             } else if let Some((i, v)) = vars.iter().enumerate().find(|(_, v)| v.name == token) {
                 if v.place {
@@ -288,6 +257,27 @@ impl Parsed {
     }
 }
 impl Tokens {
+    pub fn get_last(tokens: &[Token], funs: &Functions) -> usize {
+        match tokens.last() {
+            Some(Token::Fun(i)) => {
+                let inputs = funs[*i].vars.len();
+                let mut i = tokens.len() - 1;
+                for _ in 0..inputs {
+                    i = Tokens::get_last(&tokens[..i], funs)
+                }
+                i
+            }
+            Some(Token::Operator(o)) => {
+                let inputs = o.inputs();
+                let mut i = tokens.len() - 1;
+                for _ in 0..inputs {
+                    i = Tokens::get_last(&tokens[..i], funs)
+                }
+                i
+            }
+            _ => tokens.len() - 1,
+        }
+    }
     pub fn close_off_bracket(
         &mut self,
         operator_stack: &mut Vec<Operators>,
@@ -301,16 +291,21 @@ impl Tokens {
                     operator_stack.pop();
                 }
                 Operators::Function(fun) => {
-                    if fun.has_var() {
-                        let last = self.get_last(funs);
-                        let tokens = Tokens(self.drain(last..).collect());
-                        self.push(Token::Tokens(tokens));
-                        inner_vars.pop();
-                    }
+                    self.compact_args(fun, inner_vars, funs);
                     self.push(operator_stack.pop().unwrap().into())
                 }
                 _ => {}
             }
+        }
+    }
+    pub fn compact_args(&mut self, fun: &Function, inner_vars: &mut Vec<&str>, funs: &Functions) {
+        for i in 0..fun.compact() {
+            let to = self.len() - i;
+            let last = Tokens::get_last(&self[0..to], funs);
+            let tokens = Tokens(self.drain(last..to).collect());
+            let to = self.len() - i;
+            self.insert(to, Token::Tokens(tokens));
+            inner_vars.pop();
         }
     }
 }

@@ -626,6 +626,31 @@ fn test_graph_vars() {
     );
 }
 #[test]
+fn test_if() {
+    assert_correct!(
+        infix("if(1,2,3)"),
+        rpn("1 2 3 if"),
+        vec![
+            num(1),
+            Tokens(vec![num(2)]).into(),
+            Tokens(vec![num(3)]).into(),
+            Function::If.into()
+        ],
+        res(2)
+    );
+    assert_correct!(
+        infix("if(0,2,3)"),
+        rpn("0 2 3 if"),
+        vec![
+            num(0),
+            Tokens(vec![num(2)]).into(),
+            Tokens(vec![num(3)]).into(),
+            Function::If.into()
+        ],
+        res(3)
+    );
+}
+#[test]
 fn test_custom_functions() {
     let funs = Functions(vec![FunctionVar::new(
         "f",

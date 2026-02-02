@@ -93,6 +93,14 @@ impl Parsed {
                             });
                             *first.num_mut() = new_vars.last_mut().unwrap().value;
                         }
+                        Operators::Function(Function::If) => {
+                            let ifthen = self.parsed.remove(i - 2).tokens();
+                            let ifelse = self.parsed.remove(i - 2).tokens();
+                            let condition = self.parsed.get_mut(i - 3).unwrap().num_mut();
+                            let parsed = if condition.is_zero() { ifelse } else { ifthen };
+                            let mut parsed = Parsed { parsed };
+                            *condition = parsed.compute_inner(fun_vars, vars, funs);
+                        }
                         _ => {
                             let chain = if operator.is_chainable()
                                 && self.parsed.get(i).is_some_and(|o| {

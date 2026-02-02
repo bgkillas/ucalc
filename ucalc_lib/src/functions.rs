@@ -40,6 +40,7 @@ pub enum Function {
     Fract,
     Real,
     Imag,
+    If,
     Custom(usize),
 }
 impl TryFrom<&str> for Function {
@@ -85,6 +86,7 @@ impl TryFrom<&str> for Function {
             "fract" => Self::Fract,
             "real" => Self::Real,
             "imag" => Self::Imag,
+            "if" => Self::If,
             _ => return Err(()),
         })
     }
@@ -126,12 +128,16 @@ impl Function {
             | Self::Real
             | Self::Imag => 1,
             Self::Atan2 | Self::Max | Self::Min => 2,
-            Self::Quadratic | Self::Sum | Self::Prod | Self::Iter => 3,
+            Self::Quadratic | Self::Sum | Self::Prod | Self::Iter | Self::If => 3,
             Self::Custom(_) => unreachable!(),
         }
     }
-    pub fn has_var(self) -> bool {
-        matches!(self, Self::Sum | Self::Prod | Self::Iter)
+    pub fn compact(self) -> usize {
+        match self {
+            Self::Sum | Self::Prod | Self::Iter => 1,
+            Self::If => 2,
+            _ => 0,
+        }
     }
     pub fn compute(self, a: &mut Complex, b: &[Complex]) {
         match self {
@@ -173,7 +179,7 @@ impl Function {
             Self::Quadratic => {
                 *a = ((b[0] * b[0] - *a * b[1] * 4).sqrt() - b[0]) / (*a * 2);
             }
-            Self::Custom(_) | Self::Sum | Self::Prod | Self::Iter => unreachable!(),
+            Self::Custom(_) | Self::Sum | Self::Prod | Self::Iter | Self::If => unreachable!(),
         }
     }
     pub fn inverse(self) -> Option<Self> {
@@ -216,7 +222,8 @@ impl Function {
             | Self::Trunc
             | Self::Fract
             | Self::Real
-            | Self::Imag => return None,
+            | Self::Imag
+            | Self::If => return None,
             Self::Custom(_) => unreachable!(),
         })
     }
