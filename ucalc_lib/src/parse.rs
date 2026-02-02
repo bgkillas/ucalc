@@ -6,10 +6,6 @@ use std::ops::{Deref, DerefMut};
 use ucalc_numbers::Complex;
 #[derive(Default, Debug, PartialEq, Clone)]
 pub struct Tokens(pub Vec<Token>);
-#[derive(Default, Debug, PartialEq, Clone)]
-pub struct Parsed {
-    pub parsed: Tokens,
-}
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     Num(Complex),
@@ -50,41 +46,41 @@ impl Display for Tokens {
         Ok(())
     }
 }
-impl Parsed {
+impl Tokens {
     pub fn rpn(value: &str, vars: &Variables, funs: &Functions) -> Result<Self, ParseError> {
-        let mut parsed = Tokens(Vec::with_capacity(value.len()));
+        let mut tokens = Tokens(Vec::with_capacity(value.len()));
         let mut inner_vars: Vec<&str> = Vec::with_capacity(value.len());
         for token in value.split(' ') {
             if token.is_empty() {
                 continue;
             }
             if let Ok(operator) = Operators::try_from(token) {
-                parsed.push(operator.into());
+                tokens.push(operator.into());
             } else if let Ok(n) = Complex::parse_radix(token, 10) {
-                parsed.push(n.into());
+                tokens.push(n.into());
             } else if let Ok(fun) = Function::try_from(token) {
-                parsed.compact_args(&fun, &mut inner_vars, funs);
-                parsed.push(fun.into());
+                tokens.compact_args(&fun, &mut inner_vars, funs);
+                tokens.push(fun.into());
             } else if let Some((i, v)) = vars.iter().enumerate().find(|(_, v)| v.name == token) {
                 if v.place {
-                    parsed.push(Token::Num(v.value));
+                    tokens.push(Token::Num(v.value));
                 } else {
-                    parsed.push(Token::Var(i));
+                    tokens.push(Token::Var(i));
                 }
             } else if let Some(i) = funs.iter().position(|v| v.name == token) {
-                parsed.push(Token::Fun(i))
+                tokens.push(Token::Fun(i))
             } else if let Some(i) = inner_vars.iter().position(|v| *v == token) {
-                parsed.push(Token::InnerVar(i));
+                tokens.push(Token::InnerVar(i));
             } else if token.chars().all(|c| c.is_ascii_alphabetic()) {
                 inner_vars.push(token);
             } else {
                 return Err(ParseError::UnknownToken(token.to_string()));
             }
         }
-        Ok(Self { parsed })
+        Ok(tokens)
     }
     pub fn infix(value: &str, vars: &Variables, funs: &Functions) -> Result<Self, ParseError> {
-        let mut parsed = Tokens(Vec::with_capacity(value.len()));
+        let mut tokens = Tokens(Vec::with_capacity(value.len()));
         let mut operator_stack: Vec<Operators> = Vec::with_capacity(value.len());
         let mut inner_vars: Vec<&str> = Vec::with_capacity(value.len());
         let mut chars = value.char_indices();
@@ -112,14 +108,14 @@ impl Parsed {
                     } else if let Some((i, v)) = vars.iter().enumerate().find(|(_, v)| v.name == s)
                     {
                         if v.place {
-                            parsed.push(Token::Num(v.value));
+                            tokens.push(Token::Num(v.value));
                         } else {
-                            parsed.push(Token::Var(i));
+                            tokens.push(Token::Var(i));
                         }
                     } else if let Some(i) = funs.iter().position(|v| v.name == s) {
                         operator_stack.push(Operators::Function(Function::Custom(i)));
                     } else if let Some(i) = inner_vars.iter().position(|v| *v == s) {
-                        parsed.push(Token::InnerVar(i));
+                        tokens.push(Token::InnerVar(i));
                     } else {
                         inner_vars.push(s);
                     }
@@ -141,7 +137,7 @@ impl Parsed {
                     let Ok(float) = Complex::parse_radix(s, 10) else {
                         return Err(ParseError::UnknownToken(s.to_string()));
                     };
-                    parsed.push(float.into());
+                    tokens.push(float.into());
                     let _ = chars.advance_by(l - 1);
                     negate = false;
                     last_abs = false;
@@ -151,7 +147,7 @@ impl Parsed {
                     while let Some(top) = operator_stack.last()
                         && !matches!(top, Operators::Bracket(_))
                     {
-                        parsed.push(operator_stack.pop().unwrap().into());
+                        tokens.push(operator_stack.pop().unwrap().into());
                     }
                     negate = true;
                     last_abs = false;
@@ -163,7 +159,7 @@ impl Parsed {
                     while let Some(top) = operator_stack.last()
                         && !matches!(top, Operators::Bracket(_))
                     {
-                        parsed.push(operator_stack.pop().unwrap().into());
+                        tokens.push(operator_stack.pop().unwrap().into());
                     }
                     if !matches!(
                         operator_stack.pop(),
@@ -171,7 +167,7 @@ impl Parsed {
                     ) {
                         return Err(ParseError::LeftParenthesisNotFound);
                     }
-                    parsed.close_off_bracket(&mut operator_stack, &mut inner_vars, funs);
+                    tokens.close_off_bracket(&mut operator_stack, &mut inner_vars, funs);
                     negate = false;
                     last_abs = false;
                 }
@@ -192,7 +188,7 @@ impl Parsed {
                         while let Some(top) = operator_stack.last()
                             && !matches!(top, Operators::Bracket(_))
                         {
-                            parsed.push(operator_stack.pop().unwrap().into());
+                            tokens.push(operator_stack.pop().unwrap().into());
                         }
                         if !matches!(
                             operator_stack.pop(),
@@ -200,8 +196,8 @@ impl Parsed {
                         ) {
                             return Err(ParseError::AbsoluteBracketFailed);
                         }
-                        parsed.close_off_bracket(&mut operator_stack, &mut inner_vars, funs);
-                        parsed.push(Function::Abs.into());
+                        tokens.close_off_bracket(&mut operator_stack, &mut inner_vars, funs);
+                        tokens.push(Function::Abs.into());
                         abs -= 1;
                         negate = false;
                         last_abs = false;
@@ -230,7 +226,7 @@ impl Parsed {
                                 || (top.precedence() == operator.precedence()
                                     && operator.left_associative()))
                         {
-                            parsed.push(operator_stack.pop().unwrap().into());
+                            tokens.push(operator_stack.pop().unwrap().into());
                         }
                         operator_stack.push(operator);
                         if operator.inputs() == 2 {
@@ -251,9 +247,9 @@ impl Parsed {
                     Bracket::Parenthesis => Err(ParseError::RightParenthesisNotFound),
                 };
             }
-            parsed.push(operator.into());
+            tokens.push(operator.into());
         }
-        Ok(Self { parsed })
+        Ok(tokens)
     }
 }
 impl Tokens {
@@ -335,6 +331,12 @@ impl Token {
             unreachable!()
         };
         num
+    }
+    pub fn num_ref(&self) -> Complex {
+        let Token::Num(num) = self else {
+            unreachable!()
+        };
+        *num
     }
     pub fn inner_var(self) -> usize {
         let Token::InnerVar(n) = self else {

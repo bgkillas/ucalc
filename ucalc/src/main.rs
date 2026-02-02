@@ -1,5 +1,5 @@
 use std::env::args;
-use ucalc_lib::{Functions, Parsed, Variables};
+use ucalc_lib::{Functions, Tokens, Variables};
 fn main() {
     let mut infix = true;
     for arg in args().skip(1) {
@@ -11,13 +11,13 @@ fn main() {
         let funs = Functions::default();
         match tmr(|| {
             if infix {
-                Parsed::infix(arg.as_str(), &vars, &funs)
+                Tokens::infix(arg.as_str(), &vars, &funs)
             } else {
-                Parsed::rpn(arg.as_str(), &vars, &funs)
+                Tokens::rpn(arg.as_str(), &vars, &funs)
             }
         }) {
-            Ok(mut parsed) => {
-                println!("{}", parsed.parsed);
+            Ok(parsed) => {
+                println!("{}", parsed);
                 let compute = tmr(|| parsed.compute(&vars, &funs));
                 println!("{}", compute);
             }

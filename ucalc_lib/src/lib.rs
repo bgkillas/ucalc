@@ -7,5 +7,5 @@ mod parse;
 #[cfg(test)]
 mod tests;
 mod variable;
-pub use parse::Parsed;
+pub use parse::Tokens;
 pub use variable::{FunctionVar, Functions, InnerVariable, InnerVariables, Variable, Variables};

@@ -1,6 +1,6 @@
 use crate::functions::Function;
 use crate::operators::Operators;
-use crate::parse::{ParseError, Parsed};
+use crate::parse::ParseError;
 use crate::parse::{Token, Tokens};
 use crate::variable::{Functions, Variables};
 use crate::{FunctionVar, InnerVariable, InnerVariables, Variable};
@@ -19,15 +19,15 @@ macro_rules! assert_correct {
 }
 macro_rules! assert_correct_with {
     ($a:expr, $b:expr, $v:expr, $f:expr, $c:expr, $d:expr) => {
-        assert_teq!($a.parsed, $b.parsed, Tokens($c));
-        assert_teq!($a.clone_compute(&$v, &$f), $b.compute(&$v, &$f), $d);
+        assert_teq!($a, $b, Tokens($c));
+        assert_teq!($a.compute(&$v, &$f), $b.compute(&$v, &$f), $d);
     };
 }
-fn infix(s: &str) -> Parsed {
-    Parsed::infix(s, &Variables::default(), &Functions::default()).unwrap()
+fn infix(s: &str) -> Tokens {
+    Tokens::infix(s, &Variables::default(), &Functions::default()).unwrap()
 }
-fn rpn(s: &str) -> Parsed {
-    Parsed::rpn(s, &Variables::default(), &Functions::default()).unwrap()
+fn rpn(s: &str) -> Tokens {
+    Tokens::rpn(s, &Variables::default(), &Functions::default()).unwrap()
 }
 fn res<T>(f: T) -> Complex
 where
@@ -605,11 +605,11 @@ fn parse_order_of_operations() {
 #[test]
 fn test_graph_vars() {
     let mut vars = Variables(vec![Variable::new("x", res(0), false)]);
-    let mut infix = Parsed::infix("x", &vars, &Functions::default()).unwrap();
-    let mut rpn = Parsed::rpn("x", &vars, &Functions::default()).unwrap();
+    let infix = Tokens::infix("x", &vars, &Functions::default()).unwrap();
+    let rpn = Tokens::rpn("x", &vars, &Functions::default()).unwrap();
     assert_correct_with!(
-        infix.clone(),
-        rpn.clone(),
+        infix,
+        rpn,
         vars,
         Functions::default(),
         vec![Token::Var(0)],
@@ -728,8 +728,8 @@ fn test_recursion() {
         ]),
     )]);
     assert_correct_with!(
-        Parsed::infix("fact(5)", &Variables::default(), &funs).unwrap(),
-        Parsed::rpn("5 fact", &Variables::default(), &funs).unwrap(),
+        Tokens::infix("fact(5)", &Variables::default(), &funs).unwrap(),
+        Tokens::rpn("5 fact", &Variables::default(), &funs).unwrap(),
         Variables::default(),
         funs,
         vec![num(5), Token::Fun(0)],
@@ -761,8 +761,8 @@ fn test_composed_functions() {
         ),
     ]);
     assert_correct_with!(
-        Parsed::infix("g(f(g(2,3)*2,g(3,2)*2)-1,2)", &Variables::default(), &funs).unwrap(),
-        Parsed::rpn(
+        Tokens::infix("g(f(g(2,3)*2,g(3,2)*2)-1,2)", &Variables::default(), &funs).unwrap(),
+        Tokens::rpn(
             "2 3 g 2 * 3 2 g 2 * f 1 - 2 g",
             &Variables::default(),
             &funs
@@ -802,21 +802,21 @@ fn test_custom_functions() {
         ]),
     )]);
     assert_correct_with!(
-        Parsed::infix("f(3,4)", &Variables::default(), &funs).unwrap(),
-        Parsed::rpn("3 4 f", &Variables::default(), &funs).unwrap(),
+        Tokens::infix("f(3,4)", &Variables::default(), &funs).unwrap(),
+        Tokens::rpn("3 4 f", &Variables::default(), &funs).unwrap(),
         Variables::default(),
         funs,
         vec![num(3), num(4), Token::Fun(0)],
         res(-1)
     );
     assert_correct_with!(
-        Parsed::infix(
+        Tokens::infix(
             "sum(n,0,10,sum(k,3,6,f(n,k)^2+f(k,n)-2))",
             &Variables::default(),
             &funs
         )
         .unwrap(),
-        Parsed::rpn(
+        Tokens::rpn(
             "n 0 10 k 3 6 n k f 2 ^ k n f + 2 - sum sum",
             &Variables::default(),
             &funs
@@ -1168,37 +1168,37 @@ fn test_real() {
 #[test]
 fn test_err() {
     assert_eq!(
-        Parsed::infix("(2+3))", &Variables::default(), &Functions::default()),
+        Tokens::infix("(2+3))", &Variables::default(), &Functions::default()),
         Err(ParseError::LeftParenthesisNotFound)
     );
     assert_eq!(
-        Parsed::infix("((2+3)", &Variables::default(), &Functions::default()),
+        Tokens::infix("((2+3)", &Variables::default(), &Functions::default()),
         Err(ParseError::RightParenthesisNotFound)
     );
     assert_teq!(
-        Parsed::infix("2.3.4", &Variables::default(), &Functions::default()),
-        Parsed::rpn("2.3.4", &Variables::default(), &Functions::default()),
+        Tokens::infix("2.3.4", &Variables::default(), &Functions::default()),
+        Tokens::rpn("2.3.4", &Variables::default(), &Functions::default()),
         Err(ParseError::UnknownToken("2.3.4".to_string()))
     );
     assert_eq!(
-        Parsed::infix("(2+)", &Variables::default(), &Functions::default()),
+        Tokens::infix("(2+)", &Variables::default(), &Functions::default()),
         Err(ParseError::MissingInput)
     );
     assert_eq!(
-        Parsed::infix("|2", &Variables::default(), &Functions::default()),
+        Tokens::infix("|2", &Variables::default(), &Functions::default()),
         Err(ParseError::AbsoluteBracketFailed)
     );
     assert_eq!(
-        Parsed::infix("|(|)", &Variables::default(), &Functions::default()),
+        Tokens::infix("|(|)", &Variables::default(), &Functions::default()),
         Err(ParseError::AbsoluteBracketFailed)
     );
     assert_eq!(
-        Parsed::infix("(|)|", &Variables::default(), &Functions::default()),
+        Tokens::infix("(|)|", &Variables::default(), &Functions::default()),
         Err(ParseError::LeftParenthesisNotFound)
     );
     /*assert_teq!(
-        Parsed::infix("abc(2)", Variables::default(), Functions::default()),
-        Parsed::rpn("2 abc", Variables::default(), Functions::default()),
+        Tokens::infix("abc(2)", Variables::default(), Functions::default()),
+        Tokens::rpn("2 abc", Variables::default(), Functions::default()),
         Err(ParseError::UnknownToken("abc".to_string()))
     );*/
 }
