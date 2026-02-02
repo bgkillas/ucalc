@@ -626,6 +626,61 @@ fn test_graph_vars() {
     );
 }
 #[test]
+fn test_set() {
+    assert_correct!(
+        infix("set(x,2,x^2)"),
+        rpn("x 2 x 2 ^ set"),
+        vec![
+            num(2),
+            Tokens(vec![
+                Token::InnerVar(0).into(),
+                num(2),
+                Operators::Pow.into()
+            ])
+            .into(),
+            Function::Set.into()
+        ],
+        res(4)
+    );
+}
+#[test]
+fn test_fold() {
+    assert_correct!(
+        infix("fold(x,k,1,1,9,x*k)"),
+        rpn("x k 1 1 9 x k * fold"),
+        vec![
+            num(1),
+            num(1),
+            num(9),
+            Tokens(vec![
+                Token::InnerVar(0).into(),
+                Token::InnerVar(1).into(),
+                Operators::Mul.into()
+            ])
+            .into(),
+            Function::Fold.into()
+        ],
+        res(362880)
+    );
+    assert_correct!(
+        infix("fold(x,k,0,1,9,x+k)"),
+        rpn("x k 0 1 9 x k + fold"),
+        vec![
+            num(0),
+            num(1),
+            num(9),
+            Tokens(vec![
+                Token::InnerVar(0).into(),
+                Token::InnerVar(1).into(),
+                Operators::Add.into()
+            ])
+            .into(),
+            Function::Fold.into()
+        ],
+        res(45)
+    );
+}
+#[test]
 fn test_if() {
     assert_correct!(
         infix("if(1,2,3)"),
@@ -650,6 +705,7 @@ fn test_if() {
         res(3)
     );
 }
+//TODO test recursion and f composed g
 #[test]
 fn test_custom_functions() {
     let funs = Functions(vec![FunctionVar::new(

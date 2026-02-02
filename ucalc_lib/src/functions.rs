@@ -41,6 +41,8 @@ pub enum Function {
     Real,
     Imag,
     If,
+    Fold,
+    Set,
     Custom(usize),
 }
 impl TryFrom<&str> for Function {
@@ -87,6 +89,8 @@ impl TryFrom<&str> for Function {
             "real" => Self::Real,
             "imag" => Self::Imag,
             "if" => Self::If,
+            "set" => Self::Set,
+            "fold" => Self::Fold,
             _ => return Err(()),
         })
     }
@@ -127,14 +131,15 @@ impl Function {
             | Self::Fract
             | Self::Real
             | Self::Imag => 1,
-            Self::Atan2 | Self::Max | Self::Min => 2,
+            Self::Atan2 | Self::Max | Self::Min | Self::Set => 2,
             Self::Quadratic | Self::Sum | Self::Prod | Self::Iter | Self::If => 3,
+            Self::Fold => 4,
             Self::Custom(_) => unreachable!(),
         }
     }
     pub fn compact(self) -> usize {
         match self {
-            Self::Sum | Self::Prod | Self::Iter => 1,
+            Self::Sum | Self::Prod | Self::Iter | Self::Fold | Self::Set => 1,
             Self::If => 2,
             _ => 0,
         }
@@ -179,7 +184,13 @@ impl Function {
             Self::Quadratic => {
                 *a = ((b[0] * b[0] - *a * b[1] * 4).sqrt() - b[0]) / (*a * 2);
             }
-            Self::Custom(_) | Self::Sum | Self::Prod | Self::Iter | Self::If => unreachable!(),
+            Self::Custom(_)
+            | Self::Sum
+            | Self::Prod
+            | Self::Iter
+            | Self::If
+            | Self::Fold
+            | Self::Set => unreachable!(),
         }
     }
     pub fn inverse(self) -> Option<Self> {
@@ -223,7 +234,9 @@ impl Function {
             | Self::Fract
             | Self::Real
             | Self::Imag
-            | Self::If => return None,
+            | Self::If
+            | Self::Fold
+            | Self::Set => return None,
             Self::Custom(_) => unreachable!(),
         })
     }

@@ -14,6 +14,7 @@ pub struct InnerVariable {
 #[derive(Debug, PartialEq, Clone)]
 pub struct FunctionVar {
     pub name: String,
+    //TODO prob nicer to not have this here
     pub vars: InnerVariables,
     pub tokens: Tokens,
 }

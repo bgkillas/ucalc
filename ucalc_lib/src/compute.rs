@@ -74,6 +74,41 @@ impl Parsed {
                                 iter.product::<Complex>().into()
                             });
                         }
+                        Operators::Function(Function::Fold) => {
+                            let start = self.parsed.remove(i - 3).num().real.to_usize();
+                            let end = self.parsed.remove(i - 3).num().real.to_usize();
+                            let tokens = self.parsed.remove(i - 3).tokens();
+                            let value = self.parsed.get_mut(i - 4).unwrap().num_mut();
+                            let mut parsed = Parsed { parsed: tokens };
+                            let mut new_vars =
+                                Vec::with_capacity(fun_vars.map(|v| v.len()).unwrap_or(0) + 1);
+                            if let Some(slice) = fun_vars {
+                                new_vars.extend_from_slice(slice)
+                            }
+                            new_vars.push(InnerVariable::new(*value));
+                            new_vars.push(InnerVariable::new(Complex::from(start)));
+                            let mut new_vars = InnerVariables(new_vars);
+                            let len = new_vars.len();
+                            (start..=end).for_each(|_| {
+                                new_vars.get_mut(len - 2).unwrap().value =
+                                    parsed.clone_compute_inner(Some(&new_vars), vars, funs);
+                                new_vars.last_mut().unwrap().value.real += Float::from(1);
+                            });
+                            *value = new_vars.get(len - 2).unwrap().value;
+                        }
+                        Operators::Function(Function::Set) => {
+                            let tokens = self.parsed.remove(i - 1).tokens();
+                            let value = self.parsed.get_mut(i - 2).unwrap().num_mut();
+                            let mut parsed = Parsed { parsed: tokens };
+                            let mut new_vars =
+                                Vec::with_capacity(fun_vars.map(|v| v.len()).unwrap_or(0) + 1);
+                            if let Some(slice) = fun_vars {
+                                new_vars.extend_from_slice(slice)
+                            }
+                            new_vars.push(InnerVariable::new(*value));
+                            let new_vars = InnerVariables(new_vars);
+                            *value = parsed.compute_inner(Some(&new_vars), vars, funs);
+                        }
                         Operators::Function(Function::Iter) => {
                             let steps = self.parsed.remove(i - 2).num().real.to_usize();
                             let tokens = self.parsed.remove(i - 2).tokens();
