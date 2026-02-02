@@ -101,6 +101,7 @@ impl Tokens {
         let mut negate = true;
         let mut last_abs = false;
         let mut req_input = false;
+        let mut expect_var = 0;
         let mut abs = 0;
         while let Some((i, c)) = chars.next() {
             match c {
@@ -120,7 +121,11 @@ impl Tokens {
                     if let Some(i) = funs.iter().position(|v| v.name == s) {
                         operator_stack.push(Function::Custom(i).into());
                     } else if let Ok(fun) = Function::try_from(s) {
+                        expect_var = fun.inner_vars();
                         operator_stack.push(fun.into());
+                    } else if expect_var > 0 {
+                        inner_vars.push(s);
+                        expect_var -= 1;
                     } else if let Some(i) = inner_vars.iter().position(|v| *v == s) {
                         tokens.push(Token::InnerVar(i));
                     } else if let Some(v) = vars.iter().find(|v| v.name == s) {
@@ -128,7 +133,7 @@ impl Tokens {
                     } else if let Some(i) = graph_vars.iter().position(|v| v == &s) {
                         tokens.push(Token::GraphVar(i));
                     } else {
-                        inner_vars.push(s);
+                        return Err(ParseError::UnknownToken(s.to_string()));
                     }
                     let _ = chars.advance_by(count - 1);
                     negate = false;
