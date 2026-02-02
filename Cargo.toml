@@ -14,5 +14,5 @@ opt-level = 3
 
 [workspace]
 resolver = "3"
-members = ["ucalc_lib", "ucalc", "ucalc_numbers", "fuzz"]
+members = ["ucalc_lib", "ucalc", "ucalc_numbers"]
 default-members = ["ucalc", "ucalc_lib", "ucalc_numbers"]
