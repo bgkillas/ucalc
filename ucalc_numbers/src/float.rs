@@ -660,12 +660,16 @@ impl Pow<Float> for Complex {
     fn pow(self, rhs: Float) -> Self {
         if self.imag.is_zero() {
             if self.real.is_sign_negative() {
-                (Complex::from(self.real.abs().ln()) * rhs).exp()
-            } else {
-                Self {
-                    real: self.real.pow(rhs),
-                    imag: Float(0.0),
+                let fract = rhs.fract();
+                if fract.is_zero() {
+                    self.real.pow(rhs).into()
+                } else if fract.0 == 0.5 {
+                    Complex::from(self.real.abs().pow(rhs)).mul_i(false)
+                } else {
+                    (self.ln() * rhs).exp()
                 }
+            } else {
+                self.real.pow(rhs).into()
             }
         } else {
             (self.ln() * rhs).exp()
