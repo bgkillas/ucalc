@@ -268,14 +268,17 @@ impl Function {
         fun_vars: &mut Vec<Complex>,
         vars: &[Complex],
         funs: &Functions,
+        offset: usize,
     ) {
         let len = stack.len();
         match self {
             Self::Sum => {
-                stack.range(fun_vars, vars, funs, |iter| iter.sum::<Complex>().into());
+                stack.range(fun_vars, vars, funs, offset, |iter| {
+                    iter.sum::<Complex>().into()
+                });
             }
             Self::Prod => {
-                stack.range(fun_vars, vars, funs, |iter| {
+                stack.range(fun_vars, vars, funs, offset, |iter| {
                     iter.product::<Complex>().into()
                 });
             }
@@ -289,7 +292,8 @@ impl Function {
                 let nl = fun_vars.len();
                 let mut stck = Tokens(Vec::with_capacity(tokens.len()));
                 (start..=end).for_each(|_| {
-                    fun_vars[nl - 2] = tokens.compute_buffer(fun_vars, vars, funs, &mut stck);
+                    fun_vars[nl - 2] =
+                        tokens.compute_buffer_with(fun_vars, vars, funs, &mut stck, offset);
                     fun_vars.last_mut().unwrap().real += Float::from(1);
                 });
                 *stack[len - (l + 3)].num_mut() = fun_vars[nl - 2];
@@ -301,7 +305,9 @@ impl Function {
                 let ([tokens], l) = stack.get_skip_tokens();
                 let [value] = stack.get_skip_var(l);
                 fun_vars.push(value.num_ref());
-                *stack[len - (l + 1)].num_mut() = tokens.compute(fun_vars, vars, funs);
+                let mut stck = Tokens(Vec::with_capacity(tokens.len()));
+                *stack[len - (l + 1)].num_mut() =
+                    tokens.compute_buffer_with(fun_vars, vars, funs, &mut stck, offset);
                 stack.drain(len - l..);
                 fun_vars.pop();
             }
@@ -317,7 +323,7 @@ impl Function {
                 let steps = steps.num_ref().real.to_usize();
                 let mut stck = Tokens(Vec::with_capacity(tokens.len()));
                 (0..steps).for_each(|_| {
-                    let next = tokens.compute_buffer(fun_vars, vars, funs, &mut stck);
+                    let next = tokens.compute_buffer_with(fun_vars, vars, funs, &mut stck, offset);
                     *fun_vars.last_mut().unwrap() = next;
                 });
                 *stack[len - (l + 2)].num_mut() = *fun_vars.last().unwrap();
@@ -329,7 +335,9 @@ impl Function {
                 let [condition] = stack.get_skip_var(l);
                 let condition = condition.num_ref();
                 let tokens = if condition.is_zero() { ifelse } else { ifthen };
-                *stack[len - (l + 1)].num_mut() = tokens.compute(fun_vars, vars, funs);
+                let mut stck = Tokens(Vec::with_capacity(tokens.len()));
+                *stack[len - (l + 1)].num_mut() =
+                    tokens.compute_buffer_with(fun_vars, vars, funs, &mut stck, offset);
                 stack.drain(len - l..);
             }
             _ => {}

@@ -5,7 +5,7 @@ use std::array;
 use ucalc_numbers::{Complex, Constant, Float};
 impl Tokens {
     pub fn compute(&self, vars: &[Complex], funs: &Functions) -> Complex {
-        self.compute_inner(&mut Vec::with_capacity(self.len()), vars, funs)
+        TokensRef(self).compute(vars, funs)
     }
     pub fn compute_buffer(
         &self,
@@ -14,7 +14,17 @@ impl Tokens {
         funs: &Functions,
         stack: &mut Tokens,
     ) -> Complex {
-        TokensRef(self).compute_buffer(fun_vars, vars, funs, stack)
+        self.compute_buffer_with(fun_vars, vars, funs, stack, 0)
+    }
+    pub fn compute_buffer_with(
+        &self,
+        fun_vars: &mut Vec<Complex>,
+        vars: &[Complex],
+        funs: &Functions,
+        stack: &mut Tokens,
+        offset: usize,
+    ) -> Complex {
+        TokensRef(self).compute_buffer_with(fun_vars, vars, funs, stack, offset)
     }
     pub fn get_skip_var<const N: usize>(&self, end: usize) -> [&Token; N] {
         let end = self.len() - (end + 1);
@@ -38,6 +48,7 @@ impl Tokens {
         fun_vars: &mut Vec<Complex>,
         vars: &[Complex],
         funs: &Functions,
+        offset: usize,
         fun: impl FnOnce(&mut dyn Iterator<Item = Complex>) -> Token,
     ) {
         let len = self.len();
@@ -48,7 +59,7 @@ impl Tokens {
         fun_vars.push(Complex::from(start));
         let mut stack = Tokens(Vec::with_capacity(tokens.len()));
         let mut iter = (start..=end).map(|_| {
-            let ret = tokens.compute_buffer(fun_vars, vars, funs, &mut stack);
+            let ret = tokens.compute_buffer_with(fun_vars, vars, funs, &mut stack, offset);
             fun_vars.last_mut().unwrap().real += Float::from(1);
             ret
         });
@@ -56,24 +67,17 @@ impl Tokens {
         fun_vars.pop();
         self.drain(len - (l + 1)..);
     }
-    pub fn compute_inner(
-        &self,
-        fun_vars: &mut Vec<Complex>,
-        vars: &[Complex],
-        funs: &Functions,
-    ) -> Complex {
-        TokensRef(self).compute(fun_vars, vars, funs)
-    }
 }
 impl TokensRef<'_> {
-    pub fn compute(
-        &self,
-        fun_vars: &mut Vec<Complex>,
-        vars: &[Complex],
-        funs: &Functions,
-    ) -> Complex {
+    pub fn compute(&self, vars: &[Complex], funs: &Functions) -> Complex {
+        let mut fun_vars = Vec::with_capacity(self.len());
         let mut stack = Tokens(Vec::with_capacity(self.len()));
-        self.compute_buffer(fun_vars, vars, funs, &mut stack)
+        self.compute_buffer(&mut fun_vars, vars, funs, &mut stack)
+    }
+    pub fn compute_with(&self, vars: &[Complex], funs: &Functions, offset: usize) -> Complex {
+        let mut fun_vars = Vec::with_capacity(self.len());
+        let mut stack = Tokens(Vec::with_capacity(self.len()));
+        self.compute_buffer_with(&mut fun_vars, vars, funs, &mut stack, offset)
     }
     pub fn compute_buffer(
         &self,
@@ -81,6 +85,16 @@ impl TokensRef<'_> {
         vars: &[Complex],
         funs: &Functions,
         stack: &mut Tokens,
+    ) -> Complex {
+        self.compute_buffer_with(fun_vars, vars, funs, stack, 0)
+    }
+    pub fn compute_buffer_with(
+        &self,
+        fun_vars: &mut Vec<Complex>,
+        vars: &[Complex],
+        funs: &Functions,
+        stack: &mut Tokens,
+        offset: usize,
     ) -> Complex {
         let mut i = 0;
         while i < self.len() {
@@ -90,7 +104,7 @@ impl TokensRef<'_> {
                     let inputs = operator.inputs();
                     match operator {
                         Operators::Function(fun) if fun.has_var() => {
-                            fun.compute_var(stack, fun_vars, vars, funs)
+                            fun.compute_var(stack, fun_vars, vars, funs, offset)
                         }
                         _ if operator.is_chainable() => {
                             let chain = if self.get(i + 1).is_some_and(|o| {
@@ -123,14 +137,20 @@ impl TokensRef<'_> {
                 }
                 Token::Fun(index) => {
                     let inputs = funs[*index].inputs;
-                    fun_vars.insert(0, stack[len - inputs].num_ref());
-                    fun_vars.splice(1..1, stack.drain(len + 1 - inputs..).map(|n| n.num()));
-                    *stack[len - inputs].num_mut() =
-                        funs[*index].tokens.compute_inner(fun_vars, vars, funs);
-                    fun_vars.drain(0..inputs);
+                    let end = fun_vars.len();
+                    fun_vars.push(stack[len - inputs].num_ref());
+                    fun_vars.extend(stack.drain(len + 1 - inputs..).map(|n| n.num()));
+                    *stack[len - inputs].num_mut() = funs[*index].tokens.compute_buffer_with(
+                        fun_vars,
+                        vars,
+                        funs,
+                        &mut Tokens(Vec::with_capacity(funs[*index].tokens.len())),
+                        end,
+                    );
+                    fun_vars.drain(end..);
                 }
                 Token::InnerVar(index) => {
-                    stack.push(Token::Num(fun_vars[*index]));
+                    stack.push(Token::Num(fun_vars[offset + *index]));
                 }
                 Token::GraphVar(index) => {
                     stack.push(Token::Num(vars[*index]));
