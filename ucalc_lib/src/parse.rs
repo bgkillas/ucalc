@@ -12,14 +12,13 @@ pub enum Token {
     InnerVar(usize),
     Var(usize),
     Fun(usize),
-    Tokens(Tokens),
+    Skip(usize),
     Operator(Operators),
 }
 impl Display for Token {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Token::Num(n) => write!(f, "{}", n),
-            Token::Tokens(t) => write!(f, "[{}]", t),
             Token::Operator(Operators::Function(fun)) => write!(f, "{:?}", fun),
             _ => write!(f, "{:?}", self),
         }
@@ -271,6 +270,7 @@ impl Tokens {
                 }
                 i
             }
+            Some(Token::Skip(_)) => Tokens::get_last(&tokens[..tokens.len() - 1], funs),
             _ => tokens.len() - 1,
         }
     }
@@ -295,12 +295,12 @@ impl Tokens {
         }
     }
     pub fn compact_args(&mut self, fun: &Function, inner_vars: &mut Vec<&str>, funs: &Functions) {
-        for i in 0..fun.compact() {
-            let to = self.len() - i;
+        let mut t = 0;
+        for _ in 0..fun.compact() {
+            let to = self.len() - t;
             let last = Tokens::get_last(&self[0..to], funs);
-            let tokens = Tokens(self.drain(last..to).collect());
-            let to = self.len() - i;
-            self.insert(to, Token::Tokens(tokens));
+            self.insert(last, Token::Skip(to - last));
+            t += to - last + 1;
             inner_vars.pop();
         }
     }
@@ -315,11 +315,6 @@ impl From<Operators> for Token {
         Self::Operator(value)
     }
 }
-impl From<Tokens> for Token {
-    fn from(value: Tokens) -> Self {
-        Self::Tokens(value)
-    }
-}
 impl From<Function> for Token {
     fn from(value: Function) -> Self {
         Self::Operator(value.into())
@@ -332,6 +327,12 @@ impl Token {
         };
         num
     }
+    pub fn skip(&self) -> usize {
+        let Token::Skip(num) = self else {
+            unreachable!()
+        };
+        *num
+    }
     pub fn num_ref(&self) -> Complex {
         let Token::Num(num) = self else {
             unreachable!()
@@ -343,18 +344,6 @@ impl Token {
             unreachable!()
         };
         n
-    }
-    pub fn tokens(self) -> Tokens {
-        let Token::Tokens(t) = self else {
-            unreachable!()
-        };
-        t
-    }
-    pub fn tokens_mut(&mut self) -> &mut Tokens {
-        let Token::Tokens(t) = self else {
-            unreachable!()
-        };
-        t
     }
     pub fn num_mut(&mut self) -> &mut Complex {
         let Token::Num(num) = self else {

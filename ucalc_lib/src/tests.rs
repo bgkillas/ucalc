@@ -632,12 +632,10 @@ fn test_set() {
         rpn("x 2 x 2 ^ set"),
         vec![
             num(2),
-            Tokens(vec![
-                Token::InnerVar(0).into(),
-                num(2),
-                Operators::Pow.into()
-            ])
-            .into(),
+            Token::Skip(3),
+            Token::InnerVar(0).into(),
+            num(2),
+            Operators::Pow.into(),
             Function::Set.into()
         ],
         res(4)
@@ -652,12 +650,10 @@ fn test_fold() {
             num(1),
             num(1),
             num(9),
-            Tokens(vec![
-                Token::InnerVar(0).into(),
-                Token::InnerVar(1).into(),
-                Operators::Mul.into()
-            ])
-            .into(),
+            Token::Skip(3),
+            Token::InnerVar(0).into(),
+            Token::InnerVar(1).into(),
+            Operators::Mul.into(),
             Function::Fold.into()
         ],
         res(362880)
@@ -669,12 +665,10 @@ fn test_fold() {
             num(0),
             num(1),
             num(9),
-            Tokens(vec![
-                Token::InnerVar(0).into(),
-                Token::InnerVar(1).into(),
-                Operators::Add.into()
-            ])
-            .into(),
+            Token::Skip(3),
+            Token::InnerVar(0).into(),
+            Token::InnerVar(1).into(),
+            Operators::Add.into(),
             Function::Fold.into()
         ],
         res(45)
@@ -687,8 +681,10 @@ fn test_if() {
         rpn("1 2 3 if"),
         vec![
             num(1),
-            Tokens(vec![num(2)]).into(),
-            Tokens(vec![num(3)]).into(),
+            Token::Skip(1),
+            num(2),
+            Token::Skip(1),
+            num(3),
             Function::If.into()
         ],
         res(2)
@@ -698,8 +694,10 @@ fn test_if() {
         rpn("0 2 3 if"),
         vec![
             num(0),
-            Tokens(vec![num(2)]).into(),
-            Tokens(vec![num(3)]).into(),
+            Token::Skip(1),
+            num(2),
+            Token::Skip(1),
+            num(3),
             Function::If.into()
         ],
         res(3)
@@ -714,16 +712,15 @@ fn test_recursion() {
             Token::InnerVar(0),
             num(0),
             Operators::Greater.into(),
-            Tokens(vec![
-                Token::InnerVar(0),
-                Token::InnerVar(0),
-                num(1),
-                Operators::Sub.into(),
-                Token::Fun(0),
-                Operators::Mul.into(),
-            ])
-            .into(),
-            Tokens(vec![num(1)]).into(),
+            Token::Skip(6),
+            Token::InnerVar(0),
+            Token::InnerVar(0),
+            num(1),
+            Operators::Sub.into(),
+            Token::Fun(0),
+            Operators::Mul.into(),
+            Token::Skip(1),
+            num(1),
             Function::If.into(),
         ]),
     )]);
@@ -827,26 +824,22 @@ fn test_custom_functions() {
         vec![
             num(0),
             num(10),
-            Tokens(vec![
-                num(3),
-                num(6),
-                Tokens(vec![
-                    Token::InnerVar(0),
-                    Token::InnerVar(1),
-                    Token::Fun(0),
-                    num(2),
-                    Operators::Pow.into(),
-                    Token::InnerVar(1),
-                    Token::InnerVar(0),
-                    Token::Fun(0),
-                    Operators::Add.into(),
-                    num(2),
-                    Operators::Sub.into()
-                ])
-                .into(),
-                Function::Sum.into()
-            ])
-            .into(),
+            Token::Skip(15),
+            num(3),
+            num(6),
+            Token::Skip(11),
+            Token::InnerVar(0),
+            Token::InnerVar(1),
+            Token::Fun(0),
+            num(2),
+            Operators::Pow.into(),
+            Token::InnerVar(1),
+            Token::InnerVar(0),
+            Token::Fun(0),
+            Operators::Add.into(),
+            num(2),
+            Operators::Sub.into(),
+            Function::Sum.into(),
             Function::Sum.into()
         ],
         res(396)
@@ -855,12 +848,15 @@ fn test_custom_functions() {
 #[test]
 fn test_sum() {
     assert_correct!(
-        infix("sum(x,0,10,x^2)",),
-        rpn("x 0 10 x 2 ^ sum",),
+        infix("sum(x,0,10,x^2)"),
+        rpn("x 0 10 x 2 ^ sum"),
         vec![
             num(0),
             num(10),
-            Tokens(vec![Token::InnerVar(0), num(2), Operators::Pow.into()]).into(),
+            Token::Skip(3),
+            Token::InnerVar(0),
+            num(2),
+            Operators::Pow.into(),
             Function::Sum.into()
         ],
         res(385)
@@ -869,33 +865,27 @@ fn test_sum() {
 #[test]
 fn test_inner_fn() {
     assert_correct!(
-        infix("sum(x,0,10,sum(y,3,6,x-y)+prod(y,3,6,x-y))",),
-        rpn("x 0 10 y 3 6 x y - sum y 3 6 x y - prod + sum",),
+        infix("sum(x,0,10,sum(y,3,6,x-y)+prod(y,3,6,x-y))"),
+        rpn("x 0 10 y 3 6 x y - sum y 3 6 x y - prod + sum"),
         vec![
             num(0),
             num(10),
-            Tokens(vec![
-                num(3),
-                num(6),
-                Tokens(vec![
-                    Token::InnerVar(0),
-                    Token::InnerVar(1),
-                    Operators::Sub.into()
-                ])
-                .into(),
-                Function::Sum.into(),
-                num(3),
-                num(6),
-                Tokens(vec![
-                    Token::InnerVar(0),
-                    Token::InnerVar(1),
-                    Operators::Sub.into()
-                ])
-                .into(),
-                Function::Prod.into(),
-                Operators::Add.into()
-            ])
-            .into(),
+            Token::Skip(15),
+            num(3),
+            num(6),
+            Token::Skip(3),
+            Token::InnerVar(0),
+            Token::InnerVar(1),
+            Operators::Sub.into(),
+            Function::Sum.into(),
+            num(3),
+            num(6),
+            Token::Skip(3),
+            Token::InnerVar(0),
+            Token::InnerVar(1),
+            Operators::Sub.into(),
+            Function::Prod.into(),
+            Operators::Add.into(),
             Function::Sum.into()
         ],
         res(1870)
@@ -904,12 +894,15 @@ fn test_inner_fn() {
 #[test]
 fn test_prod() {
     assert_correct!(
-        infix("prod(x,1,4,x^2)",),
-        rpn("x 1 4 x 2 ^ prod",),
+        infix("prod(x,1,4,x^2)"),
+        rpn("x 1 4 x 2 ^ prod"),
         vec![
             num(1),
             num(4),
-            Tokens(vec![Token::InnerVar(0), num(2), Operators::Pow.into()]).into(),
+            Token::Skip(3),
+            Token::InnerVar(0),
+            num(2),
+            Operators::Pow.into(),
             Function::Prod.into()
         ],
         res(576)
@@ -918,45 +911,47 @@ fn test_prod() {
 #[test]
 fn test_iter() {
     assert_correct!(
-        infix("iter(x,1,4,x/2)",),
-        rpn("x 1 4 x 2 / iter",),
+        infix("iter(x,1,4,x/2)"),
+        rpn("x 1 4 x 2 / iter"),
         vec![
             num(1),
             num(4),
-            Tokens(vec![Token::InnerVar(0), num(2), Operators::Div.into()]).into(),
+            Token::Skip(3),
+            Token::InnerVar(0),
+            num(2),
+            Operators::Div.into(),
             Function::Iter.into()
         ],
         res(1) / 16
     );
     assert_correct!(
-        infix("iter(x,1,0,x/2)",),
-        rpn("x 1 0 x 2 / iter",),
+        infix("iter(x,1,0,x/2)"),
+        rpn("x 1 0 x 2 / iter"),
         vec![
             num(1),
             num(0),
-            Tokens(vec![Token::InnerVar(0), num(2), Operators::Div.into()]).into(),
+            Token::Skip(3),
+            Token::InnerVar(0),
+            num(2),
+            Operators::Div.into(),
             Function::Iter.into()
         ],
         res(1)
     );
     assert_correct!(
-        infix("iter(x,1,4,iter(y,2,5,x/y))",),
-        rpn("x 1 4 y 2 5 x y / iter iter",),
+        infix("iter(x,1,4,iter(y,2,5,x/y))"),
+        rpn("x 1 4 y 2 5 x y / iter iter"),
         vec![
             num(1),
             num(4),
-            Tokens(vec![
-                num(2),
-                num(5),
-                Tokens(vec![
-                    Token::InnerVar(0),
-                    Token::InnerVar(1),
-                    Operators::Div.into()
-                ])
-                .into(),
-                Function::Iter.into()
-            ])
-            .into(),
+            Token::Skip(7),
+            num(2),
+            num(5),
+            Token::Skip(3),
+            Token::InnerVar(0),
+            Token::InnerVar(1),
+            Operators::Div.into(),
+            Function::Iter.into(),
             Function::Iter.into()
         ],
         res(1) / 16
