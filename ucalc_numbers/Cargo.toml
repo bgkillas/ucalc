@@ -12,6 +12,7 @@ f128 = ["float"]
 float = []
 rug = ["dep:rug"]
 fastnum = ["dep:fastnum", "float"]
+units = []
 
 [dependencies]
 rug = {version="1.28.1",optional=true, default-features=false, features=["complex","float","integer","rand","std"]}

@@ -1,4 +1,5 @@
 use crate::functions::Function;
+use crate::parse::Token;
 use std::ops::Neg;
 use ucalc_numbers::{Complex, Pow};
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -176,27 +177,29 @@ impl Operators {
     pub fn is_operator(self) -> bool {
         !matches!(self, Self::Function(_) | Self::Bracket(_))
     }
-    pub fn compute(self, a: &mut Complex, b: &[Complex]) {
+    pub fn compute(self, a: &mut [Token]) {
+        let ([a], b) = a.split_first_chunk_mut().unwrap();
+        let a = a.num_mut();
         match self {
-            Self::Add => *a += b[0],
-            Self::Sub => *a -= b[0],
-            Self::Mul => *a *= b[0],
-            Self::Div => *a /= b[0],
-            Self::Rem => *a %= b[0],
+            Self::Add => *a += b[0].num_ref(),
+            Self::Sub => *a -= b[0].num_ref(),
+            Self::Mul => *a *= b[0].num_ref(),
+            Self::Div => *a /= b[0].num_ref(),
+            Self::Rem => *a %= b[0].num_ref(),
             Self::Factorial => *a = (*a + 1).gamma(),
-            Self::Pow => *a = a.pow(b[0]),
-            Self::Root => *a = a.pow(b[0].recip()),
+            Self::Pow => *a = a.pow(b[0].num_ref()),
+            Self::Root => *a = a.pow(b[0].num_ref().recip()),
             Self::Negate => *a = a.neg(),
-            Self::Tetration => a.tetration_mut(&b[0]),
+            Self::Tetration => a.tetration_mut(&b[0].num_ref()),
             Self::SubFactorial => a.subfactorial_mut(),
-            Self::Equal => *a = Complex::from(*a == b[0]),
-            Self::NotEqual => *a = Complex::from(*a != b[0]),
-            Self::Greater => *a = Complex::from(a.total_cmp(&b[0]).is_gt()),
-            Self::Less => *a = Complex::from(a.total_cmp(&b[0]).is_lt()),
-            Self::GreaterEqual => *a = Complex::from(a.total_cmp(&b[0]).is_ge()),
-            Self::LessEqual => *a = Complex::from(a.total_cmp(&b[0]).is_le()),
-            Self::And => *a = Complex::from(!a.is_zero() && !b[0].is_zero()),
-            Self::Or => *a = Complex::from(!a.is_zero() || !b[0].is_zero()),
+            Self::Equal => *a = Complex::from(*a == b[0].num_ref()),
+            Self::NotEqual => *a = Complex::from(*a != b[0].num_ref()),
+            Self::Greater => *a = Complex::from(a.total_cmp(&b[0].num_ref()).is_gt()),
+            Self::Less => *a = Complex::from(a.total_cmp(&b[0].num_ref()).is_lt()),
+            Self::GreaterEqual => *a = Complex::from(a.total_cmp(&b[0].num_ref()).is_ge()),
+            Self::LessEqual => *a = Complex::from(a.total_cmp(&b[0].num_ref()).is_le()),
+            Self::And => *a = Complex::from(!a.is_zero() && !b[0].num_ref().is_zero()),
+            Self::Or => *a = Complex::from(!a.is_zero() || !b[0].num_ref().is_zero()),
             Self::Not => *a = Complex::from(a.is_zero()),
             Self::Function(fun) => fun.compute(a, b),
             Self::Bracket(_) => {

@@ -1,3 +1,4 @@
+use crate::parse::Token;
 use crate::{Functions, Tokens};
 use ucalc_numbers::{Complex, Float, Pow};
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -141,7 +142,7 @@ impl Function {
             Self::Custom(_) => unreachable!(),
         }
     }
-    pub fn compute(self, a: &mut Complex, b: &[Complex]) {
+    pub fn compute(self, a: &mut Complex, b: &[Token]) {
         match self {
             Self::Sin => a.sin_mut(),
             Self::Ln => a.ln_mut(),
@@ -168,9 +169,9 @@ impl Function {
             Self::Sq => *a *= *a,
             Self::Cb => *a = *a * *a * *a,
             Self::Atan => a.atan_mut(),
-            Self::Atan2 => a.atan2_mut(&b[0]),
-            Self::Max => a.max_mut(&b[0]),
-            Self::Min => a.min_mut(&b[0]),
+            Self::Atan2 => a.atan2_mut(&b[0].num_ref()),
+            Self::Max => a.max_mut(&b[0].num_ref()),
+            Self::Min => a.min_mut(&b[0].num_ref()),
             Self::Ceil => a.ceil_mut(),
             Self::Floor => a.floor_mut(),
             Self::Round => a.round_mut(),
@@ -178,7 +179,11 @@ impl Function {
             Self::Fract => a.fract_mut(),
             Self::Real => *a = a.real.into(),
             Self::Imag => *a = a.imag.into(),
-            Self::Quadratic => *a = ((b[0] * b[0] - *a * b[1] * 4).sqrt() - b[0]) / (*a * 2),
+            Self::Quadratic => {
+                *a = ((b[0].num_ref() * b[0].num_ref() - *a * b[1].num_ref() * 4).sqrt()
+                    - b[0].num_ref())
+                    / (*a * 2)
+            }
             Self::Custom(_)
             | Self::Sum
             | Self::Prod
@@ -282,8 +287,9 @@ impl Function {
                 fun_vars.push(value.num_ref());
                 fun_vars.push(Complex::from(start));
                 let nl = fun_vars.len();
+                let mut stck = Tokens(Vec::with_capacity(tokens.len()));
                 (start..=end).for_each(|_| {
-                    fun_vars[nl - 2] = tokens.compute(fun_vars, vars, funs);
+                    fun_vars[nl - 2] = tokens.compute_buffer(fun_vars, vars, funs, &mut stck);
                     fun_vars.last_mut().unwrap().real += Float::from(1);
                 });
                 *stack[len - (l + 3)].num_mut() = fun_vars[nl - 2];
@@ -309,8 +315,9 @@ impl Function {
                 let [steps, first] = stack.get_skip_var(l);
                 fun_vars.push(first.num_ref());
                 let steps = steps.num_ref().real.to_usize();
+                let mut stck = Tokens(Vec::with_capacity(tokens.len()));
                 (0..steps).for_each(|_| {
-                    let next = tokens.compute(fun_vars, vars, funs);
+                    let next = tokens.compute_buffer(fun_vars, vars, funs, &mut stck);
                     *fun_vars.last_mut().unwrap() = next;
                 });
                 *stack[len - (l + 2)].num_mut() = *fun_vars.last().unwrap();

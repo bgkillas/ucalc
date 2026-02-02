@@ -1,11 +1,20 @@
 use crate::Functions;
 use crate::operators::Operators;
 use crate::parse::{Token, Tokens, TokensRef};
-use std::{array, iter};
+use std::array;
 use ucalc_numbers::{Complex, Constant, Float};
 impl Tokens {
     pub fn compute(&self, vars: &[Complex], funs: &Functions) -> Complex {
         self.compute_inner(&mut Vec::with_capacity(self.len()), vars, funs)
+    }
+    pub fn compute_buffer(
+        &self,
+        fun_vars: &mut Vec<Complex>,
+        vars: &[Complex],
+        funs: &Functions,
+        stack: &mut Tokens,
+    ) -> Complex {
+        TokensRef(self).compute_buffer(fun_vars, vars, funs, stack)
     }
     pub fn get_skip_var<const N: usize>(&self, end: usize) -> [&Token; N] {
         let end = self.len() - (end + 1);
@@ -37,8 +46,9 @@ impl Tokens {
         let start = start.num_ref().real.to_usize();
         let end = end.num_ref().real.to_usize();
         fun_vars.push(Complex::from(start));
+        let mut stack = Tokens(Vec::with_capacity(tokens.len()));
         let mut iter = (start..=end).map(|_| {
-            let ret = tokens.compute(fun_vars, vars, funs);
+            let ret = tokens.compute_buffer(fun_vars, vars, funs, &mut stack);
             fun_vars.last_mut().unwrap().real += Float::from(1);
             ret
         });
@@ -52,7 +62,7 @@ impl Tokens {
         vars: &[Complex],
         funs: &Functions,
     ) -> Complex {
-        TokensRef(self.as_slice()).compute(fun_vars, vars, funs)
+        TokensRef(self).compute(fun_vars, vars, funs)
     }
 }
 impl TokensRef<'_> {
@@ -63,12 +73,15 @@ impl TokensRef<'_> {
         funs: &Functions,
     ) -> Complex {
         let mut stack = Tokens(Vec::with_capacity(self.len()));
-        let mut b = Vec::with_capacity(
-            iter::once(Operators::MAX_INPUT - 1)
-                .chain(funs.iter().map(|f| f.inputs))
-                .max()
-                .unwrap(),
-        );
+        self.compute_buffer(fun_vars, vars, funs, &mut stack)
+    }
+    pub fn compute_buffer(
+        &self,
+        fun_vars: &mut Vec<Complex>,
+        vars: &[Complex],
+        funs: &Functions,
+        stack: &mut Tokens,
+    ) -> Complex {
         let mut i = 0;
         while i < self.len() {
             let len = stack.len();
@@ -77,7 +90,7 @@ impl TokensRef<'_> {
                     let inputs = operator.inputs();
                     match operator {
                         Operators::Function(fun) if fun.has_var() => {
-                            fun.compute_var(&mut stack, fun_vars, vars, funs)
+                            fun.compute_var(stack, fun_vars, vars, funs)
                         }
                         _ if operator.is_chainable() => {
                             let chain = if self.get(i + 1).is_some_and(|o| {
@@ -87,37 +100,34 @@ impl TokensRef<'_> {
                                     false
                                 }
                             }) {
-                                self.get(len - inputs).map(|n| n.num_ref())
+                                Some(self[len - inputs].num_ref())
                             } else {
                                 None
                             };
-                            b.extend(stack.drain(len + 1 - inputs..).map(|t| t.num()));
-                            let a = stack.get_mut(len - inputs).unwrap().num_mut();
-                            operator.compute(a, &b);
-                            b.clear();
+                            operator.compute(&mut stack[len - inputs..]);
                             if let Some(b) = chain {
+                                let a = stack[len - inputs].num_mut();
                                 *a = if a.is_zero() {
                                     Complex::from(Constant::Nan)
                                 } else {
                                     b
                                 };
                             }
+                            stack.drain(len + 1 - inputs..);
                         }
                         _ => {
-                            b.extend(stack.drain(len + 1 - inputs..).map(|t| t.num()));
-                            let a = stack.get_mut(len - inputs).unwrap().num_mut();
-                            operator.compute(a, &b);
-                            b.clear()
+                            operator.compute(&mut stack[len - inputs..]);
+                            stack.drain(len + 1 - inputs..);
                         }
                     }
                 }
                 Token::Fun(index) => {
                     let inputs = funs[*index].inputs;
-                    b.push(stack.get(len - inputs).unwrap().num_ref());
-                    b.extend(stack.drain(len + 1 - inputs..).map(|a| a.num()));
-                    let a = stack.get_mut(len - inputs).unwrap().num_mut();
-                    *a = funs[*index].tokens.compute_inner(&mut b, vars, funs);
-                    b.clear();
+                    fun_vars.insert(0, stack[len - inputs].num_ref());
+                    fun_vars.splice(1..1, stack.drain(len + 1 - inputs..).map(|n| n.num()));
+                    *stack[len - inputs].num_mut() =
+                        funs[*index].tokens.compute_inner(fun_vars, vars, funs);
+                    fun_vars.drain(0..inputs);
                 }
                 Token::InnerVar(index) => {
                     stack.push(Token::Num(fun_vars[*index]));
