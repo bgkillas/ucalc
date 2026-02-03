@@ -158,6 +158,7 @@ impl TokensRef<'_> {
                     i += to;
                 }
                 Token::Num(n) => stack.push(Token::Num(n)),
+                Token::Polynomial(_) => unreachable!(),
             }
             i += 1;
         }

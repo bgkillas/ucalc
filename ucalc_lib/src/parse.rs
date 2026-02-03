@@ -1,5 +1,6 @@
 use crate::functions::Function;
 use crate::operators::{Bracket, Operators};
+use crate::polynomial::Polynomial;
 use crate::variable::{Functions, Variables};
 use std::fmt::{Display, Formatter};
 use std::ops::{Deref, DerefMut};
@@ -11,6 +12,7 @@ pub struct TokensRef<'a>(pub &'a [Token]);
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     Num(Complex),
+    Polynomial(Box<Polynomial>),
     InnerVar(usize),
     GraphVar(usize),
     Fun(usize),
@@ -337,6 +339,11 @@ impl From<Function> for Token {
         Self::Operator(value.into())
     }
 }
+impl From<Polynomial> for Token {
+    fn from(value: Polynomial) -> Self {
+        Self::Polynomial(value.into())
+    }
+}
 impl Token {
     pub fn num(self) -> Complex {
         let Token::Num(num) = self else {
@@ -367,6 +374,24 @@ impl Token {
             unreachable!()
         };
         num
+    }
+    pub fn poly_mut(&mut self) -> &mut Polynomial {
+        let Token::Polynomial(poly) = self else {
+            unreachable!()
+        };
+        poly
+    }
+    pub fn poly(self) -> Box<Polynomial> {
+        let Token::Polynomial(poly) = self else {
+            unreachable!()
+        };
+        poly
+    }
+    pub fn poly_ref(&self) -> &Box<Polynomial> {
+        let Token::Polynomial(poly) = self else {
+            unreachable!()
+        };
+        poly
     }
 }
 impl Deref for Tokens {

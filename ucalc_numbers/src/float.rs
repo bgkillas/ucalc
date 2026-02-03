@@ -24,7 +24,7 @@ pub type F = f128;
 #[cfg(feature = "fastnum")]
 pub type F = fastnum::D1024;
 #[derive(Clone, Copy, Default, PartialEq, PartialOrd)]
-pub struct Integer(pub i128);
+pub struct Integer(pub isize);
 #[derive(Clone, Copy, Default, PartialEq, PartialOrd)]
 pub struct Float(pub F);
 #[derive(Clone, Copy, Default, PartialEq)]
