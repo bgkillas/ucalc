@@ -301,9 +301,9 @@ impl Tokens {
     }
 }
 impl TokensRef<'_> {
-    pub fn get_last(self, funs: &Functions) -> usize {
-        match self.last() {
-            Some(Token::Fun(i)) => {
+    pub fn get_last(&self, funs: &Functions) -> usize {
+        match self.last().unwrap() {
+            Token::Fun(i) => {
                 let inputs = funs[*i].inputs;
                 let mut i = self.len() - 1;
                 for _ in 0..inputs {
@@ -311,7 +311,7 @@ impl TokensRef<'_> {
                 }
                 i
             }
-            Some(Token::Operator(o)) => {
+            Token::Operator(o) => {
                 let inputs = o.inputs();
                 let mut i = self.len() - 1;
                 for _ in 0..inputs {
@@ -319,9 +319,13 @@ impl TokensRef<'_> {
                 }
                 i
             }
-            Some(Token::Skip(_)) => TokensRef(&self[..self.len() - 1]).get_last(funs),
+            Token::Skip(_) => TokensRef(&self[..self.len() - 1]).get_last(funs),
             _ => self.len() - 1,
         }
+    }
+    pub fn get_from_last(&self, funs: &Functions) -> (Self, usize) {
+        let last = self.get_last(funs);
+        (Self(&self[last..]), last)
     }
 }
 impl From<Complex> for Token {
@@ -387,7 +391,7 @@ impl Token {
         };
         poly
     }
-    pub fn poly_ref(&self) -> &Box<Polynomial> {
+    pub fn poly_ref(&self) -> &Polynomial {
         let Token::Polynomial(poly) = self else {
             unreachable!()
         };

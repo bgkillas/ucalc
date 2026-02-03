@@ -176,6 +176,7 @@ impl TokensRef<'_> {
         _funs: &Functions,
         stack: &mut Tokens,
         _offset: usize,
+        to_poly: usize,
     ) -> Option<()> {
         let i = 0;
         while i < self.len() {
@@ -189,10 +190,13 @@ impl TokensRef<'_> {
                 Token::Fun(_) => {
                     todo!()
                 }
-                Token::Polynomial(p) => stack.push(Token::Polynomial(p.clone())),
                 Token::Num(n) => stack.push(Token::Num(*n)),
-                Token::InnerVar(_) => {
-                    todo!()
+                Token::InnerVar(i) => {
+                    if *i == to_poly {
+                        stack.push(Polynomial::new().into())
+                    } else {
+                        todo!()
+                    }
                 }
                 Token::GraphVar(_) => {
                     todo!()
@@ -200,6 +204,7 @@ impl TokensRef<'_> {
                 Token::Skip(_) => {
                     todo!()
                 }
+                Token::Polynomial(_) => unreachable!(),
             }
         }
         Some(())
@@ -227,7 +232,7 @@ impl Operators {
                 self.poly_inner(a, &b);
             } else {
                 let b = b[0].poly_ref();
-                self.poly_inner(a, &b);
+                self.poly_inner(a, b);
             }
         } else {
             match self {

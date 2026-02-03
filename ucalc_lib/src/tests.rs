@@ -672,18 +672,32 @@ fn test_set() {
 #[test]
 fn test_solve() {
     assert_correct!(
-        infix("solve(x,x^2-1)"),
-        rpn("x x 2 ^ 1 - solve"),
+        infix("solve(x,x^2-2)"),
+        rpn("x x 2 ^ 2 - solve"),
         vec![
             Token::Skip(5),
             Token::InnerVar(0).into(),
             num(2),
             Operators::Pow.into(),
+            num(2),
+            Operators::Sub.into(),
+            Function::Solve.into()
+        ],
+        res(2).sqrt()
+    );
+    assert_correct!(
+        infix("solve(x,2*x-1)"),
+        rpn("x 2 x * 1 - solve"),
+        vec![
+            Token::Skip(5),
+            num(2),
+            Token::InnerVar(0).into(),
+            Operators::Mul.into(),
             num(1),
             Operators::Sub.into(),
             Function::Solve.into()
         ],
-        res(1)
+        res(0.5)
     );
 }
 #[test]

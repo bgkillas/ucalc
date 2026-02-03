@@ -74,32 +74,6 @@ impl TryFrom<&str> for Operators {
 }
 impl Operators {
     pub const MAX_INPUT: usize = Function::MAX_INPUT;
-    pub fn inverse(self) -> Option<Self> {
-        Some(match self {
-            Self::Add => Self::Sub,
-            Self::Sub => Self::Add,
-            Self::Mul => Self::Div,
-            Self::Div => Self::Mul,
-            Self::Pow => Self::Root,
-            Self::Root => Self::Pow,
-            Self::Negate => Self::Negate,
-            Self::Function(fun) => return fun.inverse().map(|a| a.into()),
-            Self::Bracket(_)
-            | Self::Rem
-            | Self::Factorial
-            | Self::SubFactorial
-            | Self::Equal
-            | Self::NotEqual
-            | Self::Greater
-            | Self::Less
-            | Self::LessEqual
-            | Self::GreaterEqual
-            | Self::And
-            | Self::Or
-            | Self::Not
-            | Self::Tetration => return None,
-        })
-    }
     pub fn inputs(self) -> usize {
         match self {
             Self::Mul

@@ -194,54 +194,6 @@ impl Function {
             | Self::Solve => unreachable!(),
         }
     }
-    pub fn inverse(self) -> Option<Self> {
-        Some(match self {
-            Self::Sin => Self::Asin,
-            Self::Cos => Self::Acos,
-            Self::Ln => Self::Exp,
-            Self::Asin => Self::Sin,
-            Self::Acos => Self::Cos,
-            Self::Exp => Self::Ln,
-            Self::Recip => Self::Recip,
-            Self::Conj => Self::Conj,
-            Self::Sinh => Self::Asinh,
-            Self::Cosh => Self::Acosh,
-            Self::Asinh => Self::Sinh,
-            Self::Acosh => Self::Cosh,
-            Self::Tanh => Self::Atanh,
-            Self::Atanh => Self::Tanh,
-            Self::Tan => Self::Atan,
-            Self::Atan => Self::Tan,
-            Self::Sqrt => Self::Sq,
-            Self::Sq => Self::Sqrt,
-            Self::Cbrt => Self::Cb,
-            Self::Cb => Self::Cbrt,
-            Self::Max
-            | Self::Min
-            | Self::Quadratic
-            | Self::Sum
-            | Self::Prod
-            | Self::Gamma
-            | Self::Erf
-            | Self::Erfc
-            | Self::Abs
-            | Self::Arg
-            | Self::Iter
-            | Self::Atan2
-            | Self::Ceil
-            | Self::Floor
-            | Self::Round
-            | Self::Trunc
-            | Self::Fract
-            | Self::Real
-            | Self::Imag
-            | Self::If
-            | Self::Fold
-            | Self::Set
-            | Self::Solve => return None,
-            Self::Custom(_) => unreachable!(),
-        })
-    }
     pub fn compact(self) -> usize {
         match self {
             Self::Sum | Self::Prod | Self::Iter | Self::Fold | Self::Set | Self::Solve => 1,

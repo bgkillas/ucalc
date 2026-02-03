@@ -3,6 +3,7 @@
 mod cas;
 mod compute;
 mod functions;
+mod inverse;
 mod operators;
 mod parse;
 mod polynomial;
