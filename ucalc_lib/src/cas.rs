@@ -30,18 +30,15 @@ impl TokensRef<'_> {
                             let (left_tokens, _) =
                                 TokensRef(&self[start..last]).get_from_last(funs);
                             if left_tokens.contains(&Token::InnerVar(fun_vars.len())) {
-                                let poly = TokensRef(&self[start..=i])
-                                    .compute_polynomial(
-                                        fun_vars,
-                                        vars,
-                                        funs,
-                                        &mut inner_stack,
-                                        offset,
-                                        fun_vars.len(),
-                                    )
-                                    .unwrap()
-                                    - ret;
-                                return poly.inverse();
+                                let poly = TokensRef(&self[start..=i]).compute_polynomial(
+                                    fun_vars,
+                                    vars,
+                                    funs,
+                                    &mut inner_stack,
+                                    offset,
+                                    fun_vars.len(),
+                                )? - ret;
+                                return poly.roots();
                             } else {
                                 let num = left_tokens.compute_buffer_with(
                                     fun_vars,

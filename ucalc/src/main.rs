@@ -14,7 +14,9 @@ fn main() {
             "-" => {
                 arg.clear();
                 stdin().read_line(&mut arg).unwrap();
-                arg.pop();
+                if arg.ends_with('\n') {
+                    arg.pop();
+                }
             }
             _ => {}
         }
@@ -26,7 +28,6 @@ fn main() {
             }
         }) {
             Ok(tokens) => {
-                println!("{}", tokens);
                 let compute = tmr(|| tokens.compute(&[], &funs));
                 println!("{}", compute);
             }

@@ -717,6 +717,24 @@ fn test_solve() {
         ],
         -(res(2).sqrt() - 1)
     );
+    assert_correct!(
+        infix("solve(x,exp(x)^2-exp(x)-1)"),
+        rpn("x x exp 2 ^ x exp - 1 - solve"),
+        vec![
+            Token::Skip(9),
+            Token::InnerVar(0).into(),
+            Function::Exp.into(),
+            num(2),
+            Operators::Pow.into(),
+            Token::InnerVar(0).into(),
+            Function::Exp.into(),
+            Operators::Sub.into(),
+            num(1),
+            Operators::Sub.into(),
+            Function::Solve.into()
+        ],
+        -(res(2).ln() - (res(5).sqrt() - 1).ln() + res(Constant::Pi).mul_i(false))
+    );
 }
 #[test]
 fn test_fold() {

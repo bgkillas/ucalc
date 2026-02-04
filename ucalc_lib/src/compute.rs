@@ -54,8 +54,8 @@ impl Tokens {
         let len = self.len();
         let ([tokens], l) = self.get_skip_tokens();
         let [end, start] = self.get_skip_var(l);
-        let start = start.num_ref().real.to_usize();
-        let end = end.num_ref().real.to_usize();
+        let start = start.num_ref().real.to_isize();
+        let end = end.num_ref().real.to_isize();
         fun_vars.push(Complex::from(start));
         let mut stack = Tokens(Vec::with_capacity(tokens.len()));
         let mut iter = (start..=end).map(|_| {

@@ -234,8 +234,8 @@ impl Function {
             Self::Fold => {
                 let ([tokens], l) = stack.get_skip_tokens();
                 let [end, start, value] = stack.get_skip_var(l);
-                let start = start.num_ref().real.to_usize();
-                let end = end.num_ref().real.to_usize();
+                let start = start.num_ref().real.to_isize();
+                let end = end.num_ref().real.to_isize();
                 fun_vars.push(value.num_ref());
                 fun_vars.push(Complex::from(start));
                 let nl = fun_vars.len();
@@ -273,7 +273,7 @@ impl Function {
                 let ([tokens], l) = stack.get_skip_tokens();
                 let [steps, first] = stack.get_skip_var(l);
                 fun_vars.push(first.num_ref());
-                let steps = steps.num_ref().real.to_usize();
+                let steps = steps.num_ref().real.to_isize();
                 let mut stck = Tokens(Vec::with_capacity(tokens.len()));
                 (0..steps).for_each(|_| {
                     let next = tokens.compute_buffer_with(fun_vars, vars, funs, &mut stck, offset);

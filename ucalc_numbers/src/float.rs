@@ -78,8 +78,8 @@ impl Product for Complex {
     }
 }
 impl Float {
-    pub fn to_usize(self) -> usize {
-        self.0 as usize
+    pub fn to_isize(self) -> isize {
+        self.0 as isize
     }
     pub fn sin_cos(self) -> (Self, Self) {
         let (sin, cos) = self.0.sin_cos();
