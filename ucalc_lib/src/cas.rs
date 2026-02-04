@@ -39,8 +39,8 @@ impl TokensRef<'_> {
                                         offset,
                                         fun_vars.len(),
                                     )
-                                    .unwrap();
-                                let poly = (poly - ret)?;
+                                    .unwrap()
+                                    - ret;
                                 return poly.inverse();
                             } else {
                                 let num = left_tokens.compute_buffer_with(

@@ -9,6 +9,16 @@ use ucalc_numbers::Complex;
 pub struct Tokens(pub Vec<Token>);
 #[derive(Debug, PartialEq, Clone)]
 pub struct TokensRef<'a>(pub &'a [Token]);
+impl<'a> From<&'a Tokens> for TokensRef<'a> {
+    fn from(value: &'a Tokens) -> Self {
+        Self(value)
+    }
+}
+impl<'a> From<&'a [Token]> for TokensRef<'a> {
+    fn from(value: &'a [Token]) -> Self {
+        Self(value)
+    }
+}
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     Num(Complex),

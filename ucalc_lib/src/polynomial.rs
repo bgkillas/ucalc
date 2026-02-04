@@ -3,11 +3,21 @@ use crate::parse::TokensRef;
 use crate::{Function, Functions, Operators, Token, Tokens};
 use std::mem;
 use std::ops::{Add, Deref, DerefMut, Div, Mul, Neg, Sub};
-use ucalc_numbers::{Complex, Pow};
+use ucalc_numbers::Complex;
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct Poly(pub Vec<Complex>);
 #[derive(Debug, PartialEq, Clone)]
 pub struct PolyRef<'a>(pub &'a [Complex]);
+impl<'a> From<&'a Poly> for PolyRef<'a> {
+    fn from(value: &'a Poly) -> Self {
+        Self(value)
+    }
+}
+impl<'a> From<&'a [Complex]> for PolyRef<'a> {
+    fn from(value: &'a [Complex]) -> Self {
+        Self(value)
+    }
+}
 impl Deref for Poly {
     type Target = Vec<Complex>;
     fn deref(&self) -> &Self::Target {
@@ -82,10 +92,9 @@ impl PolyRef<'_> {
         }
     }
     pub fn quadratic(&self) -> [Complex; 2] {
-        println!("{self:?}");
         let a = -self[1] / (self[2] * 2);
         let b = (self[1] * self[1] - self[2] * self[0] * 4).sqrt() / (self[2] * 2);
-        dbg!([a - b, a + b])
+        [a - b, a + b]
     }
     pub fn linear(&self) -> Complex {
         self[0] / self[1]
@@ -102,12 +111,6 @@ impl Polynomial {
     pub fn recip(mut self) -> Self {
         mem::swap(&mut self.quotient, &mut self.divisor);
         self
-    }
-    pub fn pow_mut(&mut self, _other: &Self) -> Option<()> {
-        todo!()
-    }
-    pub fn root_mut(&mut self, _other: &Self) -> Option<()> {
-        todo!()
     }
     pub fn neg_mut(&mut self) {
         self.quotient.iter_mut().for_each(|a| *a = -*a)
@@ -130,12 +133,6 @@ impl Polynomial {
     }
     pub fn is_constant(&self) -> bool {
         self.quotient.len() <= 1 && self.divisor.len() <= 1
-    }
-}
-impl Pow<&Self> for Polynomial {
-    fn pow(mut self, rhs: &Self) -> Self {
-        self.pow_mut(rhs);
-        self
     }
 }
 impl Mul<&Self> for Polynomial {
@@ -207,13 +204,63 @@ impl Sub<&Self> for Polynomial {
     }
 }
 impl Sub<Complex> for Polynomial {
-    type Output = Option<Self>;
+    type Output = Self;
     fn sub(self, rhs: Complex) -> Self::Output {
-        Some(Self {
+        Self {
             quotient: &self.quotient - &(&self.divisor * rhs),
             divisor: self.divisor,
             functions: self.functions,
-        })
+        }
+    }
+}
+impl Add<Complex> for Polynomial {
+    type Output = Self;
+    fn add(self, rhs: Complex) -> Self::Output {
+        Self {
+            quotient: &self.quotient + &(&self.divisor * rhs),
+            divisor: self.divisor,
+            functions: self.functions,
+        }
+    }
+}
+impl Mul<Complex> for Polynomial {
+    type Output = Self;
+    fn mul(self, rhs: Complex) -> Self::Output {
+        Self {
+            quotient: &self.quotient * rhs,
+            divisor: self.divisor,
+            functions: self.functions,
+        }
+    }
+}
+impl Div<Complex> for Polynomial {
+    type Output = Self;
+    fn div(self, rhs: Complex) -> Self::Output {
+        Self {
+            quotient: &self.quotient / rhs,
+            divisor: self.divisor,
+            functions: self.functions,
+        }
+    }
+}
+impl Sub<Polynomial> for Complex {
+    type Output = Polynomial;
+    fn sub(self, rhs: Polynomial) -> Self::Output {
+        Polynomial {
+            quotient: &(&rhs.divisor * self) - &rhs.quotient,
+            divisor: rhs.divisor,
+            functions: rhs.functions,
+        }
+    }
+}
+impl Div<Polynomial> for Complex {
+    type Output = Polynomial;
+    fn div(self, rhs: Polynomial) -> Self::Output {
+        Polynomial {
+            quotient: self / &rhs.quotient,
+            divisor: rhs.divisor,
+            functions: rhs.functions,
+        }
     }
 }
 impl Mul<Self> for &Poly {
@@ -234,6 +281,36 @@ impl Mul<Complex> for &Poly {
         let mut new = vec![Complex::from(0); self.len()];
         for (i, a) in self.iter().enumerate() {
             new[i] = *a * rhs;
+        }
+        new.into()
+    }
+}
+impl Div<Complex> for &Poly {
+    type Output = Poly;
+    fn div(self, rhs: Complex) -> Self::Output {
+        let mut new = vec![Complex::from(0); self.len()];
+        for (i, a) in self.iter().enumerate() {
+            new[i] = *a / rhs;
+        }
+        new.into()
+    }
+}
+impl Div<&Poly> for Complex {
+    type Output = Poly;
+    fn div(self, rhs: &Poly) -> Self::Output {
+        let mut new = vec![Complex::from(0); rhs.len()];
+        for (i, a) in rhs.iter().enumerate() {
+            new[i] = self / *a;
+        }
+        new.into()
+    }
+}
+impl Sub<&Poly> for Complex {
+    type Output = Poly;
+    fn sub(self, rhs: &Poly) -> Self::Output {
+        let mut new = vec![Complex::from(0); rhs.len()];
+        for (i, a) in rhs.iter().enumerate() {
+            new[i] = self - *a;
         }
         new.into()
     }
@@ -332,34 +409,34 @@ impl Function {
 impl Operators {
     pub fn compute_poly(self, a: &mut [Token]) -> Option<()> {
         let ([a], b) = a.split_first_chunk_mut().unwrap();
-        if let Token::Num(n) = a {
-            //TODO
-            *a = Polynomial::from(*n).into()
-        }
-        let a = a.poly_mut();
         self.compute_poly_on(a, b)
     }
-    pub fn compute_poly_on(self, a: &mut Polynomial, b: &[Token]) -> Option<()> {
-        if b.len() == 1 {
-            if let Token::Num(n) = b[0] {
-                let b = Polynomial::from(n);
-                self.poly_inner(a, &b);
+    fn compute_poly_on(self, a: &mut Token, b: &mut [Token]) -> Option<()> {
+        if let Token::Polynomial(a) = a {
+            if b.len() == 1 {
+                if let Token::Num(n) = b[0] {
+                    self.poly_complex(a, n);
+                } else {
+                    let b = b[0].poly_ref();
+                    self.poly(a, b);
+                }
             } else {
-                let b = b[0].poly_ref();
-                self.poly_inner(a, b);
-            }
-        } else {
-            match self {
-                Self::Negate => a.neg_mut(),
-                Self::Function(fun) => fun.compute_poly(a),
-                _ => {
-                    unreachable!()
+                match self {
+                    Self::Negate => a.neg_mut(),
+                    Self::Function(fun) => fun.compute_poly(a),
+                    _ => {
+                        unreachable!()
+                    }
                 }
             }
+        } else if let Token::Num(_) = b[0] {
+            self.compute_on(a.num_mut(), b)
+        } else if let Token::Num(c) = a {
+            *a = self.complex_poly(c, mem::take(b[0].poly_mut()))?.into()
         }
         Some(())
     }
-    fn poly_inner(self, a: &mut Polynomial, b: &Polynomial) -> Option<()> {
+    fn poly(self, a: &mut Polynomial, b: &Polynomial) -> Option<()> {
         match self {
             Self::Add => {
                 let old = mem::take(a);
@@ -377,10 +454,39 @@ impl Operators {
                 let old = mem::take(a);
                 *a = (old / b)?
             }
-            Self::Pow => a.pow_mut(b)?,
-            Self::Root => a.root_mut(b)?,
-            _ => unreachable!(),
+            _ => return None,
         }
         Some(())
+    }
+    fn poly_complex(self, a: &mut Polynomial, b: Complex) -> Option<()> {
+        match self {
+            Self::Add => {
+                let old = mem::take(a);
+                *a = old + b;
+            }
+            Self::Sub => {
+                let old = mem::take(a);
+                *a = old - b;
+            }
+            Self::Mul => {
+                let old = mem::take(a);
+                *a = old * b
+            }
+            Self::Div => {
+                let old = mem::take(a);
+                *a = old / b
+            }
+            _ => return None,
+        }
+        Some(())
+    }
+    fn complex_poly(self, a: &Complex, b: Polynomial) -> Option<Polynomial> {
+        Some(match self {
+            Self::Add => b + *a,
+            Self::Sub => *a - b,
+            Self::Mul => b * *a,
+            Self::Div => *a / b,
+            _ => return None,
+        })
     }
 }
