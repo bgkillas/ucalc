@@ -1,7 +1,7 @@
 use crate::inverse::Inverse;
 use crate::parse::{Token, TokensRef};
 use crate::{Functions, Tokens};
-use ucalc_numbers::{Complex, Constant};
+use ucalc_numbers::Complex;
 impl TokensRef<'_> {
     pub fn get_inverse(
         &self,
@@ -9,7 +9,7 @@ impl TokensRef<'_> {
         vars: &[Complex],
         funs: &Functions,
         offset: usize,
-    ) -> Complex {
+    ) -> Option<Vec<Complex>> {
         let mut i = self.len();
         let mut ret = Complex::from(0);
         let mut inner_stack = Tokens(Vec::with_capacity(self.len()));
@@ -20,16 +20,28 @@ impl TokensRef<'_> {
                 Token::Operator(operator) => {
                     let inverse = Inverse::from(operator);
                     if inverse.is_none() {
-                        return Complex::from(Constant::Nan);
+                        return None;
                     }
                     if let Some(inv) = inverse.get_inverse() {
                         inv.compute_on(&mut ret, &[]);
                     } else {
-                        let (right_tokens, last) = TokensRef(&self[..i]).get_from_last(funs);
+                        let (right_tokens, last) = TokensRef(&self[start..i]).get_from_last(funs);
                         if right_tokens.contains(&Token::InnerVar(fun_vars.len())) {
-                            let (left_tokens, _) = TokensRef(&self[..last]).get_from_last(funs);
+                            let (left_tokens, _) =
+                                TokensRef(&self[start..last]).get_from_last(funs);
                             if left_tokens.contains(&Token::InnerVar(fun_vars.len())) {
-                                todo!()
+                                let poly = TokensRef(&self[start..=i])
+                                    .compute_polynomial(
+                                        fun_vars,
+                                        vars,
+                                        funs,
+                                        &mut inner_stack,
+                                        offset,
+                                        fun_vars.len(),
+                                    )
+                                    .unwrap();
+                                let poly = (poly - ret)?;
+                                return poly.inverse();
                             } else {
                                 let num = left_tokens.compute_buffer_with(
                                     fun_vars,
@@ -39,7 +51,7 @@ impl TokensRef<'_> {
                                     offset,
                                 );
                                 start = last;
-                                inverse.right_inverse(&mut ret, num);
+                                ret = inverse.right_inverse(ret, num)[0];
                             }
                         } else {
                             let num = right_tokens.compute_buffer_with(
@@ -50,13 +62,14 @@ impl TokensRef<'_> {
                                 offset,
                             );
                             i = last;
-                            inverse.left_inverse(&mut ret, num);
+                            ret = inverse.left_inverse(ret, num)[0];
                         }
                     }
                 }
-                _ => return Complex::from(Constant::Nan),
+                _ => return None,
             }
         }
-        ret
+        //TODO
+        Some(vec![ret])
     }
 }

@@ -1,6 +1,7 @@
 use crate::parse::Token;
+use crate::polynomial::PolyRef;
 use crate::{Functions, Tokens};
-use ucalc_numbers::{Complex, Float, Pow};
+use ucalc_numbers::{Complex, Constant, Float, Pow};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Function {
     Sin,
@@ -179,11 +180,7 @@ impl Function {
             Self::Fract => a.fract_mut(),
             Self::Real => *a = a.real.into(),
             Self::Imag => *a = a.imag.into(),
-            Self::Quadratic => {
-                *a = ((b[0].num_ref() * b[0].num_ref() - *a * b[1].num_ref() * 4).sqrt()
-                    - b[0].num_ref())
-                    / (*a * 2)
-            }
+            Self::Quadratic => *a = PolyRef(&[*a, b[0].num_ref(), b[1].num_ref()]).quadratic()[0],
             Self::Custom(_)
             | Self::Sum
             | Self::Prod
@@ -265,7 +262,11 @@ impl Function {
             }
             Self::Solve => {
                 let ([tokens], l) = stack.get_skip_tokens();
-                stack[len - l] = tokens.get_inverse(fun_vars, vars, funs, offset).into();
+                stack[len - l] = tokens
+                    .get_inverse(fun_vars, vars, funs, offset)
+                    .map(|a| a[0])
+                    .unwrap_or(Complex::from(Constant::Nan))
+                    .into();
                 stack.drain(len - (l - 1)..);
             }
             Self::Iter => {

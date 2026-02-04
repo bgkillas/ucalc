@@ -37,6 +37,7 @@ impl Inverse {
         matches!(self, Self::None)
     }
     pub fn get_inverse(self) -> Option<Operators> {
+        //TODO
         Some(match self {
             Self::Sin => Function::Asin.into(),
             Self::Cos => Function::Acos.into(),
@@ -62,27 +63,29 @@ impl Inverse {
             _ => return None,
         })
     }
-    pub fn left_inverse(self, a: &mut Complex, b: Complex) {
-        match self {
-            Self::Add => *a -= b,
-            Self::Sub => *a += b,
-            Self::Mul => *a /= b,
-            Self::Div => *a *= b,
-            Self::Pow => *a = a.pow(b.recip()),
-            Self::Root => *a = a.pow(b),
+    pub fn left_inverse(self, a: Complex, b: Complex) -> Vec<Complex> {
+        //TODO
+        vec![match self {
+            Self::Add => a - b,
+            Self::Sub => a + b,
+            Self::Mul => a / b,
+            Self::Div => a * b,
+            Self::Pow => a.pow(b.recip()),
+            Self::Root => a.pow(b),
             _ => unreachable!(),
-        }
+        }]
     }
-    pub fn right_inverse(self, a: &mut Complex, b: Complex) {
-        match self {
-            Self::Add => *a -= b,
-            Self::Sub => *a = b - *a,
-            Self::Mul => *a /= b,
-            Self::Div => *a = b / *a,
-            Self::Pow => *a = a.ln() / b.ln(),
-            Self::Root => *a = b.ln() / a.ln(),
+    pub fn right_inverse(self, a: Complex, b: Complex) -> Vec<Complex> {
+        //TODO
+        vec![match self {
+            Self::Add => a - b,
+            Self::Sub => b - a,
+            Self::Mul => a / b,
+            Self::Div => b / a,
+            Self::Pow => a.ln() / b.ln(),
+            Self::Root => b.ln() / a.ln(),
             _ => unreachable!(),
-        }
+        }]
     }
 }
 impl From<Operators> for Inverse {

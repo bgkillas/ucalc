@@ -542,7 +542,7 @@ fn parse_quadratic() {
             Operators::Negate.into(),
             Function::Quadratic.into()
         ],
-        res(2).sqrt() + 1
+        res(2).sqrt() - 1
     );
     assert_correct!(
         infix("quadratic((4-2)/2,3-2-3,-ln(e))"),
@@ -563,7 +563,7 @@ fn parse_quadratic() {
             Operators::Negate.into(),
             Function::Quadratic.into()
         ],
-        res(2).sqrt() + 1
+        res(2).sqrt() - 1
     );
 }
 #[test]
@@ -698,6 +698,24 @@ fn test_solve() {
             Function::Solve.into()
         ],
         res(0.5)
+    );
+    assert_correct!(
+        infix("solve(x,x*x-2*x-1)"),
+        rpn("x x x * 2 x * - 1 - solve"),
+        vec![
+            Token::Skip(9),
+            Token::InnerVar(0).into(),
+            Token::InnerVar(0).into(),
+            Operators::Mul.into(),
+            num(2),
+            Token::InnerVar(0).into(),
+            Operators::Mul.into(),
+            Operators::Sub.into(),
+            num(1),
+            Operators::Sub.into(),
+            Function::Solve.into()
+        ],
+        -(res(2).sqrt() - 1)
     );
 }
 #[test]
