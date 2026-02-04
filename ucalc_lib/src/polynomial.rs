@@ -19,7 +19,7 @@ impl<'a> From<&'a [Complex]> for PolyRef<'a> {
     }
 }
 impl Deref for Poly {
-    type Target = Vec<Complex>;
+    type Target = [Complex];
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -30,9 +30,9 @@ impl DerefMut for Poly {
     }
 }
 impl<'a> Deref for PolyRef<'a> {
-    type Target = &'a [Complex];
+    type Target = [Complex];
     fn deref(&self) -> &Self::Target {
-        &self.0
+        self.0
     }
 }
 impl From<Vec<Complex>> for Poly {

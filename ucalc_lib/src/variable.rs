@@ -46,7 +46,7 @@ impl Default for Variables {
     }
 }
 impl Deref for Variables {
-    type Target = Vec<Variable>;
+    type Target = [Variable];
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -57,7 +57,7 @@ impl DerefMut for Variables {
     }
 }
 impl Deref for Functions {
-    type Target = Vec<FunctionVar>;
+    type Target = [FunctionVar];
     fn deref(&self) -> &Self::Target {
         &self.0
     }

@@ -2,9 +2,9 @@ use crate::inverse::Inverse;
 use crate::parse::{Token, TokensRef};
 use crate::{Functions, Tokens};
 use ucalc_numbers::Complex;
-impl TokensRef<'_> {
+impl<'a> TokensRef<'a> {
     pub fn get_inverse(
-        &self,
+        &'a self,
         fun_vars: &mut Vec<Complex>,
         vars: &[Complex],
         funs: &Functions,
@@ -25,10 +25,11 @@ impl TokensRef<'_> {
                     if let Some(inv) = inverse.get_inverse() {
                         inv.compute_on(&mut ret, &[]);
                     } else {
-                        let (right_tokens, last) = TokensRef(&self[start..i]).get_from_last(funs);
+                        let right_tokens = TokensRef(&self[start..i]);
+                        let (right_tokens, last) = right_tokens.get_from_last(funs);
                         if right_tokens.contains(&Token::InnerVar(fun_vars.len())) {
-                            let (left_tokens, _) =
-                                TokensRef(&self[start..last]).get_from_last(funs);
+                            let left_tokens = TokensRef(&self[start..last]);
+                            let (left_tokens, _) = left_tokens.get_from_last(funs);
                             if left_tokens.contains(&Token::InnerVar(fun_vars.len())) {
                                 let poly = TokensRef(&self[start..=i]).compute_polynomial(
                                     fun_vars,

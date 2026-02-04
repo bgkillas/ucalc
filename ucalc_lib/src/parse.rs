@@ -310,7 +310,7 @@ impl Tokens {
         }
     }
 }
-impl TokensRef<'_> {
+impl<'a> TokensRef<'a> {
     pub fn get_last(&self, funs: &Functions) -> usize {
         match self.last().unwrap() {
             Token::Fun(i) => {
@@ -333,7 +333,7 @@ impl TokensRef<'_> {
             _ => self.len() - 1,
         }
     }
-    pub fn get_from_last(&self, funs: &Functions) -> (Self, usize) {
+    pub fn get_from_last(&'a self, funs: &Functions) -> (Self, usize) {
         let last = self.get_last(funs);
         (Self(&self[last..]), last)
     }
@@ -415,9 +415,9 @@ impl Deref for Tokens {
     }
 }
 impl<'a> Deref for TokensRef<'a> {
-    type Target = &'a [Token];
+    type Target = [Token];
     fn deref(&self) -> &Self::Target {
-        &self.0
+        self.0
     }
 }
 impl DerefMut for Tokens {
