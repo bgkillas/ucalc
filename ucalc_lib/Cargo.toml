@@ -12,6 +12,9 @@ f128 = ["ucalc_numbers/f128"]
 rug = ["ucalc_numbers/rug"]
 fastnum = ["ucalc_numbers/fastnum"]
 units = ["ucalc_numbers/units"]
+vector = ["ucalc_numbers/vector"]
+matrix = ["ucalc_numbers/matrix"]
+list = ["ucalc_numbers/list"]
 
 [dependencies]
 ucalc_numbers={path = "../ucalc_numbers", default-features=false}

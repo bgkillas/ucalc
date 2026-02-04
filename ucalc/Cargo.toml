@@ -11,6 +11,10 @@ f64 = ["ucalc_lib/f64"]
 f128 = ["ucalc_lib/f128"]
 rug = ["ucalc_lib/rug"]
 fastnum = ["ucalc_lib/fastnum"]
+units = ["ucalc_lib/units"]
+vector = ["ucalc_lib/vector"]
+matrix = ["ucalc_lib/matrix"]
+list = ["ucalc_lib/list"]
 
 [dependencies]
 ucalc_lib = {path = "../ucalc_lib", default-features=false}
