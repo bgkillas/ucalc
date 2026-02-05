@@ -4,7 +4,7 @@ use crate::operators::Operators;
 use crate::parse::ParseError;
 use crate::parse::{Token, Tokens};
 use crate::variable::{Functions, Variables};
-use ucalc_numbers::{Complex, Constant};
+use ucalc_numbers::{Complex, Constant, Float};
 
 macro_rules! assert_teq {
     ($a:expr, $b:expr, $c:expr) => {
@@ -234,7 +234,7 @@ fn parse_cos() {
             Operators::Div.into(),
             Function::Cos.into()
         ],
-        (res(Constant::Pi) / 6).cos()
+        (res(Constant::Pi) / Float::from(6)).cos()
     );
 }
 #[test]
@@ -250,7 +250,7 @@ fn parse_acos() {
             Operators::Div.into(),
             Function::Acos.into()
         ],
-        (res(3).sqrt() / 2).acos()
+        (res(3).sqrt() / Float::from(2)).acos()
     );
 }
 #[test]
@@ -264,7 +264,7 @@ fn parse_sin() {
             Operators::Div.into(),
             Function::Sin.into()
         ],
-        (res(Constant::Pi) / 6).sin()
+        (res(Constant::Pi) / Float::from(6)).sin()
     );
 }
 #[test]
@@ -341,7 +341,7 @@ fn parse_tan() {
             Operators::Div.into(),
             Function::Tan.into()
         ],
-        (res(Constant::Pi) / 6).tan()
+        (res(Constant::Pi) / Float::from(6)).tan()
     );
 }
 #[test]
@@ -474,7 +474,7 @@ fn parse_arg() {
             Operators::Add.into(),
             Function::Arg.into()
         ],
-        res(Constant::Pi) / 4
+        res(Constant::Pi) / Float::from(4)
     );
 }
 #[test]
@@ -508,7 +508,7 @@ fn parse_asin() {
         infix("asin(1/2)"),
         rpn("1 2 / asin"),
         vec![num(1), num(2), Operators::Div.into(), Function::Asin.into()],
-        (res(1) / 2).asin()
+        (res(1) / Float::from(2)).asin()
     );
 }
 #[test]
@@ -517,7 +517,7 @@ fn parse_atan() {
         infix("atan(1,1)"),
         rpn("1 1 atan"),
         vec![num(1), num(1), Function::Atan2.into()],
-        res(Constant::Pi) / 4
+        res(Constant::Pi) / Float::from(4)
     );
 }
 #[test]
@@ -526,7 +526,7 @@ fn parse_arctan() {
         infix("arctan(1)"),
         rpn("1 arctan"),
         vec![num(1), Function::Atan.into()],
-        res(Constant::Pi) / 4
+        res(Constant::Pi) / Float::from(4)
     );
 }
 #[test]
@@ -542,7 +542,7 @@ fn parse_quadratic() {
             Operators::Negate.into(),
             Function::Quadratic.into()
         ],
-        res(2).sqrt() - 1
+        res(2).sqrt() - Float::from(1)
     );
     assert_correct!(
         infix("quadratic((4-2)/2,3-2-3,-ln(e))"),
@@ -563,7 +563,7 @@ fn parse_quadratic() {
             Operators::Negate.into(),
             Function::Quadratic.into()
         ],
-        res(2).sqrt() - 1
+        res(2).sqrt() - Float::from(1)
     );
 }
 #[test]
@@ -715,7 +715,7 @@ fn test_solve() {
             Operators::Sub.into(),
             Function::Solve.into()
         ],
-        -(res(2).sqrt() - 1)
+        -(res(2).sqrt() - Float::from(1))
     );
     assert_correct!(
         infix("solve(x,exp(x)^2-exp(x)-1)"),
@@ -733,7 +733,7 @@ fn test_solve() {
             Operators::Sub.into(),
             Function::Solve.into()
         ],
-        -(res(2).ln() - (res(5).sqrt() - 1).ln() + res(Constant::Pi).mul_i(false))
+        -(res(2).ln() - (res(5).sqrt() - Float::from(1)).ln() + res(Constant::Pi).mul_i(false))
     );
 }
 #[test]
@@ -1030,7 +1030,7 @@ fn test_iter() {
             Operators::Div.into(),
             Function::Iter.into()
         ],
-        res(1) / 16
+        res(1) / Float::from(16)
     );
     assert_correct!(
         infix("iter(x,1,0,x/2)"),
@@ -1062,7 +1062,7 @@ fn test_iter() {
             Function::Iter.into(),
             Function::Iter.into()
         ],
-        res(1) / 16
+        res(1) / Float::from(16)
     );
 }
 #[test]

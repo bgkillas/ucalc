@@ -2,8 +2,10 @@ use crate::inverse::Inverse;
 use crate::parse::TokensRef;
 use crate::{Function, Functions, Operators, Token, Tokens};
 use std::mem;
-use std::ops::{Add, Deref, DerefMut, Div, Mul, Neg, Sub};
-use ucalc_numbers::{Complex, Pow};
+use std::ops::{
+    Add, AddAssign, Deref, DerefMut, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign,
+};
+use ucalc_numbers::{Complex, Float, Pow, PowAssign};
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct Poly(pub Vec<Complex>);
 #[derive(Debug, PartialEq, Clone)]
@@ -92,8 +94,9 @@ impl PolyRef<'_> {
         }
     }
     pub fn quadratic(&self) -> [Complex; 2] {
-        let a = -self[1] / (self[2] * 2);
-        let b = (self[1] * self[1] - self[2] * self[0] * 4).sqrt() / (self[2] * 2);
+        let a = -self[1] / (self[2] * Float::from(2));
+        let b = (self[1] * self[1] - self[2] * self[0] * Float::from(4)).sqrt()
+            / (self[2] * Float::from(2));
         [a - b, a + b]
     }
     pub fn linear(&self) -> Complex {
@@ -134,25 +137,26 @@ impl Polynomial {
     pub fn is_constant(&self) -> bool {
         self.quotient.len() <= 1 && self.divisor.len() <= 1
     }
-    pub fn pow(self, rhs: Complex) -> Option<Self> {
+}
+impl Pow<Complex> for Polynomial {
+    type Output = Option<Self>;
+    fn pow(mut self, rhs: Complex) -> Self::Output {
         if rhs.imag.is_zero() && rhs.real.fract().is_zero() {
             let n = rhs.real.to_isize();
             let k = n.unsigned_abs();
-            let mut poly = Self {
-                quotient: self.quotient.pow(k),
-                divisor: self.divisor.pow(k),
-                functions: self.functions,
-            };
+            self.quotient.pow_assign(k);
+            self.divisor.pow_assign(k);
             if n.is_negative() {
-                poly = poly.recip()
+                self = self.recip()
             }
-            Some(poly)
+            Some(self)
         } else {
             None
         }
     }
 }
-impl Pow<usize, Self> for Poly {
+impl Pow<usize> for Poly {
+    type Output = Self;
     fn pow(self, rhs: usize) -> Self {
         //TODO
         let mut poly = self.clone();
@@ -290,6 +294,26 @@ impl Div<Polynomial> for Complex {
         }
     }
 }
+impl MulAssign<Complex> for Polynomial {
+    fn mul_assign(&mut self, rhs: Complex) {
+        self.quotient *= rhs;
+    }
+}
+impl DivAssign<Complex> for Polynomial {
+    fn div_assign(&mut self, rhs: Complex) {
+        self.quotient /= rhs;
+    }
+}
+impl SubAssign<Complex> for Polynomial {
+    fn sub_assign(&mut self, rhs: Complex) {
+        self.quotient -= &self.divisor * rhs;
+    }
+}
+impl AddAssign<Complex> for Polynomial {
+    fn add_assign(&mut self, rhs: Complex) {
+        self.quotient += &self.divisor * rhs;
+    }
+}
 impl Mul<Self> for &Poly {
     type Output = Poly;
     fn mul(self, rhs: Self) -> Self::Output {
@@ -340,6 +364,32 @@ impl Sub<&Poly> for Complex {
             new[i] = self - *a;
         }
         new.into()
+    }
+}
+impl MulAssign<Complex> for Poly {
+    fn mul_assign(&mut self, rhs: Complex) {
+        self.iter_mut().for_each(|c| *c *= rhs)
+    }
+}
+impl DivAssign<Complex> for Poly {
+    fn div_assign(&mut self, rhs: Complex) {
+        self.iter_mut().for_each(|c| *c /= rhs)
+    }
+}
+impl AddAssign<Poly> for Poly {
+    fn add_assign(&mut self, mut rhs: Poly) {
+        if rhs.len() > self.len() {
+            mem::swap(self, &mut rhs)
+        }
+        self.iter_mut().zip(rhs.0).for_each(|(a, b)| *a += b);
+    }
+}
+impl SubAssign<Poly> for Poly {
+    fn sub_assign(&mut self, mut rhs: Poly) {
+        if rhs.len() > self.len() {
+            mem::swap(self, &mut rhs)
+        }
+        self.iter_mut().zip(rhs.0).for_each(|(a, b)| *a -= b);
     }
 }
 impl Add<Self> for &Poly {
@@ -473,14 +523,19 @@ impl Operators {
         Some(())
     }
     fn poly_complex(self, a: &mut Polynomial, b: Complex) -> Option<()> {
-        let old = mem::take(a);
         match self {
-            Self::Add => *a = old + b,
-            Self::Sub => *a = old - b,
-            Self::Mul => *a = old * b,
-            Self::Div => *a = old / b,
-            Self::Pow => *a = old.pow(b)?,
-            Self::Root => *a = old.pow(b.recip())?,
+            Self::Add => *a += b,
+            Self::Sub => *a -= b,
+            Self::Mul => *a *= b,
+            Self::Div => *a /= b,
+            Self::Pow => {
+                let old = mem::take(a);
+                *a = old.pow(b)?
+            }
+            Self::Root => {
+                let old = mem::take(a);
+                *a = old.pow(b.recip())?
+            }
             _ => return None,
         }
         Some(())

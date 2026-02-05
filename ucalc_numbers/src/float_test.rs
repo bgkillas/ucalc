@@ -15,7 +15,7 @@ fn test_norm() {
 }
 #[test]
 fn test_abs() {
-    assert_eq!(res((2, 2)).abs(), Float::from(2).sqrt() * 2);
+    assert_eq!(res((2, 2)).abs(), Float::from(2).sqrt() * Float::from(2));
 }
 #[test]
 fn test_sin() {
@@ -77,7 +77,7 @@ fn test_sub() {
 }
 #[test]
 fn test_div() {
-    assert_eq!(res((2, 3)) / res((4, 5)), res((23, 2)) / 41);
+    assert_eq!(res((2, 3)) / res((4, 5)), res((23, 2)) / Float::from(41));
 }
 #[test]
 fn test_rem() {

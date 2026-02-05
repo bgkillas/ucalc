@@ -1,13 +1,14 @@
 use std::mem;
-pub trait Pow<Rhs, Target> {
-    fn pow(self, rhs: Rhs) -> Target;
+pub trait Pow<Rhs> {
+    type Output;
+    fn pow(self, rhs: Rhs) -> Self::Output;
 }
 pub trait PowAssign<Rhs> {
     fn pow_assign(&mut self, rhs: Rhs);
 }
 impl<T, K> PowAssign<K> for T
 where
-    T: Pow<K, T> + Default,
+    T: Pow<K, Output = T> + Default,
 {
     default fn pow_assign(&mut self, rhs: K) {
         let old = mem::take(self);

@@ -1,7 +1,7 @@
 use crate::functions::Function;
 use crate::parse::Token;
 use std::ops::Neg;
-use ucalc_numbers::{Complex, PowAssign};
+use ucalc_numbers::{Complex, Float, PowAssign};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Operators {
     Add,
@@ -163,7 +163,7 @@ impl Operators {
             Self::Mul => *a *= b[0].num_ref(),
             Self::Div => *a /= b[0].num_ref(),
             Self::Rem => *a %= b[0].num_ref(),
-            Self::Factorial => *a = (*a + 1).gamma(),
+            Self::Factorial => *a = (*a + Float::from(1)).gamma(),
             Self::Pow => a.pow_assign(b[0].num_ref()),
             Self::Root => a.pow_assign(b[0].num_ref().recip()),
             Self::Negate => *a = a.neg(),
