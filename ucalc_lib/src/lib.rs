@@ -7,6 +7,7 @@ mod inverse;
 mod operators;
 mod parse;
 mod polynomial;
+mod polynomial_impls;
 #[cfg(test)]
 mod tests;
 mod variable;
