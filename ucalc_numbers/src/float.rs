@@ -1,4 +1,4 @@
-use crate::{Constant, Pow, PowAssign};
+use crate::{Constant, Pow, PowAssign, PrimativeInteger};
 use std::cmp::Ordering;
 #[cfg(feature = "f16")]
 use std::f16::consts;
@@ -452,21 +452,16 @@ impl Complex {
         self.erfc_mut();
         self
     }
-    pub fn norm_mut(&mut self) {
-        self.real = self.real * self.real + self.imag * self.imag;
-        self.imag = Float(0.0);
-    }
-    pub fn norm(mut self) -> Self {
-        self.norm_mut();
-        self
+    pub fn norm(self) -> Float {
+        self.real * self.real + self.imag * self.imag
     }
     pub fn abs_mut(&mut self) {
         self.real.hypot_mut(&self.imag);
         self.imag = Float(0.0);
     }
-    pub fn abs(mut self) -> Self {
-        self.abs_mut();
-        self
+    pub fn abs(mut self) -> Float {
+        self.real.hypot_mut(&self.imag);
+        self.real
     }
     pub fn sin_mut(&mut self) {
         *self = Self {
@@ -509,14 +504,13 @@ impl Complex {
         self.real = self.imag.atan2(&self.real);
         self.imag = Float(0.0)
     }
-    pub fn arg(mut self) -> Self {
-        self.arg_mut();
-        self
+    pub fn arg(self) -> Float {
+        self.imag.atan2(&self.real)
     }
     pub fn ln_mut(&mut self) {
         *self = Self {
-            real: self.abs().real.ln(),
-            imag: self.arg().real,
+            real: self.abs().ln(),
+            imag: self.arg(),
         }
     }
     pub fn ln(mut self) -> Self {
@@ -589,66 +583,60 @@ impl Complex {
         self.imag.max_mut(&other.imag);
     }
 }
-impl Pow<Self, Float> for Float {
-    fn pow(self, rhs: Self) -> Self {
+impl<T> Pow<T, Float> for Float
+where
+    Float: From<T>,
+{
+    default fn pow(self, rhs: T) -> Self {
+        let rhs = Float::from(rhs);
         Self(self.0.powf(rhs.0))
     }
 }
-impl Mul<Self> for Float {
-    type Output = Self;
-    fn mul(self, rhs: Self) -> Self::Output {
-        Self(self.0 * rhs.0)
+impl<T: PrimativeInteger> Pow<T, Float> for Float
+where
+    Float: From<T>,
+{
+    default fn pow(self, rhs: T) -> Self {
+        if let Ok(n) = rhs.try_into() {
+            Self(self.0.powi(n))
+        } else {
+            Self(self.0.powf(Float::from(rhs).0))
+        }
     }
 }
-impl MulAssign<Self> for Float {
-    fn mul_assign(&mut self, rhs: Self) {
-        self.0 *= rhs.0;
+macro_rules! ops_assign {
+    ($ty:ty, $assign:ident, $orig:ident, $assign_fun:ident, $orig_fun:ident) => {
+        impl<K: Copy> $assign<K> for $ty
+        where
+            $ty: From<K>,
+        {
+            default fn $assign_fun(&mut self, rhs: K) {
+                $assign::$assign_fun(&mut self.0, Self::from(rhs).0);
+            }
+        }
+        impl<K: Copy> $orig<K> for $ty
+        where
+            $ty: From<K>,
+        {
+            type Output = $ty;
+            default fn $orig_fun(self, rhs: K) -> $ty {
+                Self($orig::$orig_fun(self.0, Self::from(rhs).0))
+            }
+        }
+    };
+}
+macro_rules! ops_assign_for {
+    ($($ty:ty),*) => {
+        $(
+            ops_assign!($ty, MulAssign,Mul,mul_assign,mul);
+            ops_assign!($ty, DivAssign,Div,div_assign,div);
+            ops_assign!($ty, SubAssign,Sub,sub_assign,sub);
+            ops_assign!($ty, AddAssign,Add,add_assign,add);
+            ops_assign!($ty, RemAssign,Rem,rem_assign,rem);
+        )*
     }
 }
-impl Div<Self> for Float {
-    type Output = Self;
-    fn div(self, rhs: Self) -> Self::Output {
-        Self(self.0 / rhs.0)
-    }
-}
-impl DivAssign<Self> for Float {
-    fn div_assign(&mut self, rhs: Self) {
-        self.0 /= rhs.0;
-    }
-}
-impl Add<Self> for Float {
-    type Output = Self;
-    fn add(self, rhs: Self) -> Self::Output {
-        Self(self.0 + rhs.0)
-    }
-}
-impl AddAssign<Self> for Float {
-    fn add_assign(&mut self, rhs: Self) {
-        self.0 += rhs.0;
-    }
-}
-impl Sub<Self> for Float {
-    type Output = Self;
-    fn sub(self, rhs: Self) -> Self::Output {
-        Self(self.0 - rhs.0)
-    }
-}
-impl SubAssign<Self> for Float {
-    fn sub_assign(&mut self, rhs: Self) {
-        self.0 -= rhs.0;
-    }
-}
-impl Rem<Self> for Float {
-    type Output = Self;
-    fn rem(self, rhs: Self) -> Self::Output {
-        Self(self.0 % rhs.0)
-    }
-}
-impl RemAssign<Self> for Float {
-    fn rem_assign(&mut self, rhs: Self) {
-        self.0 %= rhs.0;
-    }
-}
+ops_assign_for!(Float, Integer);
 impl Neg for Float {
     type Output = Self;
     fn neg(self) -> Self::Output {
@@ -676,14 +664,15 @@ where
             if self.real.is_sign_negative() {
                 let fract = rhs.fract();
                 if fract.is_zero() {
-                    self.real.pow(rhs).into()
+                    <Float as Pow<Float, Float>>::pow(self.real, rhs).into()
                 } else if fract.0 == 0.5 {
-                    Complex::from(self.real.abs().pow(rhs)).mul_i(false)
+                    Complex::from(<Float as Pow<Float, Float>>::pow(self.real.abs(), rhs))
+                        .mul_i(false)
                 } else {
                     (self.ln() * rhs).exp()
                 }
             } else {
-                self.real.pow(rhs).into()
+                <Float as Pow<Float, Float>>::pow(self.real, rhs).into()
             }
         } else {
             (self.ln() * rhs).exp()
@@ -711,7 +700,7 @@ impl Div<Self> for Complex {
         Self {
             real: self.real * rhs.real + self.imag * rhs.imag,
             imag: self.imag * rhs.real - self.real * rhs.imag,
-        } / norm.real
+        } / norm
     }
 }
 impl DivAssign<Self> for Complex {
@@ -831,13 +820,10 @@ impl From<bool> for Float {
         Self::from(value as u8)
     }
 }
-impl<T> Mul<T> for Complex
-where
-    Float: From<T>,
-{
+impl<T: Into<Float>> Mul<T> for Complex {
     type Output = Self;
-    fn mul(self, rhs: T) -> Self::Output {
-        let rhs = rhs.into();
+    default fn mul(self, rhs: T) -> Self::Output {
+        let rhs = <T as Into<Float>>::into(rhs);
         Self {
             real: self.real * rhs,
             imag: self.imag * rhs,
@@ -852,20 +838,19 @@ where
         *self = *self * rhs;
     }
 }
-impl<T> Div<T> for Complex
+impl<T: Copy> Div<T> for Complex
 where
     Float: From<T>,
 {
     type Output = Self;
     fn div(self, rhs: T) -> Self::Output {
-        let rhs = rhs.into();
         Self {
             real: self.real / rhs,
             imag: self.imag / rhs,
         }
     }
 }
-impl<T> DivAssign<T> for Complex
+impl<T: Copy> DivAssign<T> for Complex
 where
     Float: From<T>,
 {
@@ -873,33 +858,31 @@ where
         *self = *self / rhs;
     }
 }
-impl<T> Add<T> for Complex
+impl<T: Copy> Add<T> for Complex
 where
     Float: From<T>,
 {
     type Output = Self;
     fn add(self, rhs: T) -> Self::Output {
-        let rhs = rhs.into();
         Self {
             real: self.real + rhs,
             imag: self.imag,
         }
     }
 }
-impl<T> Sub<T> for Complex
+impl<T: Copy> Sub<T> for Complex
 where
     Float: From<T>,
 {
     type Output = Self;
     fn sub(self, rhs: T) -> Self::Output {
-        let rhs = rhs.into();
         Self {
             real: self.real - rhs,
             imag: self.imag,
         }
     }
 }
-impl<T> SubAssign<T> for Complex
+impl<T: Copy> SubAssign<T> for Complex
 where
     Float: From<T>,
 {
@@ -907,20 +890,19 @@ where
         *self = *self - rhs;
     }
 }
-impl<T> Rem<T> for Complex
+impl<T: Copy> Rem<T> for Complex
 where
     Float: From<T>,
 {
     type Output = Self;
     fn rem(self, rhs: T) -> Self::Output {
-        let rhs = rhs.into();
         Self {
             real: self.real % rhs,
             imag: self.imag % rhs,
         }
     }
 }
-impl<T> RemAssign<T> for Complex
+impl<T: Copy> RemAssign<T> for Complex
 where
     Float: From<T>,
 {

@@ -3,6 +3,8 @@
 #![feature(float_gamma)]
 #![feature(float_erf)]
 #![feature(min_specialization)]
+#![allow(internal_features)]
+#![feature(rustc_attrs)]
 use std::ops::{Deref, DerefMut, Index, IndexMut, Range};
 #[cfg(feature = "float")]
 mod float;

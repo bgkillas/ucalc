@@ -1,6 +1,4 @@
-use crate::{Complex, Float, Integer};
 use std::mem;
-use std::ops::{Add, AddAssign};
 pub trait Pow<Rhs, Target> {
     fn pow(self, rhs: Rhs) -> Target;
 }
@@ -16,7 +14,12 @@ where
         *self = old.pow(rhs)
     }
 }
+#[rustc_specialization_trait]
 pub trait Primative: Copy {}
+#[rustc_specialization_trait]
+pub trait PrimativeFloat: Primative {}
+#[rustc_specialization_trait]
+pub trait PrimativeInteger: Primative + TryInto<i32> {}
 macro_rules! primative {
     ($($ty:ty),*) => {
         $(
@@ -27,19 +30,21 @@ macro_rules! primative {
 primative!(
     i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f16, f32, f64, f128
 );
-macro_rules! sealed {
+macro_rules! primative_integer {
     ($($ty:ty),*) => {
         $(
-impl<K> AddAssign<K> for $ty
-where
-    $ty: Add<K, Output = $ty> + Default,
-{
-    default fn add_assign(&mut self, rhs: K) {
-        let old = mem::take(self);
-        *self = old.add(rhs);
-    }
-}
+            impl PrimativeInteger for $ty {}
         )*
     }
 }
-sealed!(Float, Complex, Integer);
+primative_integer!(
+    i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize
+);
+macro_rules! primative_float {
+    ($($ty:ty),*) => {
+        $(
+            impl PrimativeFloat for $ty {}
+        )*
+    }
+}
+primative_float!(f16, f32, f64, f128);

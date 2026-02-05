@@ -1,5 +1,5 @@
 use crate::Pow;
-use crate::float::Complex;
+use crate::float::{Complex, Float};
 fn res<T>(f: T) -> Complex
 where
     Complex: From<T>,
@@ -7,15 +7,15 @@ where
     Complex::from(f)
 }
 fn approx(a: Complex, b: Complex) -> bool {
-    (a - b).abs().real.0 < 1e-4
+    (a - b).abs().0 < 1e-4
 }
 #[test]
 fn test_norm() {
-    assert_eq!(res((2, 2)).norm(), res(8));
+    assert_eq!(res((2, 2)).norm(), Float::from(8));
 }
 #[test]
 fn test_abs() {
-    assert_eq!(res((2, 2)).abs(), res(2).sqrt() * 2);
+    assert_eq!(res((2, 2)).abs(), Float::from(2).sqrt() * 2);
 }
 #[test]
 fn test_sin() {

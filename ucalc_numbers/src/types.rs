@@ -5,6 +5,7 @@ pub type Integer = float::Integer;
 pub type Float = float::Float;
 #[cfg(feature = "float")]
 pub type Complex = float::Complex;
+#[derive(Copy, Clone)]
 pub enum Constant {
     Pi,
     Tau,
