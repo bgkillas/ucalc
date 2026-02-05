@@ -1,4 +1,4 @@
-use crate::{Constant, Pow};
+use crate::{Constant, Pow, PowAssign};
 use std::cmp::Ordering;
 #[cfg(feature = "f16")]
 use std::f16::consts;
@@ -39,7 +39,17 @@ impl Debug for Float {
 }
 impl Debug for Complex {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self)
+        write!(
+            f,
+            "{:?}{}{:?}i",
+            self.real,
+            if self.imag.is_sign_positive() {
+                "+"
+            } else {
+                ""
+            },
+            self.imag
+        )
     }
 }
 impl Debug for Integer {
@@ -550,7 +560,7 @@ impl Complex {
         self
     }
     pub fn sqrt_mut(&mut self) {
-        *self = self.pow(Float(0.5))
+        self.pow_assign(0.5)
     }
     pub fn sqrt(mut self) -> Self {
         self.sqrt_mut();
@@ -579,7 +589,7 @@ impl Complex {
         self.imag.max_mut(&other.imag);
     }
 }
-impl Pow<Self> for Float {
+impl Pow<Self, Float> for Float {
     fn pow(self, rhs: Self) -> Self {
         Self(self.0.powf(rhs.0))
     }
@@ -645,7 +655,7 @@ impl Neg for Float {
         Self(self.0.neg())
     }
 }
-impl Pow<Self> for Complex {
+impl Pow<Self, Complex> for Complex {
     fn pow(self, rhs: Self) -> Self {
         if rhs.imag.is_zero() {
             self.pow(rhs.real)
@@ -656,8 +666,12 @@ impl Pow<Self> for Complex {
         }
     }
 }
-impl Pow<Float> for Complex {
-    fn pow(self, rhs: Float) -> Self {
+impl<T> Pow<T, Complex> for Complex
+where
+    Float: From<T>,
+{
+    fn pow(self, rhs: T) -> Self {
+        let rhs = Float::from(rhs);
         if self.imag.is_zero() {
             if self.real.is_sign_negative() {
                 let fract = rhs.fract();
@@ -870,14 +884,6 @@ where
             real: self.real + rhs,
             imag: self.imag,
         }
-    }
-}
-impl<T> AddAssign<T> for Complex
-where
-    Float: From<T>,
-{
-    fn add_assign(&mut self, rhs: T) {
-        *self = *self + rhs;
     }
 }
 impl<T> Sub<T> for Complex

@@ -1,7 +1,7 @@
 use crate::parse::Token;
 use crate::polynomial::PolyRef;
 use crate::{Functions, Tokens};
-use ucalc_numbers::{Complex, Constant, Float, Pow};
+use ucalc_numbers::{Complex, Constant, Float, PowAssign};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Function {
     Sin,
@@ -166,7 +166,7 @@ impl Function {
             Self::Acosh => a.acosh_mut(),
             Self::Tanh => a.tanh_mut(),
             Self::Atanh => a.atanh_mut(),
-            Self::Cbrt => *a = a.pow(Float::from(3).recip()),
+            Self::Cbrt => a.pow_assign(Float::from(3).recip()),
             Self::Sq => *a *= *a,
             Self::Cb => *a = *a * *a * *a,
             Self::Atan => a.atan_mut(),

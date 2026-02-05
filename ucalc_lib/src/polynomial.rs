@@ -152,7 +152,7 @@ impl Polynomial {
         }
     }
 }
-impl Pow<usize> for Poly {
+impl Pow<usize, Self> for Poly {
     fn pow(self, rhs: usize) -> Self {
         //TODO
         let mut poly = self.clone();
