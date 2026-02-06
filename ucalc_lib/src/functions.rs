@@ -1,7 +1,7 @@
 use crate::parse::Token;
 use crate::polynomial::PolyRef;
 use crate::{Functions, Number, Tokens};
-use ucalc_numbers::{Constant, Float, PowAssign};
+use ucalc_numbers::{Constant, Float, FloatTrait, PowAssign, RealTrait};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Function {
     Sin,
@@ -259,7 +259,7 @@ impl Function {
                 (start..=end).for_each(|_| {
                     fun_vars[nl - 2] =
                         tokens.compute_buffer_with(fun_vars, vars, funs, &mut stck, offset);
-                    *fun_vars.last_mut().unwrap().real_mut() += Float::from(1);
+                    *fun_vars.last_mut().unwrap() += Float::from(1);
                 });
                 stack.drain(len - (l + 2)..);
                 fun_vars.pop();

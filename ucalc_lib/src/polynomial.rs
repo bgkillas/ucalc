@@ -2,7 +2,7 @@ use crate::inverse::Inverse;
 use crate::parse::TokensRef;
 use crate::{Function, Functions, Number, Operators, Token, Tokens};
 use std::mem;
-use ucalc_numbers::{Float, NegAssign, Pow};
+use ucalc_numbers::{Float, FloatTrait, NegAssign, Pow};
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct Poly(pub Vec<Number>);
 #[derive(Debug, Clone)]

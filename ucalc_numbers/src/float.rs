@@ -1,4 +1,4 @@
-use crate::{Constant, Pow, PowAssign};
+use crate::{ComplexTrait, Constant, FloatTrait, Pow, PowAssign, RealTrait};
 use std::cmp::Ordering;
 #[cfg(feature = "f16")]
 use std::f16::consts;
@@ -97,221 +97,223 @@ impl Product for Float {
         iter.fold(Self::from(1.0), |sum, s| sum * s)
     }
 }
-impl Float {
-    pub fn real(&self) -> &Self {
-        self
+impl RealTrait<Float> for Float {
+    fn is_sign_negative(&self) -> bool {
+        self.0.is_sign_negative()
     }
-    pub fn real_mut(&mut self) -> &mut Self {
-        self
+    fn is_sign_positive(&self) -> bool {
+        self.0.is_sign_positive()
     }
-    pub fn into_isize(self) -> isize {
+    fn into_isize(self) -> isize {
         self.0 as isize
     }
-    pub fn sin_cos(self) -> (Self, Self) {
+    fn hypot_mut(&mut self, other: &Self) {
+        self.0 = self.0.hypot(other.0);
+    }
+}
+impl FloatTrait<Float> for Float {
+    fn real(&self) -> &Self {
+        self
+    }
+    fn real_mut(&mut self) -> &mut Self {
+        self
+    }
+    fn sin_cos(self) -> (Self, Self) {
         let (sin, cos) = self.0.sin_cos();
         (Self(sin), Self(cos))
     }
-    pub fn is_sign_negative(&self) -> bool {
-        self.0.is_sign_negative()
-    }
-    pub fn is_zero(&self) -> bool {
+    fn is_zero(&self) -> bool {
         self.0 == 0.0
     }
-    pub fn is_sign_positive(&self) -> bool {
-        self.0.is_sign_positive()
-    }
-    pub fn sin_mut(&mut self) {
+    fn sin_mut(&mut self) {
         *self = self.clone().sin();
     }
-    pub fn sin(self) -> Self {
+    fn sin(self) -> Self {
         Self(self.0.sin())
     }
-    pub fn cos_mut(&mut self) {
+    fn cos_mut(&mut self) {
         *self = self.clone().cos();
     }
-    pub fn cos(self) -> Self {
+    fn cos(self) -> Self {
         Self(self.0.cos())
     }
-    pub fn asin_mut(&mut self) {
+    fn asin_mut(&mut self) {
         *self = self.clone().asin();
     }
-    pub fn asin(self) -> Self {
+    fn asin(self) -> Self {
         Self(self.0.asin())
     }
-    pub fn acos_mut(&mut self) {
+    fn acos_mut(&mut self) {
         *self = self.clone().acos();
     }
-    pub fn acos(self) -> Self {
+    fn acos(self) -> Self {
         Self(self.0.acos())
     }
-    pub fn sinh_mut(&mut self) {
+    fn sinh_mut(&mut self) {
         *self = self.clone().sinh();
     }
-    pub fn sinh(self) -> Self {
+    fn sinh(self) -> Self {
         Self(self.0.sinh())
     }
-    pub fn cosh_mut(&mut self) {
+    fn cosh_mut(&mut self) {
         *self = self.clone().cosh();
     }
-    pub fn cosh(self) -> Self {
+    fn cosh(self) -> Self {
         Self(self.0.cosh())
     }
-    pub fn asinh_mut(&mut self) {
+    fn asinh_mut(&mut self) {
         *self = self.clone().asinh();
     }
-    pub fn asinh(self) -> Self {
+    fn asinh(self) -> Self {
         Self(self.0.asinh())
     }
-    pub fn acosh_mut(&mut self) {
+    fn acosh_mut(&mut self) {
         *self = self.clone().acosh();
     }
-    pub fn acosh(self) -> Self {
+    fn acosh(self) -> Self {
         Self(self.0.acosh())
     }
-    pub fn tan_mut(&mut self) {
+    fn tan_mut(&mut self) {
         self.0 = self.0.tan()
     }
-    pub fn tan(mut self) -> Self {
+    fn tan(mut self) -> Self {
         self.tan_mut();
         self
     }
-    pub fn tanh_mut(&mut self) {
+    fn tanh_mut(&mut self) {
         self.0 = self.0.tanh()
     }
-    pub fn tanh(mut self) -> Self {
+    fn tanh(mut self) -> Self {
         self.tanh_mut();
         self
     }
-    pub fn atan_mut(&mut self) {
+    fn atan_mut(&mut self) {
         self.0 = self.0.atan()
     }
-    pub fn atan(mut self) -> Self {
+    fn atan(mut self) -> Self {
         self.atan_mut();
         self
     }
-    pub fn atanh_mut(&mut self) {
+    fn atanh_mut(&mut self) {
         self.0 = self.0.atanh()
     }
-    pub fn atanh(mut self) -> Self {
+    fn atanh(mut self) -> Self {
         self.atanh_mut();
         self
     }
-    pub fn ln_mut(&mut self) {
+    fn ln_mut(&mut self) {
         *self = self.clone().ln();
     }
-    pub fn ln(self) -> Self {
+    fn ln(self) -> Self {
         Self(self.0.ln())
     }
-    pub fn exp_mut(&mut self) {
+    fn exp_mut(&mut self) {
         *self = self.clone().exp();
     }
-    pub fn exp(self) -> Self {
+    fn exp(self) -> Self {
         Self(self.0.exp())
     }
-    pub fn atan2_mut(&mut self, other: &Self) {
+    fn atan2_mut(&mut self, other: &Self) {
         *self = self.clone().atan2(other);
     }
-    pub fn atan2(self, other: &Self) -> Self {
+    fn atan2(self, other: &Self) -> Self {
         Self(self.0.atan2(other.0))
     }
-    pub fn min_mut(&mut self, other: &Self) {
+    fn min_mut(&mut self, other: &Self) {
         *self = self.clone().min(other);
     }
-    pub fn min(self, other: &Self) -> Self {
+    fn min(self, other: &Self) -> Self {
         Self(self.0.min(other.0))
     }
-    pub fn max_mut(&mut self, other: &Self) {
+    fn max_mut(&mut self, other: &Self) {
         *self = self.clone().max(other);
     }
-    pub fn max(self, other: &Self) -> Self {
+    fn max(self, other: &Self) -> Self {
         Self(self.0.max(other.0))
     }
-    pub fn recip_mut(&mut self) {
+    fn recip_mut(&mut self) {
         *self = self.clone().recip();
     }
-    pub fn recip(self) -> Self {
+    fn recip(self) -> Self {
         Self(self.0.recip())
     }
-    pub fn sqrt_mut(&mut self) {
+    fn sqrt_mut(&mut self) {
         *self = self.clone().sqrt();
     }
-    pub fn sqrt(self) -> Self {
+    fn sqrt(self) -> Self {
         Self(self.0.sqrt())
     }
-    pub fn hypot_mut(&mut self, other: &Self) {
-        self.0 = self.0.hypot(other.0);
-    }
-    pub fn abs_mut(&mut self) {
+    fn abs_mut(&mut self) {
         self.0 = self.0.abs();
     }
-    pub fn abs(mut self) -> Self {
+    fn abs(mut self) -> Self {
         self.abs_mut();
         self
     }
-    pub fn gamma_mut(&mut self) {
+    fn gamma_mut(&mut self) {
         self.0 = self.0.gamma();
     }
-    pub fn gamma(mut self) -> Self {
+    fn gamma(mut self) -> Self {
         self.gamma_mut();
         self
     }
-    pub fn erf_mut(&mut self) {
+    fn erf_mut(&mut self) {
         self.0 = self.0.erf();
     }
-    pub fn erf(mut self) -> Self {
+    fn erf(mut self) -> Self {
         self.erf_mut();
         self
     }
-    pub fn erfc_mut(&mut self) {
+    fn erfc_mut(&mut self) {
         self.0 = self.0.erfc();
     }
-    pub fn erfc(mut self) -> Self {
+    fn erfc(mut self) -> Self {
         self.erfc_mut();
         self
     }
-    pub fn total_cmp(&self, other: &Self) -> Ordering {
+    fn total_cmp(&self, other: &Self) -> Ordering {
         self.0.total_cmp(&other.0)
     }
-    pub fn round_mut(&mut self) {
+    fn round_mut(&mut self) {
         self.0 = self.0.round();
     }
-    pub fn round(mut self) -> Self {
+    fn round(mut self) -> Self {
         self.round_mut();
         self
     }
-    pub fn ceil_mut(&mut self) {
+    fn ceil_mut(&mut self) {
         self.0 = self.0.ceil();
     }
-    pub fn ceil(mut self) -> Self {
+    fn ceil(mut self) -> Self {
         self.ceil_mut();
         self
     }
-    pub fn floor_mut(&mut self) {
+    fn floor_mut(&mut self) {
         self.0 = self.0.floor();
     }
-    pub fn floor(mut self) -> Self {
+    fn floor(mut self) -> Self {
         self.floor_mut();
         self
     }
-    pub fn trunc_mut(&mut self) {
+    fn trunc_mut(&mut self) {
         self.0 = self.0.trunc();
     }
-    pub fn trunc(mut self) -> Self {
+    fn trunc(mut self) -> Self {
         self.trunc_mut();
         self
     }
-    pub fn fract_mut(&mut self) {
+    fn fract_mut(&mut self) {
         self.0 = self.0.fract();
     }
-    pub fn fract(mut self) -> Self {
+    fn fract(mut self) -> Self {
         self.fract_mut();
         self
     }
-    pub fn tetration_mut(&mut self, other: &Self) {
+    fn tetration_mut(&mut self, other: &Self) {
         //TODO
         *self = self.clone().tetration(other)
     }
-    pub fn tetration(self, other: &Self) -> Self {
+    fn tetration(self, other: &Self) -> Self {
         let other = other.clone().round();
         if other.0 <= 0.0 {
             Float::from(1)
@@ -319,7 +321,7 @@ impl Float {
             self.clone().pow(self.tetration(&(other - Float::from(1))))
         }
     }
-    pub fn subfactorial_mut(&mut self) {
+    fn subfactorial_mut(&mut self) {
         //TODO
         if self.is_zero() {
             *self = Self::from(1);
@@ -327,48 +329,74 @@ impl Float {
             *self = ((self.clone() + Float::from(1)).gamma() / Float::from(Constant::E)).round()
         }
     }
-    pub fn subfactorial(mut self) -> Self {
+    fn subfactorial(mut self) -> Self {
         self.subfactorial_mut();
         self
     }
-    pub fn parse_radix(src: &str, _: i32) -> Result<Self, ()> {
+    fn parse_radix(src: &str, _: i32) -> Option<Self> {
         //TODO
-        src.parse().map(Self).map_err(|_| ())
+        src.parse().map(Self).ok()
     }
 }
-impl Complex {
-    pub fn real(&self) -> &Float {
-        &self.real
-    }
-    pub fn imag(&self) -> &Float {
+impl ComplexTrait<Float> for Complex {
+    fn imag(&self) -> &Float {
         &self.imag
     }
-    pub fn real_mut(&mut self) -> &mut Float {
-        &mut self.real
-    }
-    pub fn imag_mut(&mut self) -> &mut Float {
+    fn imag_mut(&mut self) -> &mut Float {
         &mut self.imag
     }
-    pub fn zero_real(&mut self) {
+    fn zero_real(&mut self) {
         self.real = Float::default()
     }
-    pub fn zero_imag(&mut self) {
+    fn zero_imag(&mut self) {
         self.imag = Float::default()
     }
-    pub fn parse_radix(src: &str, _: i32) -> Result<Self, ()> {
+    fn norm(self) -> Float {
+        self.real.clone() * self.real + self.imag.clone() * self.imag
+    }
+    fn arg_mut(&mut self) {
+        self.real = self.imag.clone().atan2(&self.real);
+        self.imag = Float(0.0)
+    }
+    fn arg(self) -> Float {
+        self.imag.atan2(&self.real)
+    }
+    fn mul_i_mut(&mut self, negative: bool) {
+        *self *= Complex::from(if negative { (0, -1) } else { (0, 1) })
+    }
+    fn mul_i(mut self, negative: bool) -> Self {
+        self.mul_i_mut(negative);
+        self
+    }
+    fn conj_mut(&mut self) {
+        self.imag = self.imag.clone().neg();
+    }
+    fn conj(mut self) -> Self {
+        self.conj_mut();
+        self
+    }
+}
+impl FloatTrait<Float> for Complex {
+    fn real(&self) -> &Float {
+        &self.real
+    }
+    fn real_mut(&mut self) -> &mut Float {
+        &mut self.real
+    }
+    fn parse_radix(src: &str, _: i32) -> Option<Self> {
         //TODO
         src.parse()
             .map(|real| Self {
                 real: Float(real),
                 imag: Float(0.0),
             })
-            .map_err(|_| ())
+            .ok()
     }
-    pub fn tetration_mut(&mut self, other: &Self) {
+    fn tetration_mut(&mut self, other: &Self) {
         //TODO
         *self = self.clone().tetration(other)
     }
-    pub fn tetration(self, other: &Self) -> Self {
+    fn tetration(self, other: &Self) -> Self {
         let other = Complex::from(other.real.clone().round());
         if other.real.0 <= 0.0 {
             Complex::from(1)
@@ -376,7 +404,7 @@ impl Complex {
             self.clone().pow(self.tetration(&(other - Float::from(1))))
         }
     }
-    pub fn subfactorial_mut(&mut self) {
+    fn subfactorial_mut(&mut self) {
         //TODO
         if self.is_zero() {
             *self = Self::from(1);
@@ -384,77 +412,77 @@ impl Complex {
             *self = ((self.clone() + Float::from(1)).gamma() / Float::from(Constant::E)).round()
         }
     }
-    pub fn subfactorial(mut self) -> Self {
+    fn subfactorial(mut self) -> Self {
         self.subfactorial_mut();
         self
     }
-    pub fn round_mut(&mut self) {
+    fn round_mut(&mut self) {
         self.real.round_mut();
         self.imag.round_mut();
     }
-    pub fn round(mut self) -> Self {
+    fn round(mut self) -> Self {
         self.round_mut();
         self
     }
-    pub fn ceil_mut(&mut self) {
+    fn ceil_mut(&mut self) {
         self.real.ceil_mut();
         self.imag.ceil_mut();
     }
-    pub fn ceil(mut self) -> Self {
+    fn ceil(mut self) -> Self {
         self.ceil_mut();
         self
     }
-    pub fn floor_mut(&mut self) {
+    fn floor_mut(&mut self) {
         self.real.floor_mut();
         self.imag.floor_mut();
     }
-    pub fn floor(mut self) -> Self {
+    fn floor(mut self) -> Self {
         self.floor_mut();
         self
     }
-    pub fn trunc_mut(&mut self) {
+    fn trunc_mut(&mut self) {
         self.real.trunc_mut();
         self.imag.trunc_mut();
     }
-    pub fn trunc(mut self) -> Self {
+    fn trunc(mut self) -> Self {
         self.trunc_mut();
         self
     }
-    pub fn fract_mut(&mut self) {
+    fn fract_mut(&mut self) {
         self.real.fract_mut();
         self.imag.fract_mut();
     }
-    pub fn fract(mut self) -> Self {
+    fn fract(mut self) -> Self {
         self.fract_mut();
         self
     }
-    pub fn tan_mut(&mut self) {
+    fn tan_mut(&mut self) {
         let cos = self.clone().cos();
         self.sin_mut();
         *self /= cos;
     }
-    pub fn tan(mut self) -> Self {
+    fn tan(mut self) -> Self {
         self.tan_mut();
         self
     }
-    pub fn tanh_mut(&mut self) {
+    fn tanh_mut(&mut self) {
         let cosh = self.clone().cosh();
         self.sinh_mut();
         *self /= cosh;
     }
-    pub fn tanh(mut self) -> Self {
+    fn tanh(mut self) -> Self {
         self.tanh_mut();
         self
     }
-    pub fn atanh_mut(&mut self) {
+    fn atanh_mut(&mut self) {
         *self = ((self.clone() + Float::from(1)).ln() - (Float::from(1) - self.clone()).ln())
             / Float::from(2)
     }
-    pub fn atanh(mut self) -> Self {
+    fn atanh(mut self) -> Self {
         self.atanh_mut();
         self
     }
-    pub fn atan_mut(&mut self) {
+    fn atan_mut(&mut self) {
         *self = ((Float::from(1) - self.clone().mul_i(false))
             .ln()
             .mul_i(false)
@@ -463,139 +491,129 @@ impl Complex {
                 .mul_i(false))
             / Float::from(2)
     }
-    pub fn atan(mut self) -> Self {
+    fn atan(mut self) -> Self {
         self.atan_mut();
         self
     }
-    pub fn asinh_mut(&mut self) {
+    fn asinh_mut(&mut self) {
         *self = (self.clone() + (self.clone() * self.clone() + Float::from(1)).sqrt()).ln();
     }
-    pub fn asinh(mut self) -> Self {
+    fn asinh(mut self) -> Self {
         self.asinh_mut();
         self
     }
-    pub fn acosh_mut(&mut self) {
+    fn acosh_mut(&mut self) {
         *self = (self.clone() + (self.clone() * self.clone() - Float::from(1)).sqrt()).ln();
     }
-    pub fn acosh(mut self) -> Self {
+    fn acosh(mut self) -> Self {
         self.acosh_mut();
         self
     }
-    pub fn sinh_mut(&mut self) {
+    fn sinh_mut(&mut self) {
         *self = (self.clone().exp() - self.clone().neg().exp()) / Float::from(2);
     }
-    pub fn sinh(mut self) -> Self {
+    fn sinh(mut self) -> Self {
         self.sinh_mut();
         self
     }
-    pub fn cosh_mut(&mut self) {
+    fn cosh_mut(&mut self) {
         *self = (self.clone().exp() + self.clone().neg().exp()) / Float::from(2);
     }
-    pub fn cosh(mut self) -> Self {
+    fn cosh(mut self) -> Self {
         self.cosh_mut();
         self
     }
-    pub fn gamma_mut(&mut self) {
+    fn gamma_mut(&mut self) {
         //TODO
         self.real.gamma_mut();
     }
-    pub fn gamma(mut self) -> Self {
+    fn gamma(mut self) -> Self {
         self.gamma_mut();
         self
     }
-    pub fn erf_mut(&mut self) {
+    fn erf_mut(&mut self) {
         //TODO
         self.real.erf_mut();
     }
-    pub fn erf(mut self) -> Self {
+    fn erf(mut self) -> Self {
         self.erf_mut();
         self
     }
-    pub fn erfc_mut(&mut self) {
+    fn erfc_mut(&mut self) {
         //TODO
         self.real.erfc_mut();
     }
-    pub fn erfc(mut self) -> Self {
+    fn erfc(mut self) -> Self {
         self.erfc_mut();
         self
     }
-    pub fn norm(self) -> Float {
-        self.real.clone() * self.real + self.imag.clone() * self.imag
-    }
-    pub fn abs_mut(&mut self) {
+    fn abs_mut(&mut self) {
         self.real.hypot_mut(&self.imag);
         self.imag = Float(0.0);
     }
-    pub fn abs(mut self) -> Float {
+    fn abs(mut self) -> Float {
         self.real.hypot_mut(&self.imag);
         self.real
     }
-    pub fn sin_mut(&mut self) {
+    fn sin_mut(&mut self) {
         *self = Self {
             real: self.real.clone().sin() * self.imag.clone().cosh(),
             imag: self.imag.clone().sinh() * self.real.clone().cos(),
         }
     }
-    pub fn cos_mut(&mut self) {
+    fn cos_mut(&mut self) {
         *self = Self {
             real: self.real.clone().cos() * self.imag.clone().cosh(),
             imag: -self.imag.clone().sinh() * self.real.clone().sin(),
         }
     }
-    pub fn sin(mut self) -> Self {
+    fn sin(mut self) -> Self {
         self.sin_mut();
         self
     }
-    pub fn cos(mut self) -> Self {
+    fn cos(mut self) -> Self {
         self.cos_mut();
         self
     }
-    pub fn asin_mut(&mut self) {
+    fn asin_mut(&mut self) {
         *self = (self.clone().mul_i(false) + (Float::from(1) - self.clone() * self.clone()).sqrt())
             .ln()
             .mul_i(true);
     }
-    pub fn acos_mut(&mut self) {
+    fn acos_mut(&mut self) {
         self.asin_mut();
         *self = Float::from(consts::FRAC_PI_2) - self.clone()
     }
-    pub fn asin(mut self) -> Self {
+    fn asin(mut self) -> Self {
         self.asin_mut();
         self
     }
-    pub fn acos(mut self) -> Self {
+    fn acos(mut self) -> Self {
         self.acos_mut();
         self
     }
-    pub fn arg_mut(&mut self) {
-        self.real = self.imag.clone().atan2(&self.real);
-        self.imag = Float(0.0)
-    }
-    pub fn arg(self) -> Float {
-        self.imag.atan2(&self.real)
-    }
-    pub fn ln_mut(&mut self) {
+    fn ln_mut(&mut self) {
         *self = Self {
             real: self.clone().abs().ln(),
             imag: self.clone().arg(),
         }
     }
-    pub fn ln(mut self) -> Self {
+    fn ln(mut self) -> Self {
         self.ln_mut();
         self
     }
-    pub fn exp_mut(&mut self) {
+    fn exp_mut(&mut self) {
         let (imag, real) = self.imag.clone().sin_cos();
         *self = Self { real, imag } * self.real.clone().exp();
     }
-    pub fn exp(mut self) -> Self {
+    fn exp(mut self) -> Self {
         self.exp_mut();
         self
     }
-    pub fn is_zero(&self) -> bool {
+    fn is_zero(&self) -> bool {
         self.real.is_zero() && self.imag.is_zero()
     }
-    pub fn atan2_mut(&mut self, other: &Self) {
+    fn atan2_mut(&mut self, other: &Self) {
         if self.imag.is_zero() && other.imag.is_zero() {
             self.real.atan2_mut(&other.real);
         } else {
@@ -605,50 +623,47 @@ impl Complex {
             .mul_i(true)
         }
     }
-    pub fn total_cmp(&self, other: &Self) -> Ordering {
+    fn total_cmp(&self, other: &Self) -> Ordering {
         self.real
             .total_cmp(&other.real)
             .then(self.imag.total_cmp(&other.imag))
     }
-    pub fn atan2(mut self, other: &Self) -> Self {
+    fn atan2(mut self, other: &Self) -> Self {
         self.atan2_mut(other);
         self
     }
-    pub fn mul_i_mut(&mut self, negative: bool) {
-        *self *= Complex::from(if negative { (0, -1) } else { (0, 1) })
-    }
-    pub fn mul_i(mut self, negative: bool) -> Self {
-        self.mul_i_mut(negative);
-        self
-    }
-    pub fn sqrt_mut(&mut self) {
+    fn sqrt_mut(&mut self) {
         self.pow_assign(Float::from(0.5))
     }
-    pub fn sqrt(mut self) -> Self {
+    fn sqrt(mut self) -> Self {
         self.sqrt_mut();
         self
     }
-    pub fn recip_mut(&mut self) {
+    fn recip_mut(&mut self) {
         *self = self.clone().conj() / self.clone().norm()
     }
-    pub fn recip(mut self) -> Self {
+    fn recip(mut self) -> Self {
         self.recip_mut();
         self
     }
-    pub fn conj_mut(&mut self) {
-        self.imag = self.imag.clone().neg();
-    }
-    pub fn conj(mut self) -> Self {
-        self.conj_mut();
-        self
-    }
-    pub fn min_mut(&mut self, other: &Self) {
+    fn min_mut(&mut self, other: &Self) {
         self.real.min_mut(&other.real);
         self.imag.min_mut(&other.imag);
     }
-    pub fn max_mut(&mut self, other: &Self) {
+    fn max_mut(&mut self, other: &Self) {
         self.real.max_mut(&other.real);
         self.imag.max_mut(&other.imag);
+    }
+    fn sin_cos(self) -> (Self, Self) {
+        (self.clone().sin(), self.cos())
+    }
+    fn min(mut self, other: &Self) -> Self {
+        self.min_mut(other);
+        self
+    }
+    fn max(mut self, other: &Self) -> Self {
+        self.max_mut(other);
+        self
     }
 }
 impl Pow<Float> for Float {

@@ -5,6 +5,7 @@ use crate::variable::{Functions, Variables};
 use crate::{Number, NumberBase};
 use std::fmt::{Display, Formatter};
 use std::ops::{Deref, DerefMut};
+use ucalc_numbers::FloatTrait;
 #[derive(Default, PartialEq, Debug, Clone)]
 pub struct Tokens(pub Vec<Token>);
 #[derive(Debug, Clone)]
@@ -79,7 +80,7 @@ impl Tokens {
             }
             if let Ok(operator) = Operators::try_from(token) {
                 tokens.push(operator.into());
-            } else if let Ok(n) = NumberBase::parse_radix(token, 10) {
+            } else if let Some(n) = NumberBase::parse_radix(token, 10) {
                 tokens.push(n.into());
             } else if let Some(i) = funs.iter().position(|v| v.name == token) {
                 tokens.push(Token::Fun(i))
@@ -162,7 +163,7 @@ impl Tokens {
                         }
                     }
                     let s = &value[i..i + l];
-                    let Ok(float) = NumberBase::parse_radix(s, 10) else {
+                    let Some(float) = NumberBase::parse_radix(s, 10) else {
                         return Err(ParseError::UnknownToken(s.to_string()));
                     };
                     tokens.push(float.into());

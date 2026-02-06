@@ -4,7 +4,7 @@ use std::mem;
 use std::ops::{
     Add, AddAssign, Deref, DerefMut, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign,
 };
-use ucalc_numbers::{NegAssign, Pow, PowAssign};
+use ucalc_numbers::{FloatTrait, NegAssign, Pow, PowAssign, RealTrait};
 impl<'a> From<&'a Poly> for PolyRef<'a> {
     fn from(value: &'a Poly) -> Self {
         Self(value)

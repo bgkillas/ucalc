@@ -1,5 +1,5 @@
-use crate::Pow;
 use crate::float::{Complex, Float};
+use crate::{ComplexTrait, FloatTrait, Pow};
 fn res<T>(f: T) -> Complex
 where
     Complex: From<T>,

@@ -1,5 +1,5 @@
 use crate::{Function, Number, Operators};
-use ucalc_numbers::Pow;
+use ucalc_numbers::{FloatTrait, Pow};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Inverse {
     Add,

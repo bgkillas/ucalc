@@ -4,7 +4,7 @@ use crate::parse::ParseError;
 use crate::parse::{Token, Tokens};
 use crate::variable::{Functions, Variables};
 use crate::{FunctionVar, Number};
-use ucalc_numbers::{Constant, Float};
+use ucalc_numbers::{Constant, Float, FloatTrait};
 
 macro_rules! assert_teq {
     ($a:expr, $b:expr, $c:expr) => {

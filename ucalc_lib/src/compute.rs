@@ -2,7 +2,7 @@ use crate::operators::Operators;
 use crate::parse::{Token, Tokens, TokensRef};
 use crate::{Functions, Number};
 use std::array;
-use ucalc_numbers::{Constant, Float};
+use ucalc_numbers::{Constant, Float, FloatTrait, RealTrait};
 impl Tokens {
     pub fn compute(&self, vars: &[Number], funs: &Functions) -> Number {
         TokensRef(self).compute(vars, funs)
@@ -60,7 +60,7 @@ impl Tokens {
         let mut stack = Tokens(Vec::with_capacity(tokens.len()));
         let mut iter = (start..=end).map(|_| {
             let ret = tokens.compute_buffer_with(fun_vars, vars, funs, &mut stack, offset);
-            *fun_vars.last_mut().unwrap().real_mut() += Float::from(1);
+            *fun_vars.last_mut().unwrap() += Float::from(1);
             ret
         });
         self[len - (l + 2)] = fun(&mut iter);
