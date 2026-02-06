@@ -1,5 +1,9 @@
-use crate::{HalfUsize, Matrix, Number, Units, Vector};
-use std::ops::{Deref, DerefMut, Index, IndexMut, Range};
+use crate::{Complex, Float, HalfUsize, Matrix, Number, Units, Vector};
+use std::mem;
+use std::ops::{
+    Add, AddAssign, Deref, DerefMut, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Range, Rem,
+    RemAssign, Sub, SubAssign,
+};
 impl<T> Deref for Vector<T> {
     type Target = [T];
     fn deref(&self) -> &Self::Target {
@@ -52,11 +56,6 @@ impl<T> IndexMut<Range<HalfUsize>> for Vector<T> {
         &mut self.0[index.start as usize..index.end as usize]
     }
 }
-impl<T> From<T> for Number<T> {
-    fn from(value: T) -> Self {
-        Self::Value(value)
-    }
-}
 #[allow(irrefutable_let_patterns)]
 impl<T> Number<T> {
     pub fn value_mut(&mut self) -> &mut T {
@@ -90,3 +89,87 @@ impl<T> Number<T> {
         Some(val)
     }
 }
+macro_rules! impl_ops {
+    ($ty:ty,$op:ident,$op_assign:ident,$fun:ident,$fun_assign:ident) => {
+        impl $op<Self> for Number<$ty> {
+            type Output = Self;
+            fn $fun(mut self, rhs: Self) -> Self::Output {
+                $op_assign::$fun_assign(&mut self, rhs);
+                self
+            }
+        }
+        impl $op_assign<Self> for Number<$ty> {
+            fn $fun_assign(&mut self, rhs: Self) {
+                match (self, rhs) {
+                    (Self::Value(a), Self::Value(b)) => $op_assign::$fun_assign(a, b),
+                    (Self::List(a), Self::Value(b)) => {
+                        a.iter_mut().for_each(|a| $op_assign::$fun_assign(a, b))
+                    }
+                    (s @ Self::Value(_), mut r @ Self::List(_)) => {
+                        mem::swap(s, &mut r);
+                        let (Self::List(a), Self::Value(b)) = (s, r) else {
+                            unreachable!()
+                        };
+                        a.iter_mut().for_each(|a| {
+                            let old = mem::replace(a, Number::Value(<$ty>::from(0)));
+                            *a = $op::$fun(b, old)
+                        })
+                    }
+                    (Self::List(a), Self::List(b)) => a
+                        .iter_mut()
+                        .zip(b.into_iter())
+                        .for_each(|(a, b)| $op_assign::$fun_assign(a, b)),
+                }
+            }
+        }
+        impl $op<$ty> for Number<$ty> {
+            type Output = Self;
+            fn $fun(mut self, rhs: $ty) -> Self::Output {
+                $op_assign::$fun_assign(&mut self, rhs);
+                self
+            }
+        }
+        impl $op<Number<$ty>> for $ty {
+            type Output = Number<$ty>;
+            fn $fun(self, rhs: Number<$ty>) -> Self::Output {
+                match rhs {
+                    Number::Value(b) => $op::$fun(self, b).into(),
+                    Number::List(mut b) => {
+                        b.iter_mut().for_each(|b| {
+                            let old = mem::replace(b, Number::Value(<$ty>::from(0)));
+                            *b = $op::$fun(self, old);
+                        });
+                        Number::List(b)
+                    }
+                }
+            }
+        }
+        impl $op_assign<$ty> for Number<$ty> {
+            fn $fun_assign(&mut self, rhs: $ty) {
+                match self {
+                    Self::Value(a) => $op_assign::$fun_assign(a, rhs),
+                    Self::List(a) => a.iter_mut().for_each(|a| $op_assign::$fun_assign(a, rhs)),
+                }
+            }
+        }
+    };
+}
+macro_rules! impl_num {
+    ($ty:ty) => {
+        impl<K> From<K> for Number<$ty>
+        where
+            $ty: From<K>,
+        {
+            fn from(value: K) -> Self {
+                Self::Value(value.into())
+            }
+        }
+        impl_ops!($ty, Add, AddAssign, add, add_assign);
+        impl_ops!($ty, Sub, SubAssign, sub, sub_assign);
+        impl_ops!($ty, Mul, MulAssign, mul, mul_assign);
+        impl_ops!($ty, Div, DivAssign, div, div_assign);
+        impl_ops!($ty, Rem, RemAssign, rem, rem_assign);
+    };
+}
+impl_num!(Complex);
+impl_num!(Float);
