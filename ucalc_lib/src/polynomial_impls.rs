@@ -46,6 +46,7 @@ impl From<Complex> for Polynomial {
             quotient: quotient.into(),
             divisor: divisor.into(),
             functions: Vec::with_capacity(8),
+            power: Complex::default(),
         }
     }
 }
@@ -85,6 +86,7 @@ impl Sub<Complex> for Polynomial {
             quotient: self.quotient - (self.divisor.clone() * rhs),
             divisor: self.divisor,
             functions: self.functions,
+            power: self.power,
         }
     }
 }
@@ -95,6 +97,7 @@ impl Add<Complex> for Polynomial {
             quotient: self.quotient + (self.divisor.clone() * rhs),
             divisor: self.divisor,
             functions: self.functions,
+            power: self.power,
         }
     }
 }
@@ -105,6 +108,7 @@ impl Mul<Complex> for Polynomial {
             quotient: self.quotient * rhs,
             divisor: self.divisor,
             functions: self.functions,
+            power: self.power,
         }
     }
 }
@@ -115,6 +119,7 @@ impl Div<Complex> for Polynomial {
             quotient: self.quotient / rhs,
             divisor: self.divisor,
             functions: self.functions,
+            power: self.power,
         }
     }
 }
@@ -125,6 +130,7 @@ impl Sub<Polynomial> for Complex {
             quotient: (rhs.divisor.clone() * self) - rhs.quotient,
             divisor: rhs.divisor,
             functions: rhs.functions,
+            power: rhs.power,
         }
     }
 }
@@ -136,6 +142,7 @@ impl Div<Polynomial> for Complex {
             quotient: rhs.divisor * self,
             divisor: rhs.quotient,
             functions: rhs.functions,
+            power: rhs.power,
         }
     }
 }

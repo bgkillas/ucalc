@@ -1,38 +1,36 @@
 use std::env::args;
-use std::io::stdin;
+use std::io::{IsTerminal, stdin};
 use ucalc_lib::{Functions, Tokens, Variables};
 fn main() {
     let vars = Variables::default();
     let funs = Functions::default();
     let mut infix = true;
-    for mut arg in args().skip(1) {
-        match arg.as_str() {
-            "--rpn" => {
-                infix = false;
-                continue;
-            }
-            "-" => {
-                arg.clear();
-                stdin().read_line(&mut arg).unwrap();
-                if arg.ends_with('\n') {
-                    arg.pop();
-                }
-            }
-            _ => {}
+    for arg in args().skip(1) {
+        run_line(arg.as_str(), &mut infix, &vars, &funs)
+    }
+    if !stdin().is_terminal() {
+        stdin()
+            .lines()
+            .for_each(|l| run_line(l.unwrap().as_str(), &mut infix, &vars, &funs));
+    }
+}
+fn run_line(line: &str, infix: &mut bool, vars: &Variables, funs: &Functions) {
+    if line == "--rpn" {
+        *infix = false;
+        return;
+    }
+    match tmr(|| {
+        if *infix {
+            Tokens::infix(line, vars, &[], funs)
+        } else {
+            Tokens::rpn(line, vars, &[], funs)
         }
-        match tmr(|| {
-            if infix {
-                Tokens::infix(arg.as_str(), &vars, &[], &funs)
-            } else {
-                Tokens::rpn(arg.as_str(), &vars, &[], &funs)
-            }
-        }) {
-            Ok(tokens) => {
-                let compute = tmr(|| tokens.compute(&[], &funs));
-                println!("{}", compute);
-            }
-            Err(e) => println!("{e:?}"),
+    }) {
+        Ok(tokens) => {
+            let compute = tmr(|| tokens.compute(&[], funs));
+            println!("{}", compute);
         }
+        Err(e) => println!("{e:?}"),
     }
 }
 fn tmr<T, W>(fun: T) -> W

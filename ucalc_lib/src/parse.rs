@@ -263,7 +263,7 @@ impl Tokens {
                         negate = operator != Operators::Factorial;
                         last_abs = false;
                     } else {
-                        unreachable!()
+                        return Err(ParseError::UnknownToken(s.to_string()));
                     }
                 }
             }

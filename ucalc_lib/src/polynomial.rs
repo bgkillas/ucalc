@@ -12,6 +12,8 @@ pub struct Polynomial {
     pub quotient: Poly,
     pub divisor: Poly,
     pub functions: Vec<Function>,
+    //TODO
+    pub power: Complex,
 }
 #[derive(Debug, PartialEq, Clone)]
 pub struct PolynomialRef<'a> {
@@ -90,6 +92,7 @@ impl Polynomial {
             quotient: quotient.into(),
             divisor: divisor.into(),
             functions: Vec::with_capacity(8),
+            power: Complex::default(),
         }
     }
     pub fn recip(mut self) -> Self {
@@ -131,6 +134,7 @@ impl Polynomial {
             } else {
                 self.functions
             },
+            power: self.power,
         })
     }
     fn div_buffer(self, rhs: &Self, buffer: &mut Poly) -> Option<Self> {
@@ -146,6 +150,7 @@ impl Polynomial {
             } else {
                 self.functions
             },
+            power: self.power,
         })
     }
     fn add_buffer(self, rhs: &Self, buffer: &mut Poly) -> Option<Self> {
@@ -162,6 +167,7 @@ impl Polynomial {
             } else {
                 self.functions
             },
+            power: self.power,
         })
     }
     fn sub_buffer(self, rhs: &Self, buffer: &mut Poly) -> Option<Self> {
@@ -178,6 +184,7 @@ impl Polynomial {
             } else {
                 self.functions
             },
+            power: self.power,
         })
     }
 }

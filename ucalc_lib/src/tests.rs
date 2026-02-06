@@ -735,6 +735,17 @@ fn test_solve() {
         ],
         -(res(2).ln() - (res(5).sqrt() - Float::from(1)).ln() + res(Constant::Pi).mul_i(false))
     );
+    assert_correct!(
+        infix("solve(x,ln(x))"),
+        rpn("x x ln solve"),
+        vec![
+            Token::Skip(2),
+            Token::InnerVar(0).into(),
+            Function::Ln.into(),
+            Function::Solve.into()
+        ],
+        res(1)
+    );
 }
 #[test]
 fn test_fold() {
