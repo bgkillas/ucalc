@@ -8,7 +8,7 @@ impl<'a> TokensRef<'a> {
         vars: &[Number],
         funs: &Functions,
         offset: usize,
-    ) -> Option<Vec<Number>> {
+    ) -> Option<Number> {
         let mut i = self.len();
         let mut ret = Number::from(0);
         let mut inner_stack = Tokens(Vec::with_capacity(self.len()));
@@ -48,7 +48,7 @@ impl<'a> TokensRef<'a> {
                                     offset,
                                 );
                                 start = last;
-                                ret = inverse.right_inverse(ret, num)[0];
+                                ret = inverse.right_inverse(ret, num);
                             }
                         } else {
                             let num = right_tokens.compute_buffer_with(
@@ -59,14 +59,13 @@ impl<'a> TokensRef<'a> {
                                 offset,
                             );
                             i = last;
-                            ret = inverse.left_inverse(ret, num)[0];
+                            ret = inverse.left_inverse(ret, num);
                         }
                     }
                 }
                 _ => return None,
             }
         }
-        //TODO
-        Some(vec![ret])
+        Some(ret)
     }
 }

@@ -19,4 +19,17 @@ pub use variable::{FunctionVar, Functions, Variable, Variables};
 pub type NumberBase = ucalc_numbers::Float;
 #[cfg(feature = "complex")]
 pub type NumberBase = ucalc_numbers::Complex;
+#[cfg(any(
+    feature = "list",
+    feature = "vector",
+    feature = "matrix",
+    feature = "units"
+))]
+pub type Number = ucalc_numbers::Number<NumberBase>;
+#[cfg(not(any(
+    feature = "list",
+    feature = "vector",
+    feature = "matrix",
+    feature = "units"
+)))]
 pub type Number = NumberBase;

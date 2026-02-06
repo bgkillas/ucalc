@@ -65,9 +65,9 @@ impl Inverse {
             _ => return None,
         })
     }
-    pub fn left_inverse(self, a: Number, b: Number) -> Vec<Number> {
+    pub fn left_inverse(self, a: Number, b: Number) -> Number {
         //TODO
-        vec![match self {
+        match self {
             Self::Add => a - b,
             Self::Sub => a + b,
             Self::Mul => a / b,
@@ -75,11 +75,11 @@ impl Inverse {
             Self::Pow => a.pow(b.recip()),
             Self::Root => a.pow(b),
             _ => unreachable!(),
-        }]
+        }
     }
-    pub fn right_inverse(self, a: Number, b: Number) -> Vec<Number> {
+    pub fn right_inverse(self, a: Number, b: Number) -> Number {
         //TODO
-        vec![match self {
+        match self {
             Self::Add => a - b,
             Self::Sub => b - a,
             Self::Mul => a / b,
@@ -87,7 +87,7 @@ impl Inverse {
             Self::Pow => a.ln() / b.ln(),
             Self::Root => b.ln() / a.ln(),
             _ => unreachable!(),
-        }]
+        }
     }
 }
 impl From<Operators> for Inverse {

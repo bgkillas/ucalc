@@ -5,9 +5,9 @@ use crate::variable::{Functions, Variables};
 use crate::{Number, NumberBase};
 use std::fmt::{Display, Formatter};
 use std::ops::{Deref, DerefMut};
-#[derive(Default, Debug, PartialEq, Clone)]
+#[derive(Default, PartialEq, Debug, Clone)]
 pub struct Tokens(pub Vec<Token>);
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone)]
 pub struct TokensRef<'a>(pub &'a [Token]);
 impl<'a> From<&'a Tokens> for TokensRef<'a> {
     fn from(value: &'a Tokens) -> Self {
@@ -89,7 +89,7 @@ impl Tokens {
             } else if let Some(i) = inner_vars.iter().position(|v| *v == token) {
                 tokens.push(Token::InnerVar(i));
             } else if let Some(v) = vars.iter().find(|v| v.name == token) {
-                tokens.push(Token::Num(v.value));
+                tokens.push(Token::Num(v.value.clone()));
             } else if let Some(i) = graph_vars.iter().position(|v| v == &token) {
                 tokens.push(Token::GraphVar(i));
             } else if token.chars().all(|c| c.is_ascii_alphabetic()) {
@@ -141,7 +141,7 @@ impl Tokens {
                     } else if let Some(i) = inner_vars.iter().position(|v| *v == s) {
                         tokens.push(Token::InnerVar(i));
                     } else if let Some(v) = vars.iter().find(|v| v.name == s) {
-                        tokens.push(Token::Num(v.value));
+                        tokens.push(Token::Num(v.value.clone()));
                     } else if let Some(i) = graph_vars.iter().position(|v| v == &s) {
                         tokens.push(Token::GraphVar(i));
                     } else {
@@ -343,6 +343,17 @@ impl From<Number> for Token {
         Self::Num(value)
     }
 }
+#[cfg(any(
+    feature = "list",
+    feature = "vector",
+    feature = "matrix",
+    feature = "units"
+))]
+impl From<NumberBase> for Token {
+    fn from(value: NumberBase) -> Self {
+        Self::Num(value.into())
+    }
+}
 impl From<Operators> for Token {
     fn from(value: Operators) -> Self {
         Self::Operator(value)
@@ -371,11 +382,11 @@ impl Token {
         };
         *num
     }
-    pub fn num_ref(&self) -> Number {
+    pub fn num_ref(&self) -> &Number {
         let Token::Num(num) = self else {
             unreachable!()
         };
-        *num
+        num
     }
     pub fn inner_var(self) -> usize {
         let Token::InnerVar(n) = self else {

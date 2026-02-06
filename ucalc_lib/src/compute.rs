@@ -54,8 +54,8 @@ impl Tokens {
         let len = self.len();
         let ([tokens], l) = self.get_skip_tokens();
         let [end, start] = self.get_skip_var(l);
-        let start = start.num_ref().real().to_isize();
-        let end = end.num_ref().real().to_isize();
+        let start = start.num_ref().real().clone().into_isize();
+        let end = end.num_ref().real().clone().into_isize();
         fun_vars.push(Number::from(start));
         let mut stack = Tokens(Vec::with_capacity(tokens.len()));
         let mut iter = (start..=end).map(|_| {
@@ -99,7 +99,7 @@ impl TokensRef<'_> {
         let mut i = 0;
         while i < self.len() {
             let len = stack.len();
-            match self[i] {
+            match &self[i] {
                 Token::Operator(operator) => {
                     let inputs = operator.inputs();
                     match operator {
@@ -124,7 +124,7 @@ impl TokensRef<'_> {
                                 *a = if a.is_zero() {
                                     Number::from(Constant::Nan)
                                 } else {
-                                    b
+                                    b.clone()
                                 };
                             }
                             stack.drain(len + 1 - inputs..);
@@ -136,28 +136,28 @@ impl TokensRef<'_> {
                     }
                 }
                 Token::Fun(index) => {
-                    let inputs = funs[index].inputs;
+                    let inputs = funs[*index].inputs;
                     let end = fun_vars.len();
-                    fun_vars.push(stack[len - inputs].num_ref());
+                    fun_vars.push(stack[len - inputs].num_ref().clone());
                     fun_vars.extend(stack.drain(len + 1 - inputs..).map(|n| n.num()));
-                    *stack[len - inputs].num_mut() = funs[index].tokens.compute_buffer_with(
+                    *stack[len - inputs].num_mut() = funs[*index].tokens.compute_buffer_with(
                         fun_vars,
                         vars,
                         funs,
-                        &mut Tokens(Vec::with_capacity(funs[index].tokens.len())),
+                        &mut Tokens(Vec::with_capacity(funs[*index].tokens.len())),
                         end,
                     );
                     fun_vars.drain(end..);
                 }
-                Token::InnerVar(index) => stack.push(Token::Num(fun_vars[offset + index])),
-                Token::GraphVar(index) => stack.push(Token::Num(vars[index])),
+                Token::InnerVar(index) => stack.push(Token::Num(fun_vars[offset + index].clone())),
+                Token::GraphVar(index) => stack.push(Token::Num(vars[*index].clone())),
                 Token::Skip(to) => {
                     let back = stack.len();
                     stack.extend_from_slice(&self[i + 1..=i + to]);
                     stack.push(Token::Skip(back));
                     i += to;
                 }
-                Token::Num(n) => stack.push(Token::Num(n)),
+                Token::Num(n) => stack.push(Token::Num(n.clone())),
                 Token::Polynomial(_) => unreachable!(),
             }
             i += 1;

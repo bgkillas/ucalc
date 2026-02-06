@@ -1,21 +1,21 @@
 use crate::inverse::Inverse;
 use crate::parse::TokensRef;
-use crate::{Function, Functions, Number, NumberBase, Operators, Token, Tokens};
+use crate::{Function, Functions, Number, Operators, Token, Tokens};
 use std::mem;
-use ucalc_numbers::{Float, Pow};
+use ucalc_numbers::{Float, NegAssign, Pow};
 #[derive(Debug, PartialEq, Clone, Default)]
-pub struct Poly(pub Vec<NumberBase>);
-#[derive(Debug, PartialEq, Clone)]
-pub struct PolyRef<'a>(pub &'a [NumberBase]);
+pub struct Poly(pub Vec<Number>);
+#[derive(Debug, Clone)]
+pub struct PolyRef<'a>(pub &'a [Number]);
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct Polynomial {
     pub quotient: Poly,
     pub divisor: Poly,
     pub functions: Vec<Function>,
     //TODO
-    pub power: NumberBase,
+    pub power: Number,
 }
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone)]
 pub struct PolynomialRef<'a> {
     pub quotient: PolyRef<'a>,
     pub divisor: PolyRef<'a>,
@@ -37,7 +37,7 @@ impl Poly {
             if !a.is_zero() {
                 for (j, b) in rhs.iter().enumerate() {
                     if !b.is_zero() {
-                        self[i + j] = *a * *b;
+                        self[i + j] = a.clone() * b.clone();
                     }
                 }
                 *a = Number::default()
@@ -46,6 +46,16 @@ impl Poly {
     }
 }
 impl PolynomialRef<'_> {
+    #[cfg(feature = "list")]
+    pub fn roots(&self) -> Option<Number> {
+        let mut roots = self.quotient.roots()?;
+        if self.divisor.len() != 1 {
+            let anti_roots = self.divisor.roots()?;
+            roots.retain(|r| !anti_roots.contains(r));
+        }
+        Some(ucalc_numbers::Number::List(roots))
+    }
+    #[cfg(not(feature = "list"))]
     pub fn roots(&self) -> Option<Vec<Number>> {
         let mut roots = self.quotient.roots()?;
         if self.divisor.len() != 1 {
@@ -71,14 +81,16 @@ impl PolyRef<'_> {
             _ => None,
         }
     }
-    pub fn quadratic(&self) -> [NumberBase; 2] {
-        let a = -self[1] / (self[2] * Float::from(2));
-        let b = (self[1] * self[1] - self[2] * self[0] * Float::from(4)).sqrt()
-            / (self[2] * Float::from(2));
-        [a - b, a + b]
+    pub fn quadratic(&self) -> [Number; 2] {
+        let a = -self[1].clone() / (self[2].clone() * Float::from(2));
+        let b = (self[1].clone() * self[1].clone()
+            - self[2].clone() * self[0].clone() * Float::from(4))
+        .sqrt()
+            / (self[2].clone() * Float::from(2));
+        [a.clone() - b.clone(), a + b]
     }
-    pub fn linear(&self) -> NumberBase {
-        self[0] / self[1]
+    pub fn linear(&self) -> Number {
+        self[0].clone() / self[1].clone()
     }
 }
 impl Polynomial {
@@ -92,7 +104,7 @@ impl Polynomial {
             quotient: quotient.into(),
             divisor: divisor.into(),
             functions: Vec::with_capacity(8),
-            power: NumberBase::default(),
+            power: Number::default(),
         }
     }
     pub fn recip(mut self) -> Self {
@@ -100,7 +112,7 @@ impl Polynomial {
         self
     }
     pub fn neg_mut(&mut self) {
-        self.quotient.iter_mut().for_each(|a| *a = -*a)
+        self.quotient.iter_mut().for_each(|a| a.neg_assign())
     }
     pub fn as_ref(&self) -> PolynomialRef<'_> {
         PolynomialRef {
@@ -108,7 +120,8 @@ impl Polynomial {
             divisor: self.divisor.as_ref(),
         }
     }
-    pub fn roots(self) -> Option<Vec<NumberBase>> {
+    #[cfg(feature = "list")]
+    pub fn roots(self) -> Option<Number> {
         let mut ret = self.as_ref().roots()?;
         ret.iter_mut().for_each(|a| {
             self.functions
@@ -117,6 +130,17 @@ impl Polynomial {
                 .for_each(|f| Inverse::from(*f).get_inverse().unwrap().compute_on(a, &[]))
         });
         Some(ret)
+    }
+    #[cfg(not(feature = "list"))]
+    pub fn roots(self) -> Option<Number> {
+        let mut ret = self.as_ref().roots()?;
+        ret.iter_mut().for_each(|a| {
+            self.functions
+                .iter()
+                .rev()
+                .for_each(|f| Inverse::from(*f).get_inverse().unwrap().compute_on(a, &[]))
+        });
+        Some(ret[0].clone())
     }
     pub fn is_constant(&self) -> bool {
         self.quotient.len() <= 1 && self.divisor.len() <= 1
@@ -212,7 +236,7 @@ impl TokensRef<'_> {
                     todo!()
                 }
                 Token::Num(n) => {
-                    stack.push(Token::Num(*n));
+                    stack.push(Token::Num(n.clone()));
                 }
                 Token::InnerVar(v) => {
                     if *v == to_poly {
@@ -248,7 +272,7 @@ impl Operators {
     fn compute_poly_on(self, a: &mut Token, b: &mut [Token], buffer: &mut Poly) -> Option<()> {
         if let Token::Polynomial(a) = a {
             if b.len() == 1 {
-                if let Token::Num(n) = b[0] {
+                if let Token::Num(n) = b[0].clone() {
                     self.poly_complex(a, n);
                 } else {
                     let b = b[0].poly_ref();
@@ -299,10 +323,10 @@ impl Operators {
     }
     fn complex_poly(self, a: &Number, b: Polynomial) -> Option<Polynomial> {
         Some(match self {
-            Self::Add => b + *a,
-            Self::Sub => *a - b,
-            Self::Mul => b * *a,
-            Self::Div => *a / b,
+            Self::Add => b + a.clone(),
+            Self::Sub => a.clone() - b,
+            Self::Mul => b * a.clone(),
+            Self::Div => a.clone() / b,
             _ => return None,
         })
     }

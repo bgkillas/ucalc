@@ -1,10 +1,14 @@
 use std::mem;
+use std::ops::Neg;
 pub trait Pow<Rhs> {
     type Output;
     fn pow(self, rhs: Rhs) -> Self::Output;
 }
 pub trait PowAssign<Rhs> {
     fn pow_assign(&mut self, rhs: Rhs);
+}
+pub trait NegAssign {
+    fn neg_assign(&mut self);
 }
 impl<T, K> PowAssign<K> for T
 where
@@ -13,6 +17,15 @@ where
     default fn pow_assign(&mut self, rhs: K) {
         let old = mem::take(self);
         *self = old.pow(rhs)
+    }
+}
+impl<T> NegAssign for T
+where
+    T: Neg<Output = T> + Default,
+{
+    default fn neg_assign(&mut self) {
+        let old = mem::take(self);
+        *self = old.neg();
     }
 }
 #[rustc_specialization_trait]

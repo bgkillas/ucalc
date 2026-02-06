@@ -1,8 +1,7 @@
 use crate::Number;
 use crate::functions::Function;
 use crate::parse::Token;
-use std::ops::Neg;
-use ucalc_numbers::{Float, PowAssign};
+use ucalc_numbers::{Float, NegAssign, PowAssign};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Operators {
     Add,
@@ -158,26 +157,28 @@ impl Operators {
         self.compute_on(a, b)
     }
     pub fn compute_on(self, a: &mut Number, b: &[Token]) {
+        let b_ref = || b[0].num_ref();
+        let b_clone = || b_ref().clone();
         match self {
-            Self::Add => *a += b[0].num_ref(),
-            Self::Sub => *a -= b[0].num_ref(),
-            Self::Mul => *a *= b[0].num_ref(),
-            Self::Div => *a /= b[0].num_ref(),
-            Self::Rem => *a %= b[0].num_ref(),
-            Self::Factorial => *a = (*a + Float::from(1)).gamma(),
-            Self::Pow => a.pow_assign(b[0].num_ref()),
-            Self::Root => a.pow_assign(b[0].num_ref().recip()),
-            Self::Negate => *a = a.neg(),
-            Self::Tetration => a.tetration_mut(&b[0].num_ref()),
+            Self::Add => *a += b_clone(),
+            Self::Sub => *a -= b_clone(),
+            Self::Mul => *a *= b_clone(),
+            Self::Div => *a /= b_clone(),
+            Self::Rem => *a %= b_clone(),
+            Self::Factorial => *a = (a.clone() + Float::from(1)).gamma(),
+            Self::Pow => a.pow_assign(b_clone()),
+            Self::Root => a.pow_assign(b_clone().recip()),
+            Self::Negate => a.neg_assign(),
+            Self::Tetration => a.tetration_mut(b_ref()),
             Self::SubFactorial => a.subfactorial_mut(),
-            Self::Equal => *a = Number::from(*a == b[0].num_ref()),
-            Self::NotEqual => *a = Number::from(*a != b[0].num_ref()),
-            Self::Greater => *a = Number::from(a.total_cmp(&b[0].num_ref()).is_gt()),
-            Self::Less => *a = Number::from(a.total_cmp(&b[0].num_ref()).is_lt()),
-            Self::GreaterEqual => *a = Number::from(a.total_cmp(&b[0].num_ref()).is_ge()),
-            Self::LessEqual => *a = Number::from(a.total_cmp(&b[0].num_ref()).is_le()),
-            Self::And => *a = Number::from(!a.is_zero() && !b[0].num_ref().is_zero()),
-            Self::Or => *a = Number::from(!a.is_zero() || !b[0].num_ref().is_zero()),
+            Self::Equal => *a = Number::from(*a == b_clone()),
+            Self::NotEqual => *a = Number::from(*a != b_clone()),
+            Self::Greater => *a = Number::from(a.total_cmp(b_ref()).is_gt()),
+            Self::Less => *a = Number::from(a.total_cmp(b_ref()).is_lt()),
+            Self::GreaterEqual => *a = Number::from(a.total_cmp(b_ref()).is_ge()),
+            Self::LessEqual => *a = Number::from(a.total_cmp(b_ref()).is_le()),
+            Self::And => *a = Number::from(!a.is_zero() && !b_clone().is_zero()),
+            Self::Or => *a = Number::from(!a.is_zero() || !b_clone().is_zero()),
             Self::Not => *a = Number::from(a.is_zero()),
             Self::Function(fun) => fun.compute(a, b),
             Self::Bracket(_) => {

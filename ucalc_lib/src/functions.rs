@@ -175,22 +175,28 @@ impl Function {
             Self::Tanh => a.tanh_mut(),
             Self::Atanh => a.atanh_mut(),
             Self::Cbrt => a.pow_assign(Float::from(3).recip()),
-            Self::Sq => *a *= *a,
-            Self::Cb => *a = *a * *a * *a,
+            Self::Sq => *a *= a.clone(),
+            Self::Cb => *a = a.clone() * a.clone() * a.clone(),
             Self::Atan => a.atan_mut(),
-            Self::Atan2 => a.atan2_mut(&b[0].num_ref()),
-            Self::Max => a.max_mut(&b[0].num_ref()),
-            Self::Min => a.min_mut(&b[0].num_ref()),
+            Self::Atan2 => a.atan2_mut(b[0].num_ref()),
+            Self::Max => a.max_mut(b[0].num_ref()),
+            Self::Min => a.min_mut(b[0].num_ref()),
             Self::Ceil => a.ceil_mut(),
             Self::Floor => a.floor_mut(),
             Self::Round => a.round_mut(),
             Self::Trunc => a.trunc_mut(),
             Self::Fract => a.fract_mut(),
             #[cfg(feature = "complex")]
-            Self::Real => *a = a.real.into(),
+            Self::Real => a.zero_imag(),
             #[cfg(feature = "complex")]
-            Self::Imag => *a = a.imag.into(),
-            Self::Quadratic => *a = PolyRef(&[*a, b[0].num_ref(), b[1].num_ref()]).quadratic()[0],
+            Self::Imag => a.zero_real(),
+            Self::Quadratic => {
+                let mut poly =
+                    PolyRef(&[a.clone(), b[0].num_ref().clone(), b[1].num_ref().clone()])
+                        .quadratic()
+                        .into_iter();
+                *a = poly.next().unwrap()
+            }
             Self::Custom(_)
             | Self::Sum
             | Self::Prod
@@ -244,9 +250,9 @@ impl Function {
             Self::Fold => {
                 let ([tokens], l) = stack.get_skip_tokens();
                 let [end, start, value] = stack.get_skip_var(l);
-                let start = start.num_ref().real().to_isize();
-                let end = end.num_ref().real().to_isize();
-                fun_vars.push(value.num_ref());
+                let start = start.num_ref().real().clone().into_isize();
+                let end = end.num_ref().real().clone().into_isize();
+                fun_vars.push(value.num_ref().clone());
                 fun_vars.push(Number::from(start));
                 let nl = fun_vars.len();
                 let mut stck = Tokens(Vec::with_capacity(tokens.len()));
@@ -255,15 +261,14 @@ impl Function {
                         tokens.compute_buffer_with(fun_vars, vars, funs, &mut stck, offset);
                     *fun_vars.last_mut().unwrap().real_mut() += Float::from(1);
                 });
-                *stack[len - (l + 3)].num_mut() = fun_vars[nl - 2];
                 stack.drain(len - (l + 2)..);
                 fun_vars.pop();
-                fun_vars.pop();
+                *stack[len - (l + 3)].num_mut() = fun_vars.pop().unwrap();
             }
             Self::Set => {
                 let ([tokens], l) = stack.get_skip_tokens();
                 let [value] = stack.get_skip_var(l);
-                fun_vars.push(value.num_ref());
+                fun_vars.push(value.num_ref().clone());
                 let mut stck = Tokens(Vec::with_capacity(tokens.len()));
                 *stack[len - (l + 1)].num_mut() =
                     tokens.compute_buffer_with(fun_vars, vars, funs, &mut stck, offset);
@@ -274,7 +279,6 @@ impl Function {
                 let ([tokens], l) = stack.get_skip_tokens();
                 stack[len - l] = tokens
                     .get_inverse(fun_vars, vars, funs, offset)
-                    .map(|a| a[0])
                     .unwrap_or(Number::from(Constant::Nan))
                     .into();
                 stack.drain(len - (l - 1)..);
@@ -282,16 +286,15 @@ impl Function {
             Self::Iter => {
                 let ([tokens], l) = stack.get_skip_tokens();
                 let [steps, first] = stack.get_skip_var(l);
-                fun_vars.push(first.num_ref());
-                let steps = steps.num_ref().real().to_isize();
+                fun_vars.push(first.num_ref().clone());
+                let steps = steps.num_ref().real().clone().into_isize();
                 let mut stck = Tokens(Vec::with_capacity(tokens.len()));
                 (0..steps).for_each(|_| {
                     let next = tokens.compute_buffer_with(fun_vars, vars, funs, &mut stck, offset);
                     *fun_vars.last_mut().unwrap() = next;
                 });
-                *stack[len - (l + 2)].num_mut() = *fun_vars.last().unwrap();
                 stack.drain(len - (l + 1)..);
-                fun_vars.pop();
+                *stack[len - (l + 2)].num_mut() = fun_vars.pop().unwrap();
             }
             Self::If => {
                 let ([ifelse, ifthen], l) = stack.get_skip_tokens();
