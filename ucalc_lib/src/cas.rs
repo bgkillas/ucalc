@@ -1,17 +1,16 @@
 use crate::inverse::Inverse;
 use crate::parse::{Token, TokensRef};
-use crate::{Functions, Tokens};
-use ucalc_numbers::Complex;
+use crate::{Functions, Number, Tokens};
 impl<'a> TokensRef<'a> {
     pub fn get_inverse(
         &'a self,
-        fun_vars: &mut Vec<Complex>,
-        vars: &[Complex],
+        fun_vars: &mut Vec<Number>,
+        vars: &[Number],
         funs: &Functions,
         offset: usize,
-    ) -> Option<Vec<Complex>> {
+    ) -> Option<Vec<Number>> {
         let mut i = self.len();
-        let mut ret = Complex::from(0);
+        let mut ret = Number::from(0);
         let mut inner_stack = Tokens(Vec::with_capacity(self.len()));
         let mut start = 0;
         while i > start + 1 {

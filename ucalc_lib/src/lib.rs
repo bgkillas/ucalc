@@ -14,5 +14,9 @@ mod variable;
 pub use functions::Function;
 pub use operators::Operators;
 pub use parse::{Token, Tokens};
-pub use ucalc_numbers::Complex;
 pub use variable::{FunctionVar, Functions, Variable, Variables};
+#[cfg(not(feature = "complex"))]
+pub type NumberBase = ucalc_numbers::Float;
+#[cfg(feature = "complex")]
+pub type NumberBase = ucalc_numbers::Complex;
+pub type Number = NumberBase;

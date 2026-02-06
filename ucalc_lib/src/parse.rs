@@ -2,9 +2,9 @@ use crate::functions::Function;
 use crate::operators::{Bracket, Operators};
 use crate::polynomial::Polynomial;
 use crate::variable::{Functions, Variables};
+use crate::{Number, NumberBase};
 use std::fmt::{Display, Formatter};
 use std::ops::{Deref, DerefMut};
-use ucalc_numbers::Complex;
 #[derive(Default, Debug, PartialEq, Clone)]
 pub struct Tokens(pub Vec<Token>);
 #[derive(Debug, PartialEq, Clone)]
@@ -21,7 +21,7 @@ impl<'a> From<&'a [Token]> for TokensRef<'a> {
 }
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
-    Num(Complex),
+    Num(Number),
     Polynomial(Box<Polynomial>),
     InnerVar(usize),
     GraphVar(usize),
@@ -79,7 +79,7 @@ impl Tokens {
             }
             if let Ok(operator) = Operators::try_from(token) {
                 tokens.push(operator.into());
-            } else if let Ok(n) = Complex::parse_radix(token, 10) {
+            } else if let Ok(n) = NumberBase::parse_radix(token, 10) {
                 tokens.push(n.into());
             } else if let Some(i) = funs.iter().position(|v| v.name == token) {
                 tokens.push(Token::Fun(i))
@@ -162,7 +162,7 @@ impl Tokens {
                         }
                     }
                     let s = &value[i..i + l];
-                    let Ok(float) = Complex::parse_radix(s, 10) else {
+                    let Ok(float) = NumberBase::parse_radix(s, 10) else {
                         return Err(ParseError::UnknownToken(s.to_string()));
                     };
                     tokens.push(float.into());
@@ -338,8 +338,8 @@ impl<'a> TokensRef<'a> {
         (Self(&self[last..]), last)
     }
 }
-impl From<Complex> for Token {
-    fn from(value: Complex) -> Self {
+impl From<Number> for Token {
+    fn from(value: Number) -> Self {
         Self::Num(value)
     }
 }
@@ -359,7 +359,7 @@ impl From<Polynomial> for Token {
     }
 }
 impl Token {
-    pub fn num(self) -> Complex {
+    pub fn num(self) -> Number {
         let Token::Num(num) = self else {
             unreachable!()
         };
@@ -371,7 +371,7 @@ impl Token {
         };
         *num
     }
-    pub fn num_ref(&self) -> Complex {
+    pub fn num_ref(&self) -> Number {
         let Token::Num(num) = self else {
             unreachable!()
         };
@@ -383,7 +383,7 @@ impl Token {
         };
         n
     }
-    pub fn num_mut(&mut self) -> &mut Complex {
+    pub fn num_mut(&mut self) -> &mut Number {
         let Token::Num(num) = self else {
             unreachable!()
         };

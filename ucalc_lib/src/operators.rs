@@ -1,7 +1,8 @@
+use crate::Number;
 use crate::functions::Function;
 use crate::parse::Token;
 use std::ops::Neg;
-use ucalc_numbers::{Complex, Float, PowAssign};
+use ucalc_numbers::{Float, PowAssign};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Operators {
     Add,
@@ -156,7 +157,7 @@ impl Operators {
         let a = a.num_mut();
         self.compute_on(a, b)
     }
-    pub fn compute_on(self, a: &mut Complex, b: &[Token]) {
+    pub fn compute_on(self, a: &mut Number, b: &[Token]) {
         match self {
             Self::Add => *a += b[0].num_ref(),
             Self::Sub => *a -= b[0].num_ref(),
@@ -169,15 +170,15 @@ impl Operators {
             Self::Negate => *a = a.neg(),
             Self::Tetration => a.tetration_mut(&b[0].num_ref()),
             Self::SubFactorial => a.subfactorial_mut(),
-            Self::Equal => *a = Complex::from(*a == b[0].num_ref()),
-            Self::NotEqual => *a = Complex::from(*a != b[0].num_ref()),
-            Self::Greater => *a = Complex::from(a.total_cmp(&b[0].num_ref()).is_gt()),
-            Self::Less => *a = Complex::from(a.total_cmp(&b[0].num_ref()).is_lt()),
-            Self::GreaterEqual => *a = Complex::from(a.total_cmp(&b[0].num_ref()).is_ge()),
-            Self::LessEqual => *a = Complex::from(a.total_cmp(&b[0].num_ref()).is_le()),
-            Self::And => *a = Complex::from(!a.is_zero() && !b[0].num_ref().is_zero()),
-            Self::Or => *a = Complex::from(!a.is_zero() || !b[0].num_ref().is_zero()),
-            Self::Not => *a = Complex::from(a.is_zero()),
+            Self::Equal => *a = Number::from(*a == b[0].num_ref()),
+            Self::NotEqual => *a = Number::from(*a != b[0].num_ref()),
+            Self::Greater => *a = Number::from(a.total_cmp(&b[0].num_ref()).is_gt()),
+            Self::Less => *a = Number::from(a.total_cmp(&b[0].num_ref()).is_lt()),
+            Self::GreaterEqual => *a = Number::from(a.total_cmp(&b[0].num_ref()).is_ge()),
+            Self::LessEqual => *a = Number::from(a.total_cmp(&b[0].num_ref()).is_le()),
+            Self::And => *a = Number::from(!a.is_zero() && !b[0].num_ref().is_zero()),
+            Self::Or => *a = Number::from(!a.is_zero() || !b[0].num_ref().is_zero()),
+            Self::Not => *a = Number::from(a.is_zero()),
             Self::Function(fun) => fun.compute(a, b),
             Self::Bracket(_) => {
                 unreachable!()

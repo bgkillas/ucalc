@@ -79,15 +79,31 @@ impl Display for Float {
 }
 impl Sum for Complex {
     fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
-        iter.fold(Complex::default(), |sum, s| sum + s)
+        iter.fold(Self::default(), |sum, s| sum + s)
     }
 }
 impl Product for Complex {
     fn product<I: Iterator<Item = Self>>(iter: I) -> Self {
-        iter.fold(Complex::from(1.0), |sum, s| sum * s)
+        iter.fold(Self::from(1.0), |sum, s| sum * s)
+    }
+}
+impl Sum for Float {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.fold(Self::default(), |sum, s| sum + s)
+    }
+}
+impl Product for Float {
+    fn product<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.fold(Self::from(1.0), |sum, s| sum * s)
     }
 }
 impl Float {
+    pub fn real(self) -> Self {
+        self
+    }
+    pub fn real_mut(&mut self) -> &mut Self {
+        self
+    }
     pub fn to_isize(self) -> isize {
         self.0 as isize
     }
@@ -291,8 +307,48 @@ impl Float {
         self.fract_mut();
         self
     }
+    pub fn tetration_mut(&mut self, other: &Self) {
+        //TODO
+        *self = self.tetration(other)
+    }
+    pub fn tetration(self, other: &Self) -> Self {
+        let other = other.round();
+        if other.0 <= 0.0 {
+            Float::from(1)
+        } else {
+            self.pow(self.tetration(&(other - Float::from(1))))
+        }
+    }
+    pub fn subfactorial_mut(&mut self) {
+        //TODO
+        if self.is_zero() {
+            *self = Self::from(1);
+        } else {
+            *self = ((*self + Float::from(1)).gamma() / Float::from(Constant::E)).round()
+        }
+    }
+    pub fn subfactorial(mut self) -> Self {
+        self.subfactorial_mut();
+        self
+    }
+    pub fn parse_radix(src: &str, _: i32) -> Result<Self, ()> {
+        //TODO
+        src.parse().map(Self).map_err(|_| ())
+    }
 }
 impl Complex {
+    pub fn real(self) -> Float {
+        self.real
+    }
+    pub fn imag(self) -> Float {
+        self.imag
+    }
+    pub fn real_mut(&mut self) -> &mut Float {
+        &mut self.real
+    }
+    pub fn imag_mut(&mut self) -> &mut Float {
+        &mut self.imag
+    }
     pub fn parse_radix(src: &str, _: i32) -> Result<Self, ()> {
         //TODO
         src.parse()

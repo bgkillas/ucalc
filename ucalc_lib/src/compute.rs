@@ -1,29 +1,29 @@
-use crate::Functions;
 use crate::operators::Operators;
 use crate::parse::{Token, Tokens, TokensRef};
+use crate::{Functions, Number};
 use std::array;
-use ucalc_numbers::{Complex, Constant, Float};
+use ucalc_numbers::{Constant, Float};
 impl Tokens {
-    pub fn compute(&self, vars: &[Complex], funs: &Functions) -> Complex {
+    pub fn compute(&self, vars: &[Number], funs: &Functions) -> Number {
         TokensRef(self).compute(vars, funs)
     }
     pub fn compute_buffer(
         &self,
-        fun_vars: &mut Vec<Complex>,
-        vars: &[Complex],
+        fun_vars: &mut Vec<Number>,
+        vars: &[Number],
         funs: &Functions,
         stack: &mut Tokens,
-    ) -> Complex {
+    ) -> Number {
         self.compute_buffer_with(fun_vars, vars, funs, stack, 0)
     }
     pub fn compute_buffer_with(
         &self,
-        fun_vars: &mut Vec<Complex>,
-        vars: &[Complex],
+        fun_vars: &mut Vec<Number>,
+        vars: &[Number],
         funs: &Functions,
         stack: &mut Tokens,
         offset: usize,
-    ) -> Complex {
+    ) -> Number {
         TokensRef(self).compute_buffer_with(fun_vars, vars, funs, stack, offset)
     }
     pub fn get_skip_var<const N: usize>(&self, end: usize) -> [&Token; N] {
@@ -45,22 +45,22 @@ impl Tokens {
     }
     pub fn range(
         &mut self,
-        fun_vars: &mut Vec<Complex>,
-        vars: &[Complex],
+        fun_vars: &mut Vec<Number>,
+        vars: &[Number],
         funs: &Functions,
         offset: usize,
-        fun: impl FnOnce(&mut dyn Iterator<Item = Complex>) -> Token,
+        fun: impl FnOnce(&mut dyn Iterator<Item = Number>) -> Token,
     ) {
         let len = self.len();
         let ([tokens], l) = self.get_skip_tokens();
         let [end, start] = self.get_skip_var(l);
-        let start = start.num_ref().real.to_isize();
-        let end = end.num_ref().real.to_isize();
-        fun_vars.push(Complex::from(start));
+        let start = start.num_ref().real().to_isize();
+        let end = end.num_ref().real().to_isize();
+        fun_vars.push(Number::from(start));
         let mut stack = Tokens(Vec::with_capacity(tokens.len()));
         let mut iter = (start..=end).map(|_| {
             let ret = tokens.compute_buffer_with(fun_vars, vars, funs, &mut stack, offset);
-            fun_vars.last_mut().unwrap().real += Float::from(1);
+            *fun_vars.last_mut().unwrap().real_mut() += Float::from(1);
             ret
         });
         self[len - (l + 2)] = fun(&mut iter);
@@ -69,33 +69,33 @@ impl Tokens {
     }
 }
 impl TokensRef<'_> {
-    pub fn compute(&self, vars: &[Complex], funs: &Functions) -> Complex {
+    pub fn compute(&self, vars: &[Number], funs: &Functions) -> Number {
         let mut fun_vars = Vec::with_capacity(self.len());
         let mut stack = Tokens(Vec::with_capacity(self.len()));
         self.compute_buffer(&mut fun_vars, vars, funs, &mut stack)
     }
-    pub fn compute_with(&self, vars: &[Complex], funs: &Functions, offset: usize) -> Complex {
+    pub fn compute_with(&self, vars: &[Number], funs: &Functions, offset: usize) -> Number {
         let mut fun_vars = Vec::with_capacity(self.len());
         let mut stack = Tokens(Vec::with_capacity(self.len()));
         self.compute_buffer_with(&mut fun_vars, vars, funs, &mut stack, offset)
     }
     pub fn compute_buffer(
         &self,
-        fun_vars: &mut Vec<Complex>,
-        vars: &[Complex],
+        fun_vars: &mut Vec<Number>,
+        vars: &[Number],
         funs: &Functions,
         stack: &mut Tokens,
-    ) -> Complex {
+    ) -> Number {
         self.compute_buffer_with(fun_vars, vars, funs, stack, 0)
     }
     pub fn compute_buffer_with(
         &self,
-        fun_vars: &mut Vec<Complex>,
-        vars: &[Complex],
+        fun_vars: &mut Vec<Number>,
+        vars: &[Number],
         funs: &Functions,
         stack: &mut Tokens,
         offset: usize,
-    ) -> Complex {
+    ) -> Number {
         let mut i = 0;
         while i < self.len() {
             let len = stack.len();
@@ -122,7 +122,7 @@ impl TokensRef<'_> {
                             if let Some(b) = chain {
                                 let a = stack[len - inputs].num_mut();
                                 *a = if a.is_zero() {
-                                    Complex::from(Constant::Nan)
+                                    Number::from(Constant::Nan)
                                 } else {
                                     b
                                 };

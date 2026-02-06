@@ -1,7 +1,7 @@
 use crate::parse::Token;
 use crate::polynomial::PolyRef;
-use crate::{Functions, Tokens};
-use ucalc_numbers::{Complex, Constant, Float, PowAssign};
+use crate::{Functions, Number, Tokens};
+use ucalc_numbers::{Constant, Float, PowAssign};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Function {
     Sin,
@@ -32,8 +32,10 @@ pub enum Function {
     Erf,
     Erfc,
     Abs,
+    #[cfg(feature = "complex")]
     Arg,
     Recip,
+    #[cfg(feature = "complex")]
     Conj,
     Iter,
     Ceil,
@@ -41,7 +43,9 @@ pub enum Function {
     Round,
     Trunc,
     Fract,
+    #[cfg(feature = "complex")]
     Real,
+    #[cfg(feature = "complex")]
     Imag,
     If,
     Fold,
@@ -75,8 +79,10 @@ impl TryFrom<&str> for Function {
             "erf" => Self::Erf,
             "erfc" => Self::Erfc,
             "abs" => Self::Abs,
+            #[cfg(feature = "complex")]
             "arg" => Self::Arg,
             "recip" => Self::Recip,
+            #[cfg(feature = "complex")]
             "conj" => Self::Conj,
             "atanh" => Self::Atanh,
             "tanh" => Self::Tanh,
@@ -90,7 +96,9 @@ impl TryFrom<&str> for Function {
             "round" => Self::Round,
             "trunc" => Self::Trunc,
             "fract" => Self::Fract,
+            #[cfg(feature = "complex")]
             "real" => Self::Real,
+            #[cfg(feature = "complex")]
             "imag" => Self::Imag,
             "if" => Self::If,
             "set" => Self::Set,
@@ -122,28 +130,26 @@ impl Function {
             | Self::Erf
             | Self::Erfc
             | Self::Abs
-            | Self::Arg
             | Self::Recip
             | Self::Cbrt
             | Self::Cb
             | Self::Sq
             | Self::Atan
-            | Self::Conj
             | Self::Ceil
             | Self::Floor
             | Self::Round
             | Self::Trunc
             | Self::Fract
-            | Self::Real
-            | Self::Imag
             | Self::Solve => 1,
+            #[cfg(feature = "complex")]
+            Self::Arg | Self::Conj | Self::Real | Self::Imag => 1,
             Self::Atan2 | Self::Max | Self::Min | Self::Set => 2,
             Self::Quadratic | Self::Sum | Self::Prod | Self::Iter | Self::If => 3,
             Self::Fold => 4,
             Self::Custom(_) => unreachable!(),
         }
     }
-    pub fn compute(self, a: &mut Complex, b: &[Token]) {
+    pub fn compute(self, a: &mut Number, b: &[Token]) {
         match self {
             Self::Sin => a.sin_mut(),
             Self::Ln => a.ln_mut(),
@@ -156,8 +162,10 @@ impl Function {
             Self::Erf => a.erf_mut(),
             Self::Erfc => a.erfc_mut(),
             Self::Abs => a.abs_mut(),
+            #[cfg(feature = "complex")]
             Self::Arg => a.arg_mut(),
             Self::Recip => a.recip_mut(),
+            #[cfg(feature = "complex")]
             Self::Conj => a.conj_mut(),
             Self::Tan => a.tan_mut(),
             Self::Sinh => a.sinh_mut(),
@@ -178,7 +186,9 @@ impl Function {
             Self::Round => a.round_mut(),
             Self::Trunc => a.trunc_mut(),
             Self::Fract => a.fract_mut(),
+            #[cfg(feature = "complex")]
             Self::Real => *a = a.real.into(),
+            #[cfg(feature = "complex")]
             Self::Imag => *a = a.imag.into(),
             Self::Quadratic => *a = PolyRef(&[*a, b[0].num_ref(), b[1].num_ref()]).quadratic()[0],
             Self::Custom(_)
@@ -214,8 +224,8 @@ impl Function {
     pub fn compute_var(
         self,
         stack: &mut Tokens,
-        fun_vars: &mut Vec<Complex>,
-        vars: &[Complex],
+        fun_vars: &mut Vec<Number>,
+        vars: &[Number],
         funs: &Functions,
         offset: usize,
     ) {
@@ -223,27 +233,27 @@ impl Function {
         match self {
             Self::Sum => {
                 stack.range(fun_vars, vars, funs, offset, |iter| {
-                    iter.sum::<Complex>().into()
+                    iter.sum::<Number>().into()
                 });
             }
             Self::Prod => {
                 stack.range(fun_vars, vars, funs, offset, |iter| {
-                    iter.product::<Complex>().into()
+                    iter.product::<Number>().into()
                 });
             }
             Self::Fold => {
                 let ([tokens], l) = stack.get_skip_tokens();
                 let [end, start, value] = stack.get_skip_var(l);
-                let start = start.num_ref().real.to_isize();
-                let end = end.num_ref().real.to_isize();
+                let start = start.num_ref().real().to_isize();
+                let end = end.num_ref().real().to_isize();
                 fun_vars.push(value.num_ref());
-                fun_vars.push(Complex::from(start));
+                fun_vars.push(Number::from(start));
                 let nl = fun_vars.len();
                 let mut stck = Tokens(Vec::with_capacity(tokens.len()));
                 (start..=end).for_each(|_| {
                     fun_vars[nl - 2] =
                         tokens.compute_buffer_with(fun_vars, vars, funs, &mut stck, offset);
-                    fun_vars.last_mut().unwrap().real += Float::from(1);
+                    *fun_vars.last_mut().unwrap().real_mut() += Float::from(1);
                 });
                 *stack[len - (l + 3)].num_mut() = fun_vars[nl - 2];
                 stack.drain(len - (l + 2)..);
@@ -265,7 +275,7 @@ impl Function {
                 stack[len - l] = tokens
                     .get_inverse(fun_vars, vars, funs, offset)
                     .map(|a| a[0])
-                    .unwrap_or(Complex::from(Constant::Nan))
+                    .unwrap_or(Number::from(Constant::Nan))
                     .into();
                 stack.drain(len - (l - 1)..);
             }
@@ -273,7 +283,7 @@ impl Function {
                 let ([tokens], l) = stack.get_skip_tokens();
                 let [steps, first] = stack.get_skip_var(l);
                 fun_vars.push(first.num_ref());
-                let steps = steps.num_ref().real.to_isize();
+                let steps = steps.num_ref().real().to_isize();
                 let mut stck = Tokens(Vec::with_capacity(tokens.len()));
                 (0..steps).for_each(|_| {
                     let next = tokens.compute_buffer_with(fun_vars, vars, funs, &mut stck, offset);

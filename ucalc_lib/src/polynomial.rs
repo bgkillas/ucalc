@@ -1,19 +1,19 @@
 use crate::inverse::Inverse;
 use crate::parse::TokensRef;
-use crate::{Function, Functions, Operators, Token, Tokens};
+use crate::{Function, Functions, Number, NumberBase, Operators, Token, Tokens};
 use std::mem;
-use ucalc_numbers::{Complex, Float, Pow};
+use ucalc_numbers::{Float, Pow};
 #[derive(Debug, PartialEq, Clone, Default)]
-pub struct Poly(pub Vec<Complex>);
+pub struct Poly(pub Vec<NumberBase>);
 #[derive(Debug, PartialEq, Clone)]
-pub struct PolyRef<'a>(pub &'a [Complex]);
+pub struct PolyRef<'a>(pub &'a [NumberBase]);
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct Polynomial {
     pub quotient: Poly,
     pub divisor: Poly,
     pub functions: Vec<Function>,
     //TODO
-    pub power: Complex,
+    pub power: NumberBase,
 }
 #[derive(Debug, PartialEq, Clone)]
 pub struct PolynomialRef<'a> {
@@ -31,7 +31,7 @@ impl Poly {
     pub fn mul_assign_buffer(&mut self, rhs: &Self, buffer: &mut Poly) {
         buffer
             .0
-            .resize(self.len() + rhs.len() - 1, Complex::default());
+            .resize(self.len() + rhs.len() - 1, Number::default());
         mem::swap(self, buffer);
         for (i, a) in buffer.iter_mut().enumerate() {
             if !a.is_zero() {
@@ -40,13 +40,13 @@ impl Poly {
                         self[i + j] = *a * *b;
                     }
                 }
-                *a = Complex::default()
+                *a = Number::default()
             }
         }
     }
 }
 impl PolynomialRef<'_> {
-    pub fn roots(&self) -> Option<Vec<Complex>> {
+    pub fn roots(&self) -> Option<Vec<Number>> {
         let mut roots = self.quotient.roots()?;
         if self.divisor.len() != 1 {
             let anti_roots = self.divisor.roots()?;
@@ -63,7 +63,7 @@ impl PolyRef<'_> {
             0
         }
     }
-    pub fn roots(&self) -> Option<Vec<Complex>> {
+    pub fn roots(&self) -> Option<Vec<Number>> {
         match self.len() {
             2 => Some(vec![self.linear()]),
             3 => Some(self.quadratic().into()),
@@ -71,28 +71,28 @@ impl PolyRef<'_> {
             _ => None,
         }
     }
-    pub fn quadratic(&self) -> [Complex; 2] {
+    pub fn quadratic(&self) -> [NumberBase; 2] {
         let a = -self[1] / (self[2] * Float::from(2));
         let b = (self[1] * self[1] - self[2] * self[0] * Float::from(4)).sqrt()
             / (self[2] * Float::from(2));
         [a - b, a + b]
     }
-    pub fn linear(&self) -> Complex {
+    pub fn linear(&self) -> NumberBase {
         self[0] / self[1]
     }
 }
 impl Polynomial {
     pub fn new() -> Self {
         let mut quotient = Vec::with_capacity(8);
-        quotient.push(Complex::from(0));
-        quotient.push(Complex::from(1));
+        quotient.push(Number::from(0));
+        quotient.push(Number::from(1));
         let mut divisor = Vec::with_capacity(8);
-        divisor.push(Complex::from(1));
+        divisor.push(Number::from(1));
         Self {
             quotient: quotient.into(),
             divisor: divisor.into(),
             functions: Vec::with_capacity(8),
-            power: Complex::default(),
+            power: NumberBase::default(),
         }
     }
     pub fn recip(mut self) -> Self {
@@ -108,7 +108,7 @@ impl Polynomial {
             divisor: self.divisor.as_ref(),
         }
     }
-    pub fn roots(self) -> Option<Vec<Complex>> {
+    pub fn roots(self) -> Option<Vec<NumberBase>> {
         let mut ret = self.as_ref().roots()?;
         ret.iter_mut().for_each(|a| {
             self.functions
@@ -191,8 +191,8 @@ impl Polynomial {
 impl TokensRef<'_> {
     pub fn compute_polynomial(
         &self,
-        _fun_vars: &mut Vec<Complex>,
-        _vars: &[Complex],
+        _fun_vars: &mut Vec<Number>,
+        _vars: &[Number],
         _funs: &Functions,
         stack: &mut Tokens,
         _offset: usize,
@@ -279,7 +279,7 @@ impl Operators {
         }
         Some(())
     }
-    fn poly_complex(self, a: &mut Polynomial, b: Complex) -> Option<()> {
+    fn poly_complex(self, a: &mut Polynomial, b: Number) -> Option<()> {
         match self {
             Self::Add => *a += b,
             Self::Sub => *a -= b,
@@ -297,7 +297,7 @@ impl Operators {
         }
         Some(())
     }
-    fn complex_poly(self, a: &Complex, b: Polynomial) -> Option<Polynomial> {
+    fn complex_poly(self, a: &Number, b: Polynomial) -> Option<Polynomial> {
         Some(match self {
             Self::Add => b + *a,
             Self::Sub => *a - b,

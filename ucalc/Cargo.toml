@@ -15,6 +15,7 @@ units = ["ucalc_lib/units"]
 vector = ["ucalc_lib/vector"]
 matrix = ["ucalc_lib/matrix"]
 list = ["ucalc_lib/list"]
+complex = ["ucalc_lib/complex"]
 
 [dependencies]
 ucalc_lib = {path = "../ucalc_lib", default-features=false}

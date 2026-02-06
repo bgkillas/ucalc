@@ -1,5 +1,5 @@
-use crate::{Function, Operators};
-use ucalc_numbers::{Complex, Pow};
+use crate::{Function, Number, Operators};
+use ucalc_numbers::Pow;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Inverse {
     Add,
@@ -16,6 +16,7 @@ pub enum Inverse {
     Acos,
     Exp,
     Recip,
+    #[cfg(feature = "complex")]
     Conj,
     Sinh,
     Cosh,
@@ -46,6 +47,7 @@ impl Inverse {
             Self::Acos => Function::Cos.into(),
             Self::Exp => Function::Ln.into(),
             Self::Recip => Function::Recip.into(),
+            #[cfg(feature = "complex")]
             Self::Conj => Function::Conj.into(),
             Self::Sinh => Function::Asinh.into(),
             Self::Cosh => Function::Acosh.into(),
@@ -63,7 +65,7 @@ impl Inverse {
             _ => return None,
         })
     }
-    pub fn left_inverse(self, a: Complex, b: Complex) -> Vec<Complex> {
+    pub fn left_inverse(self, a: Number, b: Number) -> Vec<Number> {
         //TODO
         vec![match self {
             Self::Add => a - b,
@@ -75,7 +77,7 @@ impl Inverse {
             _ => unreachable!(),
         }]
     }
-    pub fn right_inverse(self, a: Complex, b: Complex) -> Vec<Complex> {
+    pub fn right_inverse(self, a: Number, b: Number) -> Vec<Number> {
         //TODO
         vec![match self {
             Self::Add => a - b,
@@ -126,6 +128,7 @@ impl From<Function> for Inverse {
             Function::Acos => Self::Acos,
             Function::Exp => Self::Exp,
             Function::Recip => Self::Recip,
+            #[cfg(feature = "complex")]
             Function::Conj => Self::Conj,
             Function::Sinh => Self::Sinh,
             Function::Cosh => Self::Cosh,
@@ -148,7 +151,6 @@ impl From<Function> for Inverse {
             | Function::Erf
             | Function::Erfc
             | Function::Abs
-            | Function::Arg
             | Function::Iter
             | Function::Atan2
             | Function::Ceil
@@ -156,12 +158,12 @@ impl From<Function> for Inverse {
             | Function::Round
             | Function::Trunc
             | Function::Fract
-            | Function::Real
-            | Function::Imag
             | Function::If
             | Function::Fold
             | Function::Set
             | Function::Solve => Self::None,
+            #[cfg(feature = "complex")]
+            Function::Arg | Function::Real | Function::Imag => Self::None,
             Function::Custom(i) => Self::Custom(i),
         }
     }

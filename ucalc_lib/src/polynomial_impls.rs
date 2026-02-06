@@ -1,21 +1,22 @@
+use crate::NumberBase;
 use crate::polynomial::{Poly, PolyRef, Polynomial};
 use std::mem;
 use std::ops::{
     Add, AddAssign, Deref, DerefMut, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign,
 };
-use ucalc_numbers::{Complex, Pow, PowAssign};
+use ucalc_numbers::{Pow, PowAssign};
 impl<'a> From<&'a Poly> for PolyRef<'a> {
     fn from(value: &'a Poly) -> Self {
         Self(value)
     }
 }
-impl<'a> From<&'a [Complex]> for PolyRef<'a> {
-    fn from(value: &'a [Complex]) -> Self {
+impl<'a> From<&'a [NumberBase]> for PolyRef<'a> {
+    fn from(value: &'a [NumberBase]) -> Self {
         Self(value)
     }
 }
 impl Deref for Poly {
-    type Target = [Complex];
+    type Target = [NumberBase];
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -26,35 +27,39 @@ impl DerefMut for Poly {
     }
 }
 impl<'a> Deref for PolyRef<'a> {
-    type Target = [Complex];
+    type Target = [NumberBase];
     fn deref(&self) -> &Self::Target {
         self.0
     }
 }
-impl From<Vec<Complex>> for Poly {
-    fn from(value: Vec<Complex>) -> Self {
+impl From<Vec<NumberBase>> for Poly {
+    fn from(value: Vec<NumberBase>) -> Self {
         Self(value)
     }
 }
-impl From<Complex> for Polynomial {
-    fn from(value: Complex) -> Self {
+impl From<NumberBase> for Polynomial {
+    fn from(value: NumberBase) -> Self {
         let mut quotient = Vec::with_capacity(8);
         quotient.push(value);
         let mut divisor = Vec::with_capacity(8);
-        divisor.push(Complex::from(1));
+        divisor.push(NumberBase::from(1));
         Self {
             quotient: quotient.into(),
             divisor: divisor.into(),
             functions: Vec::with_capacity(8),
-            power: Complex::default(),
+            power: NumberBase::default(),
         }
     }
 }
-impl Pow<Complex> for Polynomial {
+impl Pow<NumberBase> for Polynomial {
     type Output = Option<Self>;
-    fn pow(mut self, rhs: Complex) -> Self::Output {
-        if rhs.imag.is_zero() && rhs.real.fract().is_zero() {
-            let n = rhs.real.to_isize();
+    fn pow(mut self, rhs: NumberBase) -> Self::Output {
+        #[cfg(feature = "complex")]
+        if rhs.imag.is_zero() {
+            return None;
+        }
+        if rhs.real().fract().is_zero() {
+            let n = rhs.real().to_isize();
             let k = n.unsigned_abs();
             self.quotient.pow_assign(k);
             self.divisor.pow_assign(k);
@@ -79,9 +84,9 @@ impl Pow<usize> for Poly {
         poly
     }
 }
-impl Sub<Complex> for Polynomial {
+impl Sub<NumberBase> for Polynomial {
     type Output = Self;
-    fn sub(self, rhs: Complex) -> Self::Output {
+    fn sub(self, rhs: NumberBase) -> Self::Output {
         Self {
             quotient: self.quotient - (self.divisor.clone() * rhs),
             divisor: self.divisor,
@@ -90,9 +95,9 @@ impl Sub<Complex> for Polynomial {
         }
     }
 }
-impl Add<Complex> for Polynomial {
+impl Add<NumberBase> for Polynomial {
     type Output = Self;
-    fn add(self, rhs: Complex) -> Self::Output {
+    fn add(self, rhs: NumberBase) -> Self::Output {
         Self {
             quotient: self.quotient + (self.divisor.clone() * rhs),
             divisor: self.divisor,
@@ -101,9 +106,9 @@ impl Add<Complex> for Polynomial {
         }
     }
 }
-impl Mul<Complex> for Polynomial {
+impl Mul<NumberBase> for Polynomial {
     type Output = Self;
-    fn mul(self, rhs: Complex) -> Self::Output {
+    fn mul(self, rhs: NumberBase) -> Self::Output {
         Self {
             quotient: self.quotient * rhs,
             divisor: self.divisor,
@@ -112,9 +117,9 @@ impl Mul<Complex> for Polynomial {
         }
     }
 }
-impl Div<Complex> for Polynomial {
+impl Div<NumberBase> for Polynomial {
     type Output = Self;
-    fn div(self, rhs: Complex) -> Self::Output {
+    fn div(self, rhs: NumberBase) -> Self::Output {
         Self {
             quotient: self.quotient / rhs,
             divisor: self.divisor,
@@ -123,7 +128,7 @@ impl Div<Complex> for Polynomial {
         }
     }
 }
-impl Sub<Polynomial> for Complex {
+impl Sub<Polynomial> for NumberBase {
     type Output = Polynomial;
     fn sub(self, rhs: Polynomial) -> Self::Output {
         Polynomial {
@@ -135,7 +140,7 @@ impl Sub<Polynomial> for Complex {
     }
 }
 #[allow(clippy::suspicious_arithmetic_impl)]
-impl Div<Polynomial> for Complex {
+impl Div<Polynomial> for NumberBase {
     type Output = Polynomial;
     fn div(self, rhs: Polynomial) -> Self::Output {
         Polynomial {
@@ -146,54 +151,54 @@ impl Div<Polynomial> for Complex {
         }
     }
 }
-impl MulAssign<Complex> for Polynomial {
-    fn mul_assign(&mut self, rhs: Complex) {
+impl MulAssign<NumberBase> for Polynomial {
+    fn mul_assign(&mut self, rhs: NumberBase) {
         self.quotient *= rhs;
     }
 }
-impl DivAssign<Complex> for Polynomial {
-    fn div_assign(&mut self, rhs: Complex) {
+impl DivAssign<NumberBase> for Polynomial {
+    fn div_assign(&mut self, rhs: NumberBase) {
         self.quotient /= rhs;
     }
 }
-impl SubAssign<Complex> for Polynomial {
-    fn sub_assign(&mut self, rhs: Complex) {
+impl SubAssign<NumberBase> for Polynomial {
+    fn sub_assign(&mut self, rhs: NumberBase) {
         self.quotient -= self.divisor.clone() * rhs;
     }
 }
-impl AddAssign<Complex> for Polynomial {
-    fn add_assign(&mut self, rhs: Complex) {
+impl AddAssign<NumberBase> for Polynomial {
+    fn add_assign(&mut self, rhs: NumberBase) {
         self.quotient += self.divisor.clone() * rhs;
     }
 }
-impl Mul<Complex> for Poly {
+impl Mul<NumberBase> for Poly {
     type Output = Poly;
-    fn mul(mut self, rhs: Complex) -> Self::Output {
+    fn mul(mut self, rhs: NumberBase) -> Self::Output {
         self *= rhs;
         self
     }
 }
-impl Div<Complex> for Poly {
+impl Div<NumberBase> for Poly {
     type Output = Poly;
-    fn div(mut self, rhs: Complex) -> Self::Output {
+    fn div(mut self, rhs: NumberBase) -> Self::Output {
         self /= rhs;
         self
     }
 }
-impl Sub<Poly> for Complex {
+impl Sub<Poly> for NumberBase {
     type Output = Poly;
     fn sub(self, mut rhs: Poly) -> Self::Output {
         rhs.iter_mut().for_each(|b| *b = self - *b);
         rhs
     }
 }
-impl MulAssign<Complex> for Poly {
-    fn mul_assign(&mut self, rhs: Complex) {
+impl MulAssign<NumberBase> for Poly {
+    fn mul_assign(&mut self, rhs: NumberBase) {
         self.iter_mut().for_each(|c| *c *= rhs)
     }
 }
-impl DivAssign<Complex> for Poly {
-    fn div_assign(&mut self, rhs: Complex) {
+impl DivAssign<NumberBase> for Poly {
+    fn div_assign(&mut self, rhs: NumberBase) {
         self.iter_mut().for_each(|c| *c /= rhs)
     }
 }

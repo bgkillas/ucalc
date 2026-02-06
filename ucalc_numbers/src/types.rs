@@ -14,18 +14,22 @@ pub enum Constant {
     NegInfinity,
     Nan,
 }
+#[derive(Debug)]
 pub struct Rational<T> {
     pub quotient: T,
     pub divisor: T,
 }
+#[derive(Debug)]
 pub struct Units<T, const N: usize>(pub [T; N]);
+#[derive(Debug)]
 pub struct Quantity<T, K, const N: usize> {
     pub num: T,
     pub units: Units<K, N>,
 }
 #[cfg(not(feature = "units"))]
+#[derive(Debug, Clone)]
 pub enum Number<T> {
-    Complex(T),
+    Value(T),
     #[cfg(feature = "vector")]
     Vector(Vector<T>),
     #[cfg(feature = "matrix")]
@@ -34,6 +38,7 @@ pub enum Number<T> {
     List(Vec<Number<T>>),
 }
 #[cfg(feature = "units")]
+#[derive(Debug)]
 pub enum Number<T, K, const N: usize> {
     Complex(Quantity<T, K, N>),
     #[cfg(feature = "vector")]
@@ -43,7 +48,9 @@ pub enum Number<T, K, const N: usize> {
     #[cfg(feature = "list")]
     List(Vec<Number<T, K, N>>),
 }
+#[derive(Debug)]
 pub struct Vector<T>(pub Vec<T>);
+#[derive(Debug)]
 pub struct Matrix<T> {
     pub vec: Vector<T>,
     pub width: HalfUsize,

@@ -1,10 +1,11 @@
+use crate::Number;
 use crate::parse::Tokens;
 use std::ops::{Deref, DerefMut};
-use ucalc_numbers::{Complex, Constant};
+use ucalc_numbers::Constant;
 #[derive(Debug, PartialEq, Clone)]
 pub struct Variable {
     pub name: String,
-    pub value: Complex,
+    pub value: Number,
 }
 #[derive(Debug, PartialEq, Clone)]
 pub struct FunctionVar {
@@ -22,7 +23,7 @@ impl FunctionVar {
     }
 }
 impl Variable {
-    pub fn new(name: impl Into<String>, value: Complex) -> Self {
+    pub fn new(name: impl Into<String>, value: Number) -> Self {
         Self {
             name: name.into(),
             value,
@@ -36,12 +37,13 @@ pub struct Functions(pub Vec<FunctionVar>);
 impl Default for Variables {
     fn default() -> Self {
         Self(vec![
-            Variable::new("pi", Complex::from(Constant::Pi)),
-            Variable::new("tau", Complex::from(Constant::Tau)),
-            Variable::new("e", Complex::from(Constant::E)),
-            Variable::new("i", Complex::from((0, 1))),
-            Variable::new("inf", Complex::from(Constant::Infinity)),
-            Variable::new("nan", Complex::from(Constant::Nan)),
+            Variable::new("pi", Number::from(Constant::Pi)),
+            Variable::new("tau", Number::from(Constant::Tau)),
+            Variable::new("e", Number::from(Constant::E)),
+            #[cfg(feature = "complex")]
+            Variable::new("i", Number::from((0, 1))),
+            Variable::new("inf", Number::from(Constant::Infinity)),
+            Variable::new("nan", Number::from(Constant::Nan)),
         ])
     }
 }

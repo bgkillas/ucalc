@@ -1,10 +1,10 @@
-use crate::FunctionVar;
 use crate::functions::Function;
 use crate::operators::Operators;
 use crate::parse::ParseError;
 use crate::parse::{Token, Tokens};
 use crate::variable::{Functions, Variables};
-use ucalc_numbers::{Complex, Constant, Float};
+use crate::{FunctionVar, Number};
+use ucalc_numbers::{Constant, Float};
 
 macro_rules! assert_teq {
     ($a:expr, $b:expr, $c:expr) => {
@@ -37,15 +37,15 @@ fn infix(s: &str) -> Tokens {
 fn rpn(s: &str) -> Tokens {
     Tokens::rpn(s, &Variables::default(), &[], &Functions::default()).unwrap()
 }
-fn res<T>(f: T) -> Complex
+fn res<T>(f: T) -> Number
 where
-    Complex: From<T>,
+    Number: From<T>,
 {
-    Complex::from(f)
+    Number::from(f)
 }
 fn num<T>(f: T) -> Token
 where
-    Complex: From<T>,
+    Number: From<T>,
 {
     res(f).into()
 }
@@ -221,6 +221,7 @@ fn parse_vars() {
         vec![num(Constant::Infinity)],
         res(Constant::Infinity)
     );
+    #[cfg(feature = "complex")]
     assert_correct!(infix("i"), rpn("i"), vec![num((0, 1))], res((0, 1)));
 }
 #[test]
@@ -403,6 +404,7 @@ fn parse_erfc() {
 }
 #[test]
 fn parse_abs() {
+    #[cfg(feature = "complex")]
     assert_correct!(
         infix("abs(2+2*i)"),
         rpn("2 2 i * + abs"),
@@ -462,6 +464,7 @@ fn parse_abs() {
     );
 }
 #[test]
+#[cfg(feature = "complex")]
 fn parse_arg() {
     assert_correct!(
         infix("arg(2+2*i)"),
@@ -478,6 +481,7 @@ fn parse_arg() {
     );
 }
 #[test]
+#[cfg(feature = "complex")]
 fn parse_conj() {
     assert_correct!(
         infix("conj(2+2*i)"),
@@ -630,7 +634,7 @@ fn test_graph_vars() {
         infix,
         rpn,
         vars,
-        &[Complex::from(2), Complex::from(3)],
+        &[Number::from(2), Number::from(3)],
         Functions::default(),
         vec![
             Token::GraphVar(0),
@@ -643,7 +647,7 @@ fn test_graph_vars() {
         infix,
         rpn,
         vars,
-        &[Complex::from(3), Complex::from(2)],
+        &[Number::from(3), Number::from(2)],
         Functions::default(),
         vec![
             Token::GraphVar(0),
@@ -717,6 +721,7 @@ fn test_solve() {
         ],
         -(res(2).sqrt() - Float::from(1))
     );
+    #[cfg(feature = "complex")]
     assert_correct!(
         infix("solve(x,exp(x)^2-exp(x)-1)"),
         rpn("x x exp 2 ^ x exp - 1 - solve"),
@@ -1251,6 +1256,7 @@ fn test_ceil() {
     );
 }
 #[test]
+#[cfg(feature = "complex")]
 fn test_real() {
     assert_correct!(
         infix("real(1+2*i)"),
