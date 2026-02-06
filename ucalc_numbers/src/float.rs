@@ -696,6 +696,16 @@ impl Neg for Integer {
         Self(self.0.neg())
     }
 }
+impl Pow<Complex> for Float {
+    type Output = Complex;
+    fn pow(self, rhs: Complex) -> Complex {
+        if rhs.imag.is_zero() {
+            self.pow(rhs.real).into()
+        } else {
+            (rhs * self.ln()).exp()
+        }
+    }
+}
 impl Pow<Self> for Complex {
     type Output = Complex;
     fn pow(self, rhs: Self) -> Self {
@@ -765,6 +775,11 @@ impl Add<Self> for Complex {
             real: self.real + rhs.real,
             imag: self.imag + rhs.imag,
         }
+    }
+}
+impl AddAssign<Float> for Complex {
+    fn add_assign(&mut self, rhs: Float) {
+        *self = self.clone() + rhs;
     }
 }
 impl AddAssign<Self> for Complex {

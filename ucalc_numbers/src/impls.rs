@@ -94,6 +94,42 @@ impl<T> Number<T> {
         Some(val)
     }
 }
+macro_rules! impl_lower_ops {
+    ($ty:ty, $oty:ty,$op:ident,$op_assign:ident,$fun:ident,$fun_assign:ident) => {
+        impl $op<$oty> for Number<$ty> {
+            type Output = Self;
+            fn $fun(mut self, rhs: $oty) -> Self::Output {
+                $op_assign::$fun_assign(&mut self, rhs);
+                self
+            }
+        }
+        impl $op<Number<$ty>> for $oty {
+            type Output = Number<$ty>;
+            fn $fun(self, rhs: Number<$ty>) -> Self::Output {
+                match rhs {
+                    Number::Value(b) => $op::$fun(self, b).into(),
+                    Number::List(mut b) => {
+                        b.iter_mut().for_each(|b| {
+                            let old = mem::replace(b, Number::Value(<$ty>::from(0)));
+                            *b = $op::$fun(self.clone(), old);
+                        });
+                        Number::List(b)
+                    }
+                }
+            }
+        }
+        impl $op_assign<$oty> for Number<$ty> {
+            fn $fun_assign(&mut self, rhs: $oty) {
+                match self {
+                    Self::Value(a) => $op_assign::$fun_assign(a, rhs.clone()),
+                    Self::List(a) => a
+                        .iter_mut()
+                        .for_each(|a| $op_assign::$fun_assign(a, rhs.clone())),
+                }
+            }
+        }
+    };
+}
 macro_rules! impl_ops {
     ($ty:ty,$op:ident,$op_assign:ident,$fun:ident,$fun_assign:ident) => {
         impl $op<Self> for Number<$ty> {
@@ -127,38 +163,7 @@ macro_rules! impl_ops {
                 }
             }
         }
-        impl $op<$ty> for Number<$ty> {
-            type Output = Self;
-            fn $fun(mut self, rhs: $ty) -> Self::Output {
-                $op_assign::$fun_assign(&mut self, rhs);
-                self
-            }
-        }
-        impl $op<Number<$ty>> for $ty {
-            type Output = Number<$ty>;
-            fn $fun(self, rhs: Number<$ty>) -> Self::Output {
-                match rhs {
-                    Number::Value(b) => $op::$fun(self, b).into(),
-                    Number::List(mut b) => {
-                        b.iter_mut().for_each(|b| {
-                            let old = mem::replace(b, Number::Value(<$ty>::from(0)));
-                            *b = $op::$fun(self.clone(), old);
-                        });
-                        Number::List(b)
-                    }
-                }
-            }
-        }
-        impl $op_assign<$ty> for Number<$ty> {
-            fn $fun_assign(&mut self, rhs: $ty) {
-                match self {
-                    Self::Value(a) => $op_assign::$fun_assign(a, rhs.clone()),
-                    Self::List(a) => a
-                        .iter_mut()
-                        .for_each(|a| $op_assign::$fun_assign(a, rhs.clone())),
-                }
-            }
-        }
+        impl_lower_ops!($ty, $ty, $op, $op_assign, $fun, $fun_assign);
     };
 }
 macro_rules! impl_num {
@@ -230,4 +235,9 @@ macro_rules! impl_num {
     };
 }
 impl_num!(Complex);
+impl_lower_ops!(Complex, Float, Add, AddAssign, add, add_assign);
+impl_lower_ops!(Complex, Float, Sub, SubAssign, sub, sub_assign);
+impl_lower_ops!(Complex, Float, Mul, MulAssign, mul, mul_assign);
+impl_lower_ops!(Complex, Float, Div, DivAssign, div, div_assign);
+impl_lower_ops!(Complex, Float, Pow, PowAssign, pow, pow_assign);
 impl_num!(Float);
