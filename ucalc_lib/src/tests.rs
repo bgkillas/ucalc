@@ -4,8 +4,6 @@ use crate::parse::ParseError;
 use crate::parse::{Token, Tokens};
 use crate::variable::{Functions, Variables};
 use crate::{FunctionVar, Number, Variable};
-#[cfg(feature = "complex")]
-use ucalc_numbers::ComplexTrait;
 use ucalc_numbers::{Constant, Float, FloatTrait};
 macro_rules! assert_teq {
     ($a:expr, $b:expr, $c:expr) => {
@@ -551,7 +549,7 @@ fn parse_quadratic() {
             Operators::Negate.into(),
             Function::Quadratic.into()
         ],
-        res(2).sqrt() - Float::from(1)
+        -(res(2).sqrt() + Float::from(1))
     );
     assert_correct!(
         infix("quadratic((4-2)/2,3-2-3,-ln(e))"),
@@ -572,7 +570,7 @@ fn parse_quadratic() {
             Operators::Negate.into(),
             Function::Quadratic.into()
         ],
-        res(2).sqrt() - Float::from(1)
+        -(res(2).sqrt() + Float::from(1))
     );
 }
 #[test]
@@ -726,9 +724,8 @@ fn test_solve() {
             Operators::Sub.into(),
             Function::Solve.into()
         ],
-        -(res(2).sqrt() - Float::from(1))
+        res(2).sqrt() + Float::from(1)
     );
-    #[cfg(feature = "complex")]
     assert_correct!(
         infix("solve(x,exp(x)^2-exp(x)-1)"),
         rpn("x x exp 2 ^ x exp - 1 - solve"),
@@ -745,7 +742,7 @@ fn test_solve() {
             Operators::Sub.into(),
             Function::Solve.into()
         ],
-        -(res(2).ln() - (res(5).sqrt() - Float::from(1)).ln() + res(Constant::Pi).mul_i(false))
+        (res(0.5) + res(5).sqrt() / Float::from(2)).ln()
     );
     assert_correct!(
         infix("solve(x,ln(x))"),

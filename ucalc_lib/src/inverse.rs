@@ -38,7 +38,6 @@ impl Inverse {
         matches!(self, Self::None)
     }
     pub fn get_inverse(self) -> Option<Operators> {
-        //TODO
         Some(match self {
             Self::Sin => Function::Asin.into(),
             Self::Cos => Function::Acos.into(),
@@ -66,7 +65,6 @@ impl Inverse {
         })
     }
     pub fn left_inverse(self, a: Number, b: Number) -> Number {
-        //TODO
         match self {
             Self::Add => a - b,
             Self::Sub => a + b,
@@ -78,7 +76,6 @@ impl Inverse {
         }
     }
     pub fn right_inverse(self, a: Number, b: Number) -> Number {
-        //TODO
         match self {
             Self::Add => a - b,
             Self::Sub => b - a,

@@ -77,20 +77,29 @@ impl PolyRef<'_> {
         match self.len() {
             2 => Some(vec![self.linear()]),
             3 => Some(self.quadratic().into()),
+            4 => Some(self.cubic().into()),
+            5 => Some(self.quartic().into()),
             //TODO
             _ => None,
         }
     }
+    pub fn linear(&self) -> Number {
+        self[0].clone() / self[1].clone()
+    }
     pub fn quadratic(&self) -> [Number; 2] {
-        let a = -self[1].clone() / (self[2].clone() * Float::from(2));
+        let t = self[2].clone() * Float::from(2);
+        let a = -self[1].clone() / t.clone();
         let b = (self[1].clone() * self[1].clone()
             - self[2].clone() * self[0].clone() * Float::from(4))
         .sqrt()
-            / (self[2].clone() * Float::from(2));
-        [a.clone() - b.clone(), a + b]
+            / t;
+        [a.clone() + b.clone(), a - b]
     }
-    pub fn linear(&self) -> Number {
-        self[0].clone() / self[1].clone()
+    pub fn cubic(&self) -> [Number; 3] {
+        todo!()
+    }
+    pub fn quartic(&self) -> [Number; 4] {
+        todo!()
     }
 }
 impl Polynomial {
