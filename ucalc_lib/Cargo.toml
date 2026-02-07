@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 
 [features]
-default = ["f64"]
+default = ["f64", "complex"]
 f16 = ["ucalc_numbers/f16"]
 f32 = ["ucalc_numbers/f32"]
 f64 = ["ucalc_numbers/f64"]

@@ -55,7 +55,7 @@ impl Pow<Number> for Polynomial {
     type Output = Option<Self>;
     fn pow(mut self, rhs: Number) -> Self::Output {
         #[cfg(feature = "complex")]
-        if rhs.imag.is_zero() {
+        if !rhs.imag.is_zero() {
             return None;
         }
         if rhs.real().clone().fract().is_zero() {

@@ -4,8 +4,9 @@ use crate::parse::ParseError;
 use crate::parse::{Token, Tokens};
 use crate::variable::{Functions, Variables};
 use crate::{FunctionVar, Number};
+#[cfg(feature = "complex")]
+use ucalc_numbers::ComplexTrait;
 use ucalc_numbers::{Constant, Float, FloatTrait};
-
 macro_rules! assert_teq {
     ($a:expr, $b:expr, $c:expr) => {
         assert_eq!($a, $b);

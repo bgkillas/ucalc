@@ -1,6 +1,8 @@
 use crate::parse::Token;
 use crate::polynomial::PolyRef;
 use crate::{Functions, Number, Tokens};
+#[cfg(feature = "complex")]
+use ucalc_numbers::ComplexTrait;
 use ucalc_numbers::{Constant, Float, FloatTrait, PowAssign, RealTrait};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Function {

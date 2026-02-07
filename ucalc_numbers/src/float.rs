@@ -10,6 +10,7 @@ use std::f64::consts;
 use std::f128::consts;
 use std::fmt::{Debug, Display, Formatter};
 use std::iter::{Product, Sum};
+use std::mem;
 use std::ops::{
     Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub, SubAssign,
 };
@@ -346,7 +347,8 @@ impl ComplexTrait<Float> for Complex {
         &mut self.imag
     }
     fn zero_real(&mut self) {
-        self.real = Float::default()
+        self.real = Float::default();
+        mem::swap(&mut self.real, &mut self.imag);
     }
     fn zero_imag(&mut self) {
         self.imag = Float::default()
