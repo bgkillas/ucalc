@@ -3,7 +3,7 @@ use crate::operators::Operators;
 use crate::parse::ParseError;
 use crate::parse::{Token, Tokens};
 use crate::variable::{Functions, Variables};
-use crate::{FunctionVar, Number};
+use crate::{FunctionVar, Number, Variable};
 #[cfg(feature = "complex")]
 use ucalc_numbers::ComplexTrait;
 use ucalc_numbers::{Constant, Float, FloatTrait};
@@ -33,10 +33,14 @@ macro_rules! assert_correct_with {
     };
 }
 fn infix(s: &str) -> Tokens {
-    Tokens::infix(s, &Variables::default(), &[], &Functions::default()).unwrap()
+    Tokens::infix(s, &mut Variables::default(), &[], &mut Functions::default())
+        .unwrap()
+        .unwrap()
 }
 fn rpn(s: &str) -> Tokens {
-    Tokens::rpn(s, &Variables::default(), &[], &Functions::default()).unwrap()
+    Tokens::rpn(s, &mut Variables::default(), &[], &mut Functions::default())
+        .unwrap()
+        .unwrap()
 }
 fn res<T>(f: T) -> Number
 where
@@ -619,17 +623,19 @@ fn parse_order_of_operations() {
 fn test_graph_vars() {
     let infix = Tokens::infix(
         "x^y",
-        &Variables::default(),
+        &mut Variables::default(),
         &["x", "y"],
-        &Functions::default(),
+        &mut Functions::default(),
     )
+    .unwrap()
     .unwrap();
     let rpn = Tokens::rpn(
         "x y ^",
-        &Variables::default(),
+        &mut Variables::default(),
         &["x", "y"],
-        &Functions::default(),
+        &mut Functions::default(),
     )
+    .unwrap()
     .unwrap();
     assert_correct_with!(
         infix,
@@ -816,8 +822,63 @@ fn test_if() {
     );
 }
 #[test]
+fn test_custom_var() {
+    let mut vars = Variables(vec![Variable::new("n", res(2))]);
+    let mut v = Variables(Vec::new());
+    assert!(
+        Tokens::infix("n=2", &mut v, &[], &mut Functions::default())
+            .unwrap()
+            .is_none()
+    );
+    assert_eq!(v, vars);
+    let mut v = Variables(Vec::new());
+    assert!(
+        Tokens::rpn("n = 2", &mut v, &[], &mut Functions::default())
+            .unwrap()
+            .is_none()
+    );
+    assert_eq!(v, vars);
+    assert_correct_with!(
+        Tokens::infix("2*n*2", &mut vars, &[], &mut Functions::default())
+            .unwrap()
+            .unwrap(),
+        Tokens::rpn("2 n * 2 *", &mut vars, &[], &mut Functions::default())
+            .unwrap()
+            .unwrap(),
+        Variables::default(),
+        &[],
+        Functions::default(),
+        vec![
+            num(2),
+            num(2),
+            Operators::Mul.into(),
+            num(2),
+            Operators::Mul.into()
+        ],
+        res(8)
+    );
+}
+macro_rules! assert_fun {
+    ($infix:expr, $rpn:expr, $expected:expr) => {
+        let mut f = Functions::default();
+        assert!(
+            Tokens::infix($infix, &mut Variables::default(), &[], &mut f)
+                .unwrap()
+                .is_none()
+        );
+        assert_eq!(f, $expected);
+        let mut f = Functions::default();
+        assert!(
+            Tokens::rpn($rpn, &mut Variables::default(), &[], &mut f)
+                .unwrap()
+                .is_none()
+        );
+        assert_eq!(f, $expected);
+    };
+}
+#[test]
 fn test_recursion() {
-    let funs = Functions(vec![FunctionVar::new(
+    let mut funs = Functions(vec![FunctionVar::new(
         "fact",
         1,
         Tokens(vec![
@@ -836,9 +897,18 @@ fn test_recursion() {
             Function::If.into(),
         ]),
     )]);
+    assert_fun!(
+        "fact(n)=if(n>0,n*fact(n-1),1)",
+        "n fact = n 0 > n n 1 - fact * 1 if",
+        funs
+    );
     assert_correct_with!(
-        Tokens::infix("fact(5)", &Variables::default(), &[], &funs).unwrap(),
-        Tokens::rpn("5 fact", &Variables::default(), &[], &funs).unwrap(),
+        Tokens::infix("fact(5)", &mut Variables::default(), &[], &mut funs)
+            .unwrap()
+            .unwrap(),
+        Tokens::rpn("5 fact", &mut Variables::default(), &[], &mut funs)
+            .unwrap()
+            .unwrap(),
         Variables::default(),
         &[],
         funs,
@@ -847,43 +917,144 @@ fn test_recursion() {
     );
 }
 #[test]
-fn test_composed_functions() {
-    let funs = Functions(vec![
-        FunctionVar::new(
-            "f",
-            2,
-            Tokens(vec![
-                Token::InnerVar(0),
-                Token::InnerVar(1),
-                Operators::Sub.into(),
-            ]),
-        ),
-        FunctionVar::new(
-            "g",
-            2,
-            Tokens(vec![
-                Token::InnerVar(0),
-                Token::InnerVar(1),
-                Operators::Mul.into(),
-                Token::InnerVar(1),
-                Operators::Mul.into(),
-            ]),
-        ),
-    ]);
+fn test_inner_functions() {
+    let f1 = FunctionVar::new(
+        "f",
+        2,
+        Tokens(vec![
+            Token::InnerVar(0),
+            Token::InnerVar(1),
+            Operators::Sub.into(),
+        ]),
+    );
+    let f2 = FunctionVar::new(
+        "g",
+        2,
+        Tokens(vec![
+            Token::InnerVar(0),
+            Token::InnerVar(1),
+            Operators::Mul.into(),
+            Token::InnerVar(0),
+            Token::InnerVar(1),
+            Token::Fun(0),
+            Operators::Sub.into(),
+        ]),
+    );
+    let mut funs = Functions(vec![f1.clone(), f2.clone()]);
+    let mut f = Functions::default();
+    assert!(
+        Tokens::infix("f(n,k)=n-k", &mut Variables::default(), &[], &mut f)
+            .unwrap()
+            .is_none()
+    );
+    assert!(
+        Tokens::infix("g(n,k)=n*k-f(n,k)", &mut Variables::default(), &[], &mut f)
+            .unwrap()
+            .is_none()
+    );
+    assert_eq!(f, funs);
+    let mut f = Functions::default();
+    assert!(
+        Tokens::rpn("n k f = n k -", &mut Variables::default(), &[], &mut f)
+            .unwrap()
+            .is_none()
+    );
+    assert!(
+        Tokens::rpn(
+            "n k g = n k * n k f -",
+            &mut Variables::default(),
+            &[],
+            &mut f
+        )
+        .unwrap()
+        .is_none()
+    );
+    assert_eq!(f, funs);
     assert_correct_with!(
         Tokens::infix(
             "g(f(g(2,3)*2,g(3,2)*2)-1,2)",
-            &Variables::default(),
+            &mut Variables::default(),
             &[],
-            &funs
+            &mut funs
         )
+        .unwrap()
         .unwrap(),
         Tokens::rpn(
             "2 3 g 2 * 3 2 g 2 * f 1 - 2 g",
-            &Variables::default(),
+            &mut Variables::default(),
             &[],
-            &funs
+            &mut funs
         )
+        .unwrap()
+        .unwrap(),
+        Variables::default(),
+        &[],
+        funs,
+        vec![
+            num(2),
+            num(3),
+            Token::Fun(1),
+            num(2),
+            Operators::Mul.into(),
+            num(3),
+            num(2),
+            Token::Fun(1),
+            num(2),
+            Operators::Mul.into(),
+            Token::Fun(0),
+            num(1),
+            Operators::Sub.into(),
+            num(2),
+            Token::Fun(1)
+        ],
+        res(5)
+    );
+}
+#[test]
+fn test_composed_functions() {
+    let f1 = FunctionVar::new(
+        "f",
+        2,
+        Tokens(vec![
+            Token::InnerVar(0),
+            Token::InnerVar(1),
+            Operators::Sub.into(),
+        ]),
+    );
+    let f2 = FunctionVar::new(
+        "g",
+        2,
+        Tokens(vec![
+            Token::InnerVar(0),
+            Token::InnerVar(1),
+            Operators::Mul.into(),
+            Token::InnerVar(1),
+            Operators::Mul.into(),
+        ]),
+    );
+    let mut funs = Functions(vec![f1.clone(), f2.clone()]);
+    assert_fun!("f(n,k)=n-k", "n k f = n k -", Functions(vec![f1.clone()]));
+    assert_fun!(
+        "g(n,k)=n*k*k",
+        "n k g = n k * k *",
+        Functions(vec![f2.clone()])
+    );
+    assert_correct_with!(
+        Tokens::infix(
+            "g(f(g(2,3)*2,g(3,2)*2)-1,2)",
+            &mut Variables::default(),
+            &[],
+            &mut funs
+        )
+        .unwrap()
+        .unwrap(),
+        Tokens::rpn(
+            "2 3 g 2 * 3 2 g 2 * f 1 - 2 g",
+            &mut Variables::default(),
+            &[],
+            &mut funs
+        )
+        .unwrap()
         .unwrap(),
         Variables::default(),
         &[],
@@ -910,7 +1081,7 @@ fn test_composed_functions() {
 }
 #[test]
 fn test_custom_functions() {
-    let funs = Functions(vec![FunctionVar::new(
+    let mut funs = Functions(vec![FunctionVar::new(
         "f",
         2,
         Tokens(vec![
@@ -919,9 +1090,14 @@ fn test_custom_functions() {
             Operators::Sub.into(),
         ]),
     )]);
+    assert_fun!("f(n,k)=n-k", "n k f = n k -", funs);
     assert_correct_with!(
-        Tokens::infix("f(3,4)", &Variables::default(), &[], &funs).unwrap(),
-        Tokens::rpn("3 4 f", &Variables::default(), &[], &funs).unwrap(),
+        Tokens::infix("f(3,4)", &mut Variables::default(), &[], &mut funs)
+            .unwrap()
+            .unwrap(),
+        Tokens::rpn("3 4 f", &mut Variables::default(), &[], &mut funs)
+            .unwrap()
+            .unwrap(),
         Variables::default(),
         &[],
         funs,
@@ -931,17 +1107,19 @@ fn test_custom_functions() {
     assert_correct_with!(
         Tokens::infix(
             "sum(n,0,10,sum(k,3,6,f(n,k)^2+f(k,n)-2))",
-            &Variables::default(),
+            &mut Variables::default(),
             &[],
-            &funs
+            &mut funs
         )
+        .unwrap()
         .unwrap(),
         Tokens::rpn(
             "n 0 10 k 3 6 n k f 2 ^ k n f + 2 - sum sum",
-            &Variables::default(),
+            &mut Variables::default(),
             &[],
-            &funs
+            &mut funs
         )
+        .unwrap()
         .unwrap(),
         Variables::default(),
         &[],
@@ -1289,33 +1467,91 @@ fn test_real() {
 #[test]
 fn test_err() {
     assert_eq!(
-        Tokens::infix("(2+3))", &Variables::default(), &[], &Functions::default()),
+        Tokens::infix(
+            "(2+3))",
+            &mut Variables::default(),
+            &[],
+            &mut Functions::default()
+        ),
         Err(ParseError::LeftParenthesisNotFound)
     );
     assert_eq!(
-        Tokens::infix("((2+3)", &Variables::default(), &[], &Functions::default()),
+        Tokens::infix(
+            "((2+3)",
+            &mut Variables::default(),
+            &[],
+            &mut Functions::default()
+        ),
         Err(ParseError::RightParenthesisNotFound)
     );
     assert_teq!(
-        Tokens::infix("2.3.4", &Variables::default(), &[], &Functions::default()),
-        Tokens::rpn("2.3.4", &Variables::default(), &[], &Functions::default()),
+        Tokens::infix(
+            "2.3.4",
+            &mut Variables::default(),
+            &[],
+            &mut Functions::default()
+        ),
+        Tokens::rpn(
+            "2.3.4",
+            &mut Variables::default(),
+            &[],
+            &mut Functions::default()
+        ),
         Err(ParseError::UnknownToken("2.3.4".to_string()))
     );
     assert_eq!(
-        Tokens::infix("(2+)", &Variables::default(), &[], &Functions::default()),
+        Tokens::infix(
+            "(2+)",
+            &mut Variables::default(),
+            &[],
+            &mut Functions::default()
+        ),
         Err(ParseError::MissingInput)
     );
     assert_eq!(
-        Tokens::infix("|2", &Variables::default(), &[], &Functions::default()),
+        Tokens::infix(
+            "|2",
+            &mut Variables::default(),
+            &[],
+            &mut Functions::default()
+        ),
         Err(ParseError::AbsoluteBracketFailed)
     );
     assert_eq!(
-        Tokens::infix("|(|)", &Variables::default(), &[], &Functions::default()),
+        Tokens::infix(
+            "|(|)",
+            &mut Variables::default(),
+            &[],
+            &mut Functions::default()
+        ),
         Err(ParseError::AbsoluteBracketFailed)
     );
     assert_eq!(
-        Tokens::infix("(|)|", &Variables::default(), &[], &Functions::default()),
+        Tokens::infix(
+            "(|)|",
+            &mut Variables::default(),
+            &[],
+            &mut Functions::default()
+        ),
         Err(ParseError::LeftParenthesisNotFound)
+    );
+    assert_eq!(
+        Tokens::infix(
+            "=2",
+            &mut Variables::default(),
+            &[],
+            &mut Functions::default()
+        ),
+        Err(ParseError::VarExpectedName)
+    );
+    assert_eq!(
+        Tokens::rpn(
+            "= 2",
+            &mut Variables::default(),
+            &[],
+            &mut Functions::default()
+        ),
+        Err(ParseError::VarExpectedName)
     );
     /*assert_teq!(
         Tokens::infix("abc(2)", Variables::default(), Functions::default()),

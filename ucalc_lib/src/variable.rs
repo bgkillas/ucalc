@@ -2,12 +2,12 @@ use crate::Number;
 use crate::parse::Tokens;
 use std::ops::{Deref, DerefMut};
 use ucalc_numbers::Constant;
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Variable {
     pub name: String,
     pub value: Number,
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct FunctionVar {
     pub name: String,
     pub inputs: usize,
@@ -30,9 +30,9 @@ impl Variable {
         }
     }
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Variables(pub Vec<Variable>);
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct Functions(pub Vec<FunctionVar>);
 impl Default for Variables {
     fn default() -> Self {
@@ -48,7 +48,7 @@ impl Default for Variables {
     }
 }
 impl Deref for Variables {
-    type Target = [Variable];
+    type Target = Vec<Variable>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -59,7 +59,7 @@ impl DerefMut for Variables {
     }
 }
 impl Deref for Functions {
-    type Target = [FunctionVar];
+    type Target = Vec<FunctionVar>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }

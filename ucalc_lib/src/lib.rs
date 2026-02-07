@@ -1,5 +1,6 @@
 #![feature(if_let_guard)]
 #![feature(iter_advance_by)]
+#![feature(vec_try_remove)]
 mod cas;
 mod compute;
 mod functions;

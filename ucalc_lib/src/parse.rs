@@ -2,7 +2,7 @@ use crate::functions::Function;
 use crate::operators::{Bracket, Operators};
 use crate::polynomial::Polynomial;
 use crate::variable::{Functions, Variables};
-use crate::{Number, NumberBase};
+use crate::{FunctionVar, Number, NumberBase, Variable};
 use std::fmt::{Display, Formatter};
 use std::ops::{Deref, DerefMut};
 use ucalc_numbers::FloatTrait;
@@ -46,6 +46,7 @@ pub enum ParseError {
     RightParenthesisNotFound,
     AbsoluteBracketFailed,
     MissingInput,
+    VarExpectedName,
 }
 impl Display for Tokens {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -68,17 +69,27 @@ impl<'a> Display for TokensRef<'a> {
 impl Tokens {
     pub fn rpn(
         value: &str,
-        vars: &Variables,
+        vars: &mut Variables,
         graph_vars: &[&str],
-        funs: &Functions,
-    ) -> Result<Self, ParseError> {
+        funs: &mut Functions,
+    ) -> Result<Option<Self>, ParseError> {
         let mut tokens = Tokens(Vec::with_capacity(value.len()));
         let mut inner_vars: Vec<&str> = Vec::with_capacity(value.len());
+        let mut inputs = None;
         for token in value.split(' ') {
             if token.is_empty() {
                 continue;
             }
-            if let Ok(operator) = Operators::try_from(token) {
+            if token == "=" {
+                let Some(name) = inner_vars.pop() else {
+                    return Err(ParseError::VarExpectedName);
+                };
+                inputs = Some((name, inner_vars.is_empty()));
+                tokens.drain(..);
+                if !inner_vars.is_empty() {
+                    funs.push(FunctionVar::new(name, inner_vars.len(), Tokens::default()))
+                }
+            } else if let Ok(operator) = Operators::try_from(token) {
                 tokens.push(operator.into());
             } else if let Some(n) = NumberBase::parse_radix(token, 10) {
                 tokens.push(n.into());
@@ -99,22 +110,32 @@ impl Tokens {
                 return Err(ParseError::UnknownToken(token.to_string()));
             }
         }
-        Ok(tokens)
+        Ok(if let Some((name, is_fun)) = inputs {
+            if is_fun {
+                let val = tokens.compute(&[], funs);
+                vars.push(Variable::new(name, val));
+            } else {
+                funs.last_mut().unwrap().tokens = tokens
+            }
+            None
+        } else {
+            Some(tokens)
+        })
     }
     pub fn infix(
         value: &str,
-        vars: &Variables,
+        vars: &mut Variables,
         graph_vars: &[&str],
-        funs: &Functions,
-    ) -> Result<Self, ParseError> {
+        funs: &mut Functions,
+    ) -> Result<Option<Self>, ParseError> {
         let mut tokens = Tokens(Vec::with_capacity(value.len()));
         let mut operator_stack: Vec<Operators> = Vec::with_capacity(value.len());
         let mut inner_vars: Vec<&str> = Vec::with_capacity(value.len());
         let mut chars = value.char_indices();
+        let mut inputs = None;
         let mut negate = true;
         let mut last_abs = false;
         let mut req_input = false;
-        let mut expect_var = 0;
         let mut abs = 0;
         while let Some((i, c)) = chars.next() {
             match c {
@@ -134,17 +155,15 @@ impl Tokens {
                     if let Some(i) = funs.iter().position(|v| v.name == s) {
                         operator_stack.push(Function::Custom(i).into());
                     } else if let Ok(fun) = Function::try_from(s) {
-                        expect_var = fun.inner_vars();
                         operator_stack.push(fun.into());
-                    } else if expect_var > 0 {
-                        inner_vars.push(s);
-                        expect_var -= 1;
                     } else if let Some(i) = inner_vars.iter().position(|v| *v == s) {
                         tokens.push(Token::InnerVar(i));
                     } else if let Some(v) = vars.iter().find(|v| v.name == s) {
                         tokens.push(Token::Num(v.value.clone()));
                     } else if let Some(i) = graph_vars.iter().position(|v| v == &s) {
                         tokens.push(Token::GraphVar(i));
+                    } else if s.chars().all(|c| c.is_ascii_alphabetic()) {
+                        inner_vars.push(s);
                     } else {
                         return Err(ParseError::UnknownToken(s.to_string()));
                     }
@@ -241,7 +260,16 @@ impl Tokens {
                         l += next.len_utf8();
                     }
                     let s = &value[i..i + l];
-                    if let Ok(mut operator) = Operators::try_from(s) {
+                    if s == "=" {
+                        let Some(name) = inner_vars.try_remove(0) else {
+                            return Err(ParseError::VarExpectedName);
+                        };
+                        inputs = Some((name, inner_vars.is_empty()));
+                        tokens.drain(..);
+                        if !inner_vars.is_empty() {
+                            funs.push(FunctionVar::new(name, inner_vars.len(), Tokens::default()))
+                        }
+                    } else if let Ok(mut operator) = Operators::try_from(s) {
                         if negate {
                             match operator {
                                 Operators::Sub => operator = Operators::Negate,
@@ -278,7 +306,17 @@ impl Tokens {
             }
             tokens.push(operator.into());
         }
-        Ok(tokens)
+        Ok(if let Some((name, is_fun)) = inputs {
+            if is_fun {
+                let val = tokens.compute(&[], funs);
+                vars.push(Variable::new(name, val));
+            } else {
+                funs.last_mut().unwrap().tokens = tokens
+            }
+            None
+        } else {
+            Some(tokens)
+        })
     }
     pub fn close_off_bracket(
         &mut self,
