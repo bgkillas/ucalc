@@ -3,7 +3,6 @@ use crate::{Pow, PowAssign};
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::iter::{Product, Sum};
-use std::mem;
 use std::ops::Neg;
 use std::ops::{
     Add, AddAssign, Deref, DerefMut, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Range, Rem,
@@ -108,9 +107,10 @@ macro_rules! impl_lower_ops {
             fn $fun(self, rhs: Number<$ty>) -> Self::Output {
                 match rhs {
                     Number::Value(b) => $op::$fun(self, b).into(),
+                    #[cfg(feature = "list")]
                     Number::List(mut b) => {
                         b.iter_mut().for_each(|b| {
-                            let old = mem::replace(b, Number::Value(<$ty>::from(0)));
+                            let old = std::mem::replace(b, Number::Value(<$ty>::from(0)));
                             *b = $op::$fun(self.clone(), old);
                         });
                         Number::List(b)
@@ -122,6 +122,7 @@ macro_rules! impl_lower_ops {
             fn $fun_assign(&mut self, rhs: $oty) {
                 match self {
                     Self::Value(a) => $op_assign::$fun_assign(a, rhs.clone()),
+                    #[cfg(feature = "list")]
                     Self::List(a) => a
                         .iter_mut()
                         .for_each(|a| $op_assign::$fun_assign(a, rhs.clone())),
@@ -143,19 +144,22 @@ macro_rules! impl_ops {
             fn $fun_assign(&mut self, rhs: Self) {
                 match (self, rhs) {
                     (Self::Value(a), Self::Value(b)) => $op_assign::$fun_assign(a, b),
+                    #[cfg(feature = "list")]
                     (Self::List(a), Self::Value(b)) => a
                         .iter_mut()
                         .for_each(|a| $op_assign::$fun_assign(a, b.clone())),
+                    #[cfg(feature = "list")]
                     (s @ Self::Value(_), mut r @ Self::List(_)) => {
-                        mem::swap(s, &mut r);
+                        std::mem::swap(s, &mut r);
                         let (Self::List(a), Self::Value(b)) = (s, r) else {
                             unreachable!()
                         };
                         a.iter_mut().for_each(|a| {
-                            let old = mem::replace(a, Number::Value(<$ty>::from(0)));
+                            let old = std::mem::replace(a, Number::Value(<$ty>::from(0)));
                             *a = $op::$fun(b.clone(), old)
                         })
                     }
+                    #[cfg(feature = "list")]
                     (Self::List(a), Self::List(b)) => a
                         .iter_mut()
                         .zip(b.into_iter())
@@ -195,6 +199,7 @@ macro_rules! impl_num {
             fn neg_assign(&mut self) {
                 match self {
                     Self::Value(a) => a.neg_assign(),
+                    #[cfg(feature = "list")]
                     Self::List(a) => a.iter_mut().for_each(|a| a.neg_assign()),
                 }
             }
@@ -210,6 +215,7 @@ macro_rules! impl_num {
             fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
                 match self {
                     Self::Value(a) => write!(f, "{}", a),
+                    #[cfg(feature = "list")]
                     Self::List(a) => {
                         write!(f, "[")?;
                         let mut first = true;
