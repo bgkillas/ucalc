@@ -350,31 +350,42 @@ impl Tokens {
     }
 }
 impl<'a> TokensRef<'a> {
-    pub fn get_last(&self, funs: &Functions) -> usize {
-        match self.last().unwrap() {
-            Token::Fun(i) => {
-                let inputs = funs[*i].inputs;
-                let mut i = self.len() - 1;
-                for _ in 0..inputs {
-                    i = TokensRef(&self[..i]).get_last(funs)
-                }
-                i
+    pub fn get_last_with_end(&self, funs: &Functions, mut end: usize) -> usize {
+        let mut inputs = 1;
+        while inputs != 0 {
+            inputs -= 1;
+            end -= 1;
+            match self[end] {
+                Token::Fun(j) => inputs += funs[j].inputs,
+                Token::Operator(o) => inputs += o.inputs(),
+                Token::Skip(_) => inputs += 1,
+                _ => {}
             }
-            Token::Operator(o) => {
-                let inputs = o.inputs();
-                let mut i = self.len() - 1;
-                for _ in 0..inputs {
-                    i = TokensRef(&self[..i]).get_last(funs)
-                }
-                i
-            }
-            Token::Skip(_) => TokensRef(&self[..self.len() - 1]).get_last(funs),
-            _ => self.len() - 1,
         }
+        end
+    }
+    pub fn get_last(&self, funs: &Functions) -> usize {
+        self.get_last_with_end(funs, self.len())
+    }
+    pub fn get_from_last_with_end(&'a self, funs: &Functions, end: usize) -> (Self, usize) {
+        let last = self.get_last_with_end(funs, end);
+        (Self(&self[last..end]), last)
     }
     pub fn get_from_last(&'a self, funs: &Functions) -> (Self, usize) {
-        let last = self.get_last(funs);
-        (Self(&self[last..]), last)
+        self.get_from_last_with_end(funs, self.len())
+    }
+    pub fn get_lasts(&'a self, funs: &Functions) -> Vec<Self> {
+        let inputs = match self.last().unwrap() {
+            Token::Fun(j) => funs[*j].inputs,
+            Token::Operator(o) => o.inputs(),
+            _ => unreachable!(),
+        };
+        let mut ret = vec![TokensRef(&[]); inputs];
+        let mut end = self.len() - 1;
+        for j in (0..inputs).rev() {
+            (ret[j], end) = self.get_from_last_with_end(funs, end);
+        }
+        ret
     }
 }
 impl From<Number> for Token {

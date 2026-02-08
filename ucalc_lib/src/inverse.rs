@@ -1,5 +1,5 @@
 use crate::{Function, Number, Operators};
-use ucalc_numbers::{FloatTrait, Pow};
+use ucalc_numbers::{FloatTrait, PowAssign};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Inverse {
     Add,
@@ -30,7 +30,6 @@ pub enum Inverse {
     Sq,
     Cbrt,
     Cb,
-    Custom(usize), //TODO
     None,
 }
 impl Inverse {
@@ -64,25 +63,38 @@ impl Inverse {
             _ => return None,
         })
     }
-    pub fn left_inverse(self, a: Number, b: Number) -> Number {
+    pub fn left_inverse(self, a: &mut Number, b: Number) {
         match self {
-            Self::Add => a - b,
-            Self::Sub => a + b,
-            Self::Mul => a / b,
-            Self::Div => a * b,
-            Self::Pow => a.pow(b.recip()),
-            Self::Root => a.pow(b),
+            Self::Add => *a -= b,
+            Self::Sub => *a += b,
+            Self::Mul => *a /= b,
+            Self::Div => *a *= b,
+            Self::Pow => a.pow_assign(b.recip()),
+            Self::Root => a.pow_assign(b),
             _ => unreachable!(),
         }
     }
-    pub fn right_inverse(self, a: Number, b: Number) -> Number {
+    pub fn right_inverse(self, a: &mut Number, mut b: Number) {
         match self {
-            Self::Add => a - b,
-            Self::Sub => b - a,
-            Self::Mul => a / b,
-            Self::Div => b / a,
-            Self::Pow => a.ln() / b.ln(),
-            Self::Root => b.ln() / a.ln(),
+            Self::Add => *a -= b,
+            Self::Sub => {
+                std::mem::swap(a, &mut b);
+                *a -= b
+            }
+            Self::Mul => *a /= b,
+            Self::Div => {
+                std::mem::swap(a, &mut b);
+                *a /= b
+            }
+            Self::Pow => {
+                a.ln_mut();
+                *a /= b.ln();
+            }
+            Self::Root => {
+                std::mem::swap(a, &mut b);
+                a.ln_mut();
+                *a /= b.ln();
+            }
             _ => unreachable!(),
         }
     }
@@ -160,8 +172,7 @@ impl From<Function> for Inverse {
             | Function::Set
             | Function::Solve => Self::None,
             #[cfg(feature = "complex")]
-            Function::Arg | Function::Real | Function::Imag => Self::None,
-            Function::Custom(i) => Self::Custom(i),
+            Function::Arg | Function::Real | Function::Imag | Function::Custom(_) => Self::None,
         }
     }
 }

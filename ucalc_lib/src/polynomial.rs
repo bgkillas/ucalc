@@ -60,7 +60,11 @@ impl PolynomialRef<'_> {
         let mut roots = self.quotient.roots()?;
         if self.divisor.len() != 1 {
             let anti_roots = self.divisor.roots()?;
-            roots.retain(|r| !anti_roots.contains(r));
+            for r in anti_roots {
+                if let Some(i) = roots.iter().position(|a| *a == r) {
+                    roots.remove(i);
+                }
+            }
         }
         Some(roots)
     }
