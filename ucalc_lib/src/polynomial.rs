@@ -1,6 +1,6 @@
 use crate::inverse::Inverse;
 use crate::parse::TokensRef;
-use crate::{Function, Functions, Number, Operators, Token, Tokens};
+use crate::{Function, Functions, Number, Operators, Token, Tokens, Variables};
 use std::mem;
 use ucalc_numbers::{Float, FloatTrait, NegAssign, Pow};
 #[derive(Debug, PartialEq, Clone, Default)]
@@ -226,9 +226,11 @@ impl Polynomial {
     }
 }
 impl TokensRef<'_> {
+    #[allow(clippy::too_many_arguments)]
     pub fn compute_polynomial(
         &self,
         _fun_vars: &mut Vec<Number>,
+        custom_vars: &Variables,
         _vars: &[Number],
         _funs: &Functions,
         stack: &mut Tokens,
@@ -245,6 +247,7 @@ impl TokensRef<'_> {
                     operator.compute_poly(&mut stack[len - inputs..], &mut poly)?;
                     stack.drain(len + 1 - inputs..);
                 }
+                Token::Var(index) => stack.push(Token::Num(custom_vars[*index].value.clone())),
                 Token::Fun(_) => {
                     todo!()
                 }

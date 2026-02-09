@@ -27,6 +27,7 @@ pub enum Token {
     InnerVar(usize),
     GraphVar(usize),
     Fun(usize),
+    Var(usize),
     Skip(usize),
     Operator(Operators),
 }
@@ -91,8 +92,6 @@ impl Tokens {
                 }
             } else if let Ok(operator) = Operators::try_from(token) {
                 tokens.push(operator.into());
-            } else if let Some(n) = NumberBase::parse_radix(token, 10) {
-                tokens.push(n.into());
             } else if let Some(i) = funs.iter().position(|v| v.name == token) {
                 tokens.push(Token::Fun(i))
             } else if let Ok(fun) = Function::try_from(token) {
@@ -100,10 +99,12 @@ impl Tokens {
                 tokens.push(fun.into());
             } else if let Some(i) = inner_vars.iter().position(|v| *v == token) {
                 tokens.push(Token::InnerVar(i));
-            } else if let Some(v) = vars.iter().find(|v| v.name == token) {
-                tokens.push(Token::Num(v.value.clone()));
+            } else if let Some(i) = vars.iter().position(|v| v.name == token) {
+                tokens.push(Token::Var(i));
             } else if let Some(i) = graph_vars.iter().position(|v| v == &token) {
                 tokens.push(Token::GraphVar(i));
+            } else if let Some(n) = NumberBase::parse_radix(token, 10) {
+                tokens.push(n.into());
             } else if token.chars().all(|c| c.is_ascii_alphabetic()) {
                 inner_vars.push(token);
             } else {
@@ -112,7 +113,7 @@ impl Tokens {
         }
         Ok(if let Some((name, is_fun)) = inputs {
             if is_fun {
-                let val = tokens.compute(&[], funs);
+                let val = tokens.compute(&[], funs, vars);
                 vars.push(Variable::new(name, val));
             } else {
                 funs.last_mut().unwrap().tokens = tokens
@@ -158,8 +159,8 @@ impl Tokens {
                         operator_stack.push(fun.into());
                     } else if let Some(i) = inner_vars.iter().position(|v| *v == s) {
                         tokens.push(Token::InnerVar(i));
-                    } else if let Some(v) = vars.iter().find(|v| v.name == s) {
-                        tokens.push(Token::Num(v.value.clone()));
+                    } else if let Some(i) = vars.iter().position(|v| v.name == s) {
+                        tokens.push(Token::Var(i));
                     } else if let Some(i) = graph_vars.iter().position(|v| v == &s) {
                         tokens.push(Token::GraphVar(i));
                     } else if s.chars().all(|c| c.is_ascii_alphabetic()) {
@@ -308,7 +309,7 @@ impl Tokens {
         }
         Ok(if let Some((name, is_fun)) = inputs {
             if is_fun {
-                let val = tokens.compute(&[], funs);
+                let val = tokens.compute(&[], funs, vars);
                 vars.push(Variable::new(name, val));
             } else {
                 funs.last_mut().unwrap().tokens = tokens

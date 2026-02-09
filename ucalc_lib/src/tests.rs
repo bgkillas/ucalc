@@ -27,7 +27,7 @@ macro_rules! assert_correct {
 macro_rules! assert_correct_with {
     ($a:expr, $b:expr, $v:expr, $vf:expr, $f:expr, $c:expr, $d:expr) => {
         assert_teq!($a, $b, Tokens($c));
-        assert_teq!($a.compute($vf, &$f), $b.compute($vf, &$f), $d);
+        assert_teq!($a.compute($vf, &$f, &$v), $b.compute($vf, &$f, &$v), $d);
     };
 }
 fn infix(s: &str) -> Tokens {
@@ -51,6 +51,14 @@ where
     Number: From<T>,
 {
     res(f).into()
+}
+fn var(n: &str) -> Token {
+    Token::Var(
+        Variables::default()
+            .iter()
+            .position(|v| v.name == n)
+            .unwrap(),
+    )
 }
 #[test]
 fn parse_neg() {
@@ -176,7 +184,7 @@ fn parse_ln() {
     assert_correct!(
         infix("ln(e)"),
         rpn("e ln"),
-        vec![num(Constant::E), Function::Ln.into()],
+        vec![var("e"), Function::Ln.into()],
         res(1)
     );
 }
@@ -200,32 +208,22 @@ fn parse_max() {
 }
 #[test]
 fn parse_vars() {
-    assert_correct!(
-        infix("pi"),
-        rpn("pi"),
-        vec![num(Constant::Pi)],
-        res(Constant::Pi)
-    );
-    assert_correct!(
-        infix("e"),
-        rpn("e"),
-        vec![num(Constant::E)],
-        res(Constant::E)
-    );
+    assert_correct!(infix("pi"), rpn("pi"), vec![var("pi")], res(Constant::Pi));
+    assert_correct!(infix("e"), rpn("e"), vec![var("e")], res(Constant::E));
     assert_correct!(
         infix("tau"),
         rpn("tau"),
-        vec![num(Constant::Tau)],
+        vec![var("tau")],
         res(Constant::Tau)
     );
     assert_correct!(
         infix("inf"),
         rpn("inf"),
-        vec![num(Constant::Infinity)],
+        vec![var("inf")],
         res(Constant::Infinity)
     );
     #[cfg(feature = "complex")]
-    assert_correct!(infix("i"), rpn("i"), vec![num((0, 1))], res((0, 1)));
+    assert_correct!(infix("i"), rpn("i"), vec![var("i")], res((0, 1)));
 }
 #[test]
 fn parse_cos() {
@@ -233,7 +231,7 @@ fn parse_cos() {
         infix("cos(pi/6)"),
         rpn("pi 6 / cos"),
         vec![
-            num(Constant::Pi),
+            var("pi"),
             num(6),
             Operators::Div.into(),
             Function::Cos.into()
@@ -263,7 +261,7 @@ fn parse_sin() {
         infix("sin(pi/6)"),
         rpn("pi 6 / sin"),
         vec![
-            num(Constant::Pi),
+            var("pi"),
             num(6),
             Operators::Div.into(),
             Function::Sin.into()
@@ -283,9 +281,9 @@ fn parse_sinh() {
         infix("asinh((e-1/e)/2)"),
         rpn("e 1 e / - 2 / asinh"),
         vec![
-            num(Constant::E),
+            var("e"),
             num(1),
-            num(Constant::E),
+            var("e"),
             Operators::Div.into(),
             Operators::Sub.into(),
             num(2),
@@ -307,9 +305,9 @@ fn parse_cosh() {
         infix("acosh((e+1/e)/2)"),
         rpn("e 1 e / + 2 / acosh"),
         vec![
-            num(Constant::E),
+            var("e"),
             num(1),
-            num(Constant::E),
+            var("e"),
             Operators::Div.into(),
             Operators::Add.into(),
             num(2),
@@ -340,7 +338,7 @@ fn parse_tan() {
         infix("tan(pi/6)"),
         rpn("pi 6 / tan"),
         vec![
-            num(Constant::Pi),
+            var("pi"),
             num(6),
             Operators::Div.into(),
             Function::Tan.into()
@@ -414,7 +412,7 @@ fn parse_abs() {
         vec![
             num(2),
             num(2),
-            num((0, 1)),
+            var("i"),
             Operators::Mul.into(),
             Operators::Add.into(),
             Function::Abs.into()
@@ -475,7 +473,7 @@ fn parse_arg() {
         vec![
             num(2),
             num(2),
-            num((0, 1)),
+            var("i"),
             Operators::Mul.into(),
             Operators::Add.into(),
             Function::Arg.into()
@@ -492,7 +490,7 @@ fn parse_conj() {
         vec![
             num(2),
             num(2),
-            num((0, 1)),
+            var("i"),
             Operators::Mul.into(),
             Operators::Add.into(),
             Function::Conj.into()
@@ -565,7 +563,7 @@ fn parse_quadratic() {
             Operators::Sub.into(),
             num(3),
             Operators::Sub.into(),
-            num(Constant::E),
+            var("e"),
             Function::Ln.into(),
             Operators::Negate.into(),
             Function::Quadratic.into()
@@ -610,7 +608,7 @@ fn parse_order_of_operations() {
             Function::Max.into(),
             num(3),
             Operators::Div.into(),
-            num(Constant::Pi),
+            var("pi"),
             Operators::Mul.into(),
             Function::Sin.into(),
         ],
@@ -638,7 +636,7 @@ fn test_graph_vars() {
     assert_correct_with!(
         infix,
         rpn,
-        vars,
+        Variables::default(),
         &[Number::from(2), Number::from(3)],
         Functions::default(),
         vec![
@@ -651,7 +649,7 @@ fn test_graph_vars() {
     assert_correct_with!(
         infix,
         rpn,
-        vars,
+        Variables::default(),
         &[Number::from(3), Number::from(2)],
         Functions::default(),
         vec![
@@ -842,12 +840,12 @@ fn test_custom_var() {
         Tokens::rpn("2 n * 2 *", &mut vars, &[], &mut Functions::default())
             .unwrap()
             .unwrap(),
-        Variables::default(),
+        vars,
         &[],
         Functions::default(),
         vec![
             num(2),
-            num(2),
+            Token::Var(0),
             Operators::Mul.into(),
             num(2),
             Operators::Mul.into()
@@ -1440,7 +1438,7 @@ fn test_real() {
         vec![
             num(1),
             num(2),
-            num((0, 1)),
+            var("i"),
             Operators::Mul.into(),
             Operators::Add.into(),
             Function::Real.into()
@@ -1453,7 +1451,7 @@ fn test_real() {
         vec![
             num(1),
             num(2),
-            num((0, 1)),
+            var("i"),
             Operators::Mul.into(),
             Operators::Add.into(),
             Function::Imag.into()

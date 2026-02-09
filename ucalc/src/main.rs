@@ -27,7 +27,7 @@ fn run_line(line: &str, infix: &mut bool, vars: &mut Variables, funs: &mut Funct
         }
     }) {
         Ok(Some(tokens)) => {
-            let compute = tmr(|| tokens.compute(&[], funs));
+            let compute = tmr(|| tokens.compute(&[], funs, vars));
             println!("{}", compute);
         }
         Ok(None) => {}

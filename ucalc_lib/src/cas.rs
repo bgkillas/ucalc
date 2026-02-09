@@ -1,18 +1,20 @@
 use crate::inverse::Inverse;
 use crate::parse::{Token, TokensRef};
-use crate::{Functions, Number, Tokens};
+use crate::{Functions, Number, Tokens, Variables};
 impl<'a> TokensRef<'a> {
     pub fn get_inverse(
         &'a self,
         fun_vars: &mut Vec<Number>,
         vars: &[Number],
         funs: &Functions,
+        custom_vars: &Variables,
         offset: usize,
     ) -> Option<Number> {
         let mut ret = Number::from(0);
         let mut inner_stack = Tokens(Vec::with_capacity(self.len()));
         let inner = self.inner(
             fun_vars,
+            custom_vars,
             vars,
             funs,
             offset,
@@ -26,12 +28,13 @@ impl<'a> TokensRef<'a> {
     fn inner(
         &'a self,
         fun_vars: &mut Vec<Number>,
+        custom_vars: &Variables,
         vars: &[Number],
         funs: &Functions,
         offset: usize,
         ret: &mut Number,
         inner_stack: &mut Tokens,
-        args: Option<Vec<TokensRef>>,
+        args: Option<&[TokensRef]>,
     ) -> Option<Option<Number>> {
         let mut i = self.len();
         let mut start = 0;
@@ -42,15 +45,15 @@ impl<'a> TokensRef<'a> {
                     let fun = &funs[n];
                     let tokens = TokensRef(&self[start..=i]);
                     let args = tokens.get_lasts(funs);
-                    println!("{args:?}");
                     return TokensRef(&fun.tokens).inner(
                         fun_vars,
+                        custom_vars,
                         vars,
                         funs,
                         offset,
                         ret,
                         inner_stack,
-                        Some(args),
+                        Some(&args),
                     );
                 }
                 Token::Operator(operator) => {
@@ -63,12 +66,29 @@ impl<'a> TokensRef<'a> {
                     } else {
                         let right_tokens = TokensRef(&self[start..i]);
                         let (right_tokens, last) = right_tokens.get_from_last(funs);
-                        if right_tokens.contains(&Token::InnerVar(fun_vars.len())) {
+                        if args
+                            .map(|a| {
+                                a.iter().enumerate().any(|(i, a)| {
+                                    right_tokens.contains(&Token::InnerVar(i))
+                                        && a.contains(&Token::InnerVar(fun_vars.len()))
+                                })
+                            })
+                            .unwrap_or(right_tokens.contains(&Token::InnerVar(fun_vars.len())))
+                        {
                             let left_tokens = TokensRef(&self[start..last]);
                             let (left_tokens, _) = left_tokens.get_from_last(funs);
-                            if left_tokens.contains(&Token::InnerVar(fun_vars.len())) {
+                            if args
+                                .map(|a| {
+                                    a.iter().enumerate().any(|(i, a)| {
+                                        left_tokens.contains(&Token::InnerVar(i))
+                                            && a.contains(&Token::InnerVar(fun_vars.len()))
+                                    })
+                                })
+                                .unwrap_or(left_tokens.contains(&Token::InnerVar(fun_vars.len())))
+                            {
                                 let poly = TokensRef(&self[start..=i]).compute_polynomial(
                                     fun_vars,
+                                    custom_vars,
                                     vars,
                                     funs,
                                     inner_stack,
@@ -81,8 +101,10 @@ impl<'a> TokensRef<'a> {
                                     fun_vars,
                                     vars,
                                     funs,
+                                    custom_vars,
                                     inner_stack,
                                     offset,
+                                    args,
                                 );
                                 start = last;
                                 inverse.right_inverse(ret, num);
@@ -92,8 +114,10 @@ impl<'a> TokensRef<'a> {
                                 fun_vars,
                                 vars,
                                 funs,
+                                custom_vars,
                                 inner_stack,
                                 offset,
+                                args,
                             );
                             i = last;
                             inverse.left_inverse(ret, num);

@@ -1,30 +1,32 @@
 use crate::operators::Operators;
 use crate::parse::{Token, Tokens, TokensRef};
-use crate::{Functions, Number};
+use crate::{Functions, Number, Variables};
 use std::array;
 use ucalc_numbers::{Constant, Float, FloatTrait, RealTrait};
 impl Tokens {
-    pub fn compute(&self, vars: &[Number], funs: &Functions) -> Number {
-        TokensRef(self).compute(vars, funs)
+    pub fn compute(&self, vars: &[Number], funs: &Functions, custom_vars: &Variables) -> Number {
+        TokensRef(self).compute(vars, funs, custom_vars)
     }
     pub fn compute_buffer(
         &self,
         fun_vars: &mut Vec<Number>,
         vars: &[Number],
         funs: &Functions,
+        custom_vars: &Variables,
         stack: &mut Tokens,
     ) -> Number {
-        self.compute_buffer_with(fun_vars, vars, funs, stack, 0)
+        self.compute_buffer_with(fun_vars, vars, funs, custom_vars, stack, 0)
     }
     pub fn compute_buffer_with(
         &self,
         fun_vars: &mut Vec<Number>,
         vars: &[Number],
         funs: &Functions,
+        custom_vars: &Variables,
         stack: &mut Tokens,
         offset: usize,
     ) -> Number {
-        TokensRef(self).compute_buffer_with(fun_vars, vars, funs, stack, offset)
+        TokensRef(self).compute_buffer_with(fun_vars, vars, funs, custom_vars, stack, offset, None)
     }
     pub fn get_skip_var<const N: usize>(&self, end: usize) -> [&Token; N] {
         let end = self.len() - (end + 1);
@@ -48,6 +50,7 @@ impl Tokens {
         fun_vars: &mut Vec<Number>,
         vars: &[Number],
         funs: &Functions,
+        custom_vars: &Variables,
         offset: usize,
         fun: impl FnOnce(&mut dyn Iterator<Item = Number>) -> Token,
     ) {
@@ -59,7 +62,15 @@ impl Tokens {
         fun_vars.push(Number::from(start));
         let mut stack = Tokens(Vec::with_capacity(tokens.len()));
         let mut iter = (start..=end).map(|_| {
-            let ret = tokens.compute_buffer_with(fun_vars, vars, funs, &mut stack, offset);
+            let ret = tokens.compute_buffer_with(
+                fun_vars,
+                vars,
+                funs,
+                custom_vars,
+                &mut stack,
+                offset,
+                None,
+            );
             *fun_vars.last_mut().unwrap() += Float::from(1);
             ret
         });
@@ -69,32 +80,50 @@ impl Tokens {
     }
 }
 impl TokensRef<'_> {
-    pub fn compute(&self, vars: &[Number], funs: &Functions) -> Number {
+    pub fn compute(&self, vars: &[Number], funs: &Functions, custom_vars: &Variables) -> Number {
         let mut fun_vars = Vec::with_capacity(self.len());
         let mut stack = Tokens(Vec::with_capacity(self.len()));
-        self.compute_buffer(&mut fun_vars, vars, funs, &mut stack)
+        self.compute_buffer(&mut fun_vars, vars, funs, custom_vars, &mut stack)
     }
-    pub fn compute_with(&self, vars: &[Number], funs: &Functions, offset: usize) -> Number {
+    pub fn compute_with(
+        &self,
+        vars: &[Number],
+        funs: &Functions,
+        custom_vars: &Variables,
+        offset: usize,
+    ) -> Number {
         let mut fun_vars = Vec::with_capacity(self.len());
         let mut stack = Tokens(Vec::with_capacity(self.len()));
-        self.compute_buffer_with(&mut fun_vars, vars, funs, &mut stack, offset)
+        self.compute_buffer_with(
+            &mut fun_vars,
+            vars,
+            funs,
+            custom_vars,
+            &mut stack,
+            offset,
+            None,
+        )
     }
     pub fn compute_buffer(
         &self,
         fun_vars: &mut Vec<Number>,
         vars: &[Number],
         funs: &Functions,
+        custom_vars: &Variables,
         stack: &mut Tokens,
     ) -> Number {
-        self.compute_buffer_with(fun_vars, vars, funs, stack, 0)
+        self.compute_buffer_with(fun_vars, vars, funs, custom_vars, stack, 0, None)
     }
+    #[allow(clippy::too_many_arguments)]
     pub fn compute_buffer_with(
         &self,
         fun_vars: &mut Vec<Number>,
         vars: &[Number],
         funs: &Functions,
+        custom_vars: &Variables,
         stack: &mut Tokens,
         offset: usize,
+        args: Option<&[TokensRef]>,
     ) -> Number {
         let mut i = 0;
         while i < self.len() {
@@ -104,7 +133,7 @@ impl TokensRef<'_> {
                     let inputs = operator.inputs();
                     match operator {
                         Operators::Function(fun) if fun.has_var() => {
-                            fun.compute_var(stack, fun_vars, vars, funs, offset)
+                            fun.compute_var(stack, fun_vars, vars, funs, custom_vars, offset)
                         }
                         _ if operator.is_chainable() => {
                             let chain = if self.get(i + 1).is_some_and(|o| {
@@ -135,6 +164,7 @@ impl TokensRef<'_> {
                         }
                     }
                 }
+                Token::Var(index) => stack.push(Token::Num(custom_vars[*index].value.clone())),
                 Token::Fun(index) => {
                     let inputs = funs[*index].inputs;
                     let end = fun_vars.len();
@@ -144,10 +174,22 @@ impl TokensRef<'_> {
                         fun_vars,
                         vars,
                         funs,
+                        custom_vars,
                         &mut Tokens(Vec::with_capacity(funs[*index].tokens.len())),
                         end,
                     );
                     fun_vars.drain(end..);
+                }
+                Token::InnerVar(index) if let Some(args) = &args => {
+                    stack.push(Token::Num(args[*index].compute_buffer_with(
+                        fun_vars,
+                        vars,
+                        funs,
+                        custom_vars,
+                        &mut Tokens(Vec::with_capacity(args[*index].len())),
+                        offset,
+                        None,
+                    )))
                 }
                 Token::InnerVar(index) => stack.push(Token::Num(fun_vars[offset + index].clone())),
                 Token::GraphVar(index) => stack.push(Token::Num(vars[*index].clone())),
