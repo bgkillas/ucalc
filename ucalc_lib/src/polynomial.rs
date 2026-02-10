@@ -230,9 +230,9 @@ impl TokensRef<'_> {
     pub fn compute_polynomial(
         &self,
         fun_vars: &mut Vec<Number>,
-        custom_vars: &Variables,
         vars: &[Number],
         funs: &Functions,
+        custom_vars: &Variables,
         stack: &mut Tokens,
         offset: usize,
         to_poly: Option<usize>,
@@ -255,9 +255,9 @@ impl TokensRef<'_> {
                     fun_vars.extend(stack.drain(len + 1 - inputs..).map(|n| n.num()));
                     stack[len - inputs] = TokensRef(&funs[*index].tokens).compute_polynomial(
                         fun_vars,
-                        custom_vars,
                         vars,
                         funs,
+                        custom_vars,
                         &mut Tokens(Vec::with_capacity(funs[*index].tokens.len())),
                         end,
                         None,

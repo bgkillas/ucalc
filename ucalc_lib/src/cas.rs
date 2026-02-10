@@ -14,9 +14,9 @@ impl<'a> TokensRef<'a> {
         let mut inner_stack = Tokens(Vec::with_capacity(self.len()));
         let inner = self.inner(
             fun_vars,
-            custom_vars,
             vars,
             funs,
+            custom_vars,
             offset,
             &mut ret,
             &mut inner_stack,
@@ -28,9 +28,9 @@ impl<'a> TokensRef<'a> {
     fn inner(
         &'a self,
         fun_vars: &mut Vec<Number>,
-        custom_vars: &Variables,
         vars: &[Number],
         funs: &Functions,
+        custom_vars: &Variables,
         offset: usize,
         ret: &mut Number,
         inner_stack: &mut Tokens,
@@ -70,9 +70,9 @@ impl<'a> TokensRef<'a> {
                     }
                     TokensRef(&fun.tokens).inner(
                         fun_vars,
-                        custom_vars,
                         vars,
                         funs,
+                        custom_vars,
                         end,
                         ret,
                         inner_stack,
@@ -81,9 +81,9 @@ impl<'a> TokensRef<'a> {
                     fun_vars.drain(end..);
                     return args[0].inner(
                         fun_vars,
-                        custom_vars,
                         vars,
                         funs,
+                        custom_vars,
                         offset,
                         ret,
                         inner_stack,
@@ -123,9 +123,9 @@ impl<'a> TokensRef<'a> {
                                 let poly = *TokensRef(&self[start..=i])
                                     .compute_polynomial(
                                         fun_vars,
-                                        custom_vars,
                                         vars,
                                         funs,
+                                        custom_vars,
                                         inner_stack,
                                         offset,
                                         Some(fun_vars.len()),
