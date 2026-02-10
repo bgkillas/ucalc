@@ -1,5 +1,5 @@
 use crate::inverse::Inverse;
-use crate::parse::TokensRef;
+use crate::tokens::TokensRef;
 use crate::{Function, Functions, Number, Operators, Token, Tokens, Variables};
 use std::mem;
 use ucalc_numbers::{Float, FloatTrait, NegAssign, Pow};
@@ -229,14 +229,14 @@ impl TokensRef<'_> {
     #[allow(clippy::too_many_arguments)]
     pub fn compute_polynomial(
         &self,
-        _fun_vars: &mut Vec<Number>,
+        fun_vars: &mut Vec<Number>,
         custom_vars: &Variables,
-        _vars: &[Number],
-        _funs: &Functions,
+        vars: &[Number],
+        funs: &Functions,
         stack: &mut Tokens,
-        _offset: usize,
-        to_poly: usize,
-    ) -> Option<Polynomial> {
+        offset: usize,
+        to_poly: Option<usize>,
+    ) -> Option<Token> {
         let mut i = 0;
         let mut poly = Vec::with_capacity(8).into();
         while i < self.len() {
@@ -248,30 +248,44 @@ impl TokensRef<'_> {
                     stack.drain(len + 1 - inputs..);
                 }
                 Token::Var(index) => stack.push(Token::Num(custom_vars[*index].value.clone())),
-                Token::Fun(_) => {
-                    todo!()
+                Token::Fun(index) => {
+                    let inputs = funs[*index].inputs;
+                    let end = fun_vars.len();
+                    fun_vars.push(stack[len - inputs].num_ref().clone());
+                    fun_vars.extend(stack.drain(len + 1 - inputs..).map(|n| n.num()));
+                    stack[len - inputs] = TokensRef(&funs[*index].tokens).compute_polynomial(
+                        fun_vars,
+                        custom_vars,
+                        vars,
+                        funs,
+                        &mut Tokens(Vec::with_capacity(funs[*index].tokens.len())),
+                        end,
+                        None,
+                    )?;
+                    fun_vars.drain(end..);
                 }
                 Token::Num(n) => {
                     stack.push(Token::Num(n.clone()));
                 }
-                Token::InnerVar(v) => {
-                    if *v == to_poly {
+                Token::InnerVar(index) => {
+                    if Some(*index) == to_poly {
                         stack.push(Polynomial::new().into())
                     } else {
-                        todo!()
+                        stack.push(Token::Num(fun_vars[offset + index].clone()))
                     }
                 }
-                Token::GraphVar(_) => {
-                    todo!()
-                }
-                Token::Skip(_) => {
-                    todo!()
+                Token::GraphVar(index) => stack.push(Token::Num(vars[*index].clone())),
+                Token::Skip(to) => {
+                    let back = stack.len();
+                    stack.extend_from_slice(&self[i + 1..=i + to]);
+                    stack.push(Token::Skip(back));
+                    i += to;
                 }
                 Token::Polynomial(_) => unreachable!(),
             }
             i += 1;
         }
-        Some(*stack.remove(0).poly())
+        Some(stack.remove(0))
     }
 }
 impl Function {

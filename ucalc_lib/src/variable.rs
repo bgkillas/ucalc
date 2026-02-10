@@ -1,5 +1,5 @@
 use crate::Number;
-use crate::parse::Tokens;
+use crate::tokens::Tokens;
 use std::ops::{Deref, DerefMut};
 use ucalc_numbers::Constant;
 #[derive(Debug, Clone, PartialEq)]

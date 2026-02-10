@@ -1,5 +1,5 @@
 use crate::inverse::Inverse;
-use crate::parse::{Token, TokensRef};
+use crate::tokens::{Token, TokensRef};
 use crate::{Functions, Number, Tokens, Variables};
 impl<'a> TokensRef<'a> {
     pub fn get_inverse(
@@ -120,15 +120,18 @@ impl<'a> TokensRef<'a> {
                                 })
                                 .unwrap_or(left_tokens.contains(&Token::InnerVar(fun_vars.len())))
                             {
-                                let poly = TokensRef(&self[start..=i]).compute_polynomial(
-                                    fun_vars,
-                                    custom_vars,
-                                    vars,
-                                    funs,
-                                    inner_stack,
-                                    offset,
-                                    fun_vars.len(),
-                                )? - ret.clone();
+                                let poly = *TokensRef(&self[start..=i])
+                                    .compute_polynomial(
+                                        fun_vars,
+                                        custom_vars,
+                                        vars,
+                                        funs,
+                                        inner_stack,
+                                        offset,
+                                        Some(fun_vars.len()),
+                                    )?
+                                    .poly()
+                                    - ret.clone();
                                 return Some(poly.roots());
                             } else {
                                 let num = left_tokens.compute_buffer_with(

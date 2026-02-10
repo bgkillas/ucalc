@@ -1,5 +1,5 @@
 use crate::operators::Operators;
-use crate::parse::{Token, Tokens, TokensRef};
+use crate::tokens::{Token, Tokens, TokensRef};
 use crate::{Functions, Number, Variables};
 use std::array;
 use ucalc_numbers::{Constant, Float, FloatTrait, RealTrait};

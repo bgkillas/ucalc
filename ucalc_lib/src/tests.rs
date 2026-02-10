@@ -1,7 +1,7 @@
 use crate::functions::Function;
 use crate::operators::Operators;
-use crate::parse::ParseError;
-use crate::parse::{Token, Tokens};
+use crate::tokens::ParseError;
+use crate::tokens::{Token, Tokens};
 use crate::variable::{Functions, Variables};
 use crate::{FunctionVar, Number, Variable};
 use ucalc_numbers::{Constant, Float, FloatTrait};

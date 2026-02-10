@@ -1,6 +1,6 @@
 use crate::Number;
 use crate::functions::Function;
-use crate::parse::Token;
+use crate::tokens::Token;
 use ucalc_numbers::{Float, FloatTrait, NegAssign, PowAssign};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Operators {
