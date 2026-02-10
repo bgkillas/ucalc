@@ -753,6 +753,45 @@ fn test_solve() {
         ],
         res(1)
     );
+    let mut funs = Functions(vec![]);
+    assert!(Tokens::infix("f(n,k)=n-k", &mut Variables::default(), &[], &mut funs).is_ok());
+    assert!(Tokens::infix("g(n)=n^2-3", &mut Variables::default(), &[], &mut funs).is_ok());
+    assert_correct_with!(
+        Tokens::infix(
+            "solve(n,f(g(n+3)+3,2)-1)",
+            &mut Variables::default(),
+            &[],
+            &mut funs
+        )
+        .unwrap()
+        .unwrap(),
+        Tokens::rpn(
+            "n n 3 + g 3 + 2 f 1 - solve",
+            &mut Variables::default(),
+            &[],
+            &mut funs
+        )
+        .unwrap()
+        .unwrap(),
+        Variables::default(),
+        &[],
+        funs,
+        vec![
+            Token::Skip(10),
+            Token::InnerVar(0).into(),
+            num(3),
+            Operators::Add.into(),
+            Token::Fun(1),
+            num(3),
+            Operators::Add.into(),
+            num(2),
+            Token::Fun(0),
+            num(1),
+            Operators::Sub.into(),
+            Function::Solve.into(),
+        ],
+        res(3).sqrt() - res(3)
+    );
 }
 #[test]
 fn test_fold() {

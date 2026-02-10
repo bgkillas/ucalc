@@ -26,7 +26,7 @@ impl Tokens {
         stack: &mut Tokens,
         offset: usize,
     ) -> Number {
-        TokensRef(self).compute_buffer_with(fun_vars, vars, funs, custom_vars, stack, offset, None)
+        TokensRef(self).compute_buffer_with(fun_vars, vars, funs, custom_vars, stack, offset)
     }
     pub fn get_skip_var<const N: usize>(&self, end: usize) -> [&Token; N] {
         let end = self.len() - (end + 1);
@@ -62,15 +62,8 @@ impl Tokens {
         fun_vars.push(Number::from(start));
         let mut stack = Tokens(Vec::with_capacity(tokens.len()));
         let mut iter = (start..=end).map(|_| {
-            let ret = tokens.compute_buffer_with(
-                fun_vars,
-                vars,
-                funs,
-                custom_vars,
-                &mut stack,
-                offset,
-                None,
-            );
+            let ret =
+                tokens.compute_buffer_with(fun_vars, vars, funs, custom_vars, &mut stack, offset);
             *fun_vars.last_mut().unwrap() += Float::from(1);
             ret
         });
@@ -94,15 +87,7 @@ impl TokensRef<'_> {
     ) -> Number {
         let mut fun_vars = Vec::with_capacity(self.len());
         let mut stack = Tokens(Vec::with_capacity(self.len()));
-        self.compute_buffer_with(
-            &mut fun_vars,
-            vars,
-            funs,
-            custom_vars,
-            &mut stack,
-            offset,
-            None,
-        )
+        self.compute_buffer_with(&mut fun_vars, vars, funs, custom_vars, &mut stack, offset)
     }
     pub fn compute_buffer(
         &self,
@@ -112,7 +97,7 @@ impl TokensRef<'_> {
         custom_vars: &Variables,
         stack: &mut Tokens,
     ) -> Number {
-        self.compute_buffer_with(fun_vars, vars, funs, custom_vars, stack, 0, None)
+        self.compute_buffer_with(fun_vars, vars, funs, custom_vars, stack, 0)
     }
     #[allow(clippy::too_many_arguments)]
     pub fn compute_buffer_with(
@@ -123,7 +108,6 @@ impl TokensRef<'_> {
         custom_vars: &Variables,
         stack: &mut Tokens,
         offset: usize,
-        args: Option<&[TokensRef]>,
     ) -> Number {
         let mut i = 0;
         while i < self.len() {
@@ -179,17 +163,6 @@ impl TokensRef<'_> {
                         end,
                     );
                     fun_vars.drain(end..);
-                }
-                Token::InnerVar(index) if let Some(args) = &args => {
-                    stack.push(Token::Num(args[*index].compute_buffer_with(
-                        fun_vars,
-                        vars,
-                        funs,
-                        custom_vars,
-                        &mut Tokens(Vec::with_capacity(args[*index].len())),
-                        offset,
-                        None,
-                    )))
                 }
                 Token::InnerVar(index) => stack.push(Token::Num(fun_vars[offset + index].clone())),
                 Token::GraphVar(index) => stack.push(Token::Num(vars[*index].clone())),

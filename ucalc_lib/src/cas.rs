@@ -45,7 +45,41 @@ impl<'a> TokensRef<'a> {
                     let fun = &funs[n];
                     let tokens = TokensRef(&self[start..=i]);
                     let args = tokens.get_lasts(funs);
-                    return TokensRef(&fun.tokens).inner(
+                    let count = args
+                        .iter()
+                        .filter(|a| a.contains(&Token::InnerVar(fun_vars.len())))
+                        .count();
+                    if count != 1 {
+                        todo!() //polynomial
+                    }
+                    let end = fun_vars.len();
+                    for arg in args.iter() {
+                        if arg.contains(&Token::InnerVar(fun_vars.len())) {
+                            fun_vars.push(Number::default())
+                        } else {
+                            let n = arg.compute_buffer_with(
+                                fun_vars,
+                                vars,
+                                funs,
+                                custom_vars,
+                                inner_stack,
+                                offset,
+                            );
+                            fun_vars.push(n)
+                        }
+                    }
+                    TokensRef(&fun.tokens).inner(
+                        fun_vars,
+                        custom_vars,
+                        vars,
+                        funs,
+                        end,
+                        ret,
+                        inner_stack,
+                        Some(&args),
+                    )?;
+                    fun_vars.drain(end..);
+                    return args[0].inner(
                         fun_vars,
                         custom_vars,
                         vars,
@@ -53,7 +87,7 @@ impl<'a> TokensRef<'a> {
                         offset,
                         ret,
                         inner_stack,
-                        Some(&args),
+                        None,
                     );
                 }
                 Token::Operator(operator) => {
@@ -104,7 +138,6 @@ impl<'a> TokensRef<'a> {
                                     custom_vars,
                                     inner_stack,
                                     offset,
-                                    args,
                                 );
                                 start = last;
                                 inverse.right_inverse(ret, num);
@@ -117,7 +150,6 @@ impl<'a> TokensRef<'a> {
                                 custom_vars,
                                 inner_stack,
                                 offset,
-                                args,
                             );
                             i = last;
                             inverse.left_inverse(ret, num);

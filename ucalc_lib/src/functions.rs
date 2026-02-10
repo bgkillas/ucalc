@@ -267,7 +267,6 @@ impl Function {
                         custom_vars,
                         &mut stck,
                         offset,
-                        None,
                     );
                     *fun_vars.last_mut().unwrap() += Float::from(1);
                 });
@@ -287,7 +286,6 @@ impl Function {
                     custom_vars,
                     &mut stck,
                     offset,
-                    None,
                 );
                 stack.drain(len - l..);
                 fun_vars.pop();
@@ -314,7 +312,6 @@ impl Function {
                         custom_vars,
                         &mut stck,
                         offset,
-                        None,
                     );
                     *fun_vars.last_mut().unwrap() = next;
                 });
@@ -334,7 +331,6 @@ impl Function {
                     custom_vars,
                     &mut stck,
                     offset,
-                    None,
                 );
                 stack.drain(len - l..);
             }
