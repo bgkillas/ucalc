@@ -34,7 +34,7 @@ impl<'a> TokensRef<'a> {
         offset: usize,
         ret: &mut Number,
         inner_stack: &mut Tokens,
-        args: Option<&[TokensRef]>,
+        args: Option<&mut Vec<TokensRef>>,
     ) -> Option<Option<Number>> {
         let mut i = self.len();
         let mut start = 0;
@@ -44,7 +44,7 @@ impl<'a> TokensRef<'a> {
                 Token::Fun(n) => {
                     let fun = &funs[n];
                     let tokens = TokensRef(&self[start..=i]);
-                    let args = tokens.get_lasts(funs);
+                    let mut args = tokens.get_lasts(funs);
                     let count = args
                         .iter()
                         .filter(|a| a.contains(&Token::InnerVar(fun_vars.len())))
@@ -68,7 +68,7 @@ impl<'a> TokensRef<'a> {
                             fun_vars.push(n)
                         }
                     }
-                    TokensRef(&fun.tokens).inner(
+                    let roots = TokensRef(&fun.tokens).inner(
                         fun_vars,
                         vars,
                         funs,
@@ -76,8 +76,11 @@ impl<'a> TokensRef<'a> {
                         end,
                         ret,
                         inner_stack,
-                        Some(&args),
+                        Some(&mut args),
                     )?;
+                    if let Some(n) = roots {
+                        *ret = n;
+                    }
                     fun_vars.drain(end..);
                     return args[0].inner(
                         fun_vars,
@@ -101,10 +104,11 @@ impl<'a> TokensRef<'a> {
                         let right_tokens = TokensRef(&self[start..i]);
                         let (right_tokens, last) = right_tokens.get_from_last(funs);
                         if args
+                            .as_ref()
                             .map(|a| {
                                 a.iter().enumerate().any(|(i, a)| {
                                     right_tokens.contains(&Token::InnerVar(i))
-                                        && a.contains(&Token::InnerVar(fun_vars.len()))
+                                        && a.contains(&Token::InnerVar(offset))
                                 })
                             })
                             .unwrap_or(right_tokens.contains(&Token::InnerVar(fun_vars.len())))
@@ -112,27 +116,33 @@ impl<'a> TokensRef<'a> {
                             let left_tokens = TokensRef(&self[start..last]);
                             let (left_tokens, _) = left_tokens.get_from_last(funs);
                             if args
+                                .as_ref()
                                 .map(|a| {
                                     a.iter().enumerate().any(|(i, a)| {
                                         left_tokens.contains(&Token::InnerVar(i))
-                                            && a.contains(&Token::InnerVar(fun_vars.len()))
+                                            && a.contains(&Token::InnerVar(offset))
                                     })
                                 })
                                 .unwrap_or(left_tokens.contains(&Token::InnerVar(fun_vars.len())))
                             {
-                                let poly = *TokensRef(&self[start..=i])
-                                    .compute_polynomial(
-                                        fun_vars,
-                                        vars,
-                                        funs,
-                                        custom_vars,
-                                        inner_stack,
-                                        offset,
-                                        Some(fun_vars.len()),
-                                    )?
-                                    .poly()
-                                    - ret.clone();
-                                return Some(poly.roots());
+                                let poly = TokensRef(&self[start..=i]).compute_polynomial(
+                                    fun_vars,
+                                    vars,
+                                    funs,
+                                    custom_vars,
+                                    inner_stack,
+                                    offset,
+                                    Some(
+                                        args.and_then(|a| {
+                                            a.iter()
+                                                .position(|a| a.contains(&Token::InnerVar(offset)))
+                                        })
+                                        .unwrap_or(fun_vars.len()),
+                                    ),
+                                )?;
+                                let poly = *poly.poly() - ret.clone();
+                                let roots = poly.roots();
+                                return Some(roots);
                             } else {
                                 let num = left_tokens.compute_buffer_with(
                                     fun_vars,

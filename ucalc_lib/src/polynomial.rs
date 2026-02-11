@@ -7,13 +7,26 @@ use ucalc_numbers::{Float, FloatTrait, NegAssign, Pow};
 pub struct Poly(pub Vec<Number>);
 #[derive(Debug, Clone)]
 pub struct PolyRef<'a>(pub &'a [Number]);
+#[derive(Debug, PartialEq, Clone)]
+pub enum Func {
+    Function(Function),
+    Power(Number),
+}
+impl From<Func> for Inverse {
+    fn from(value: Func) -> Self {
+        match value {
+            Func::Function(func) => func.into(),
+            Func::Power(_) => {
+                todo!()
+            }
+        }
+    }
+}
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct Polynomial {
     pub quotient: Poly,
     pub divisor: Poly,
-    pub functions: Vec<Function>,
-    //TODO
-    pub power: Number,
+    pub functions: Vec<Func>,
 }
 #[derive(Debug, Clone)]
 pub struct PolynomialRef<'a> {
@@ -117,7 +130,6 @@ impl Polynomial {
             quotient: quotient.into(),
             divisor: divisor.into(),
             functions: Vec::with_capacity(8),
-            power: Number::default(),
         }
     }
     pub fn recip(mut self) -> Self {
@@ -148,10 +160,12 @@ impl Polynomial {
     pub fn roots(self) -> Option<Number> {
         let mut ret = self.as_ref().roots()?;
         ret.iter_mut().for_each(|a| {
-            self.functions
-                .iter()
-                .rev()
-                .for_each(|f| Inverse::from(*f).get_inverse().unwrap().compute_on(a, &[]))
+            self.functions.iter().rev().for_each(|f| {
+                Inverse::from(f.clone())
+                    .get_inverse()
+                    .unwrap()
+                    .compute_on(a, &[])
+            })
         });
         Some(ret[0].clone())
     }
@@ -171,7 +185,6 @@ impl Polynomial {
             } else {
                 self.functions
             },
-            power: self.power,
         })
     }
     fn div_buffer(self, rhs: &Self, buffer: &mut Poly) -> Option<Self> {
@@ -187,7 +200,6 @@ impl Polynomial {
             } else {
                 self.functions
             },
-            power: self.power,
         })
     }
     fn add_buffer(self, rhs: &Self, buffer: &mut Poly) -> Option<Self> {
@@ -204,7 +216,6 @@ impl Polynomial {
             } else {
                 self.functions
             },
-            power: self.power,
         })
     }
     fn sub_buffer(self, rhs: &Self, buffer: &mut Poly) -> Option<Self> {
@@ -221,7 +232,6 @@ impl Polynomial {
             } else {
                 self.functions
             },
-            power: self.power,
         })
     }
 }
@@ -291,7 +301,7 @@ impl TokensRef<'_> {
 impl Function {
     pub fn compute_poly(self, a: &mut Polynomial) {
         //TODO
-        a.functions.push(self);
+        a.functions.push(Func::Function(self));
     }
 }
 impl Operators {

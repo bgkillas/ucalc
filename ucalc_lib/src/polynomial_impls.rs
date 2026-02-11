@@ -47,7 +47,6 @@ impl From<Number> for Polynomial {
             quotient: quotient.into(),
             divisor: divisor.into(),
             functions: Vec::with_capacity(8),
-            power: Number::default(),
         }
     }
 }
@@ -91,7 +90,6 @@ impl Sub<Number> for Polynomial {
             quotient: self.quotient - (self.divisor.clone() * rhs),
             divisor: self.divisor,
             functions: self.functions,
-            power: self.power,
         }
     }
 }
@@ -102,7 +100,6 @@ impl Add<Number> for Polynomial {
             quotient: self.quotient + (self.divisor.clone() * rhs),
             divisor: self.divisor,
             functions: self.functions,
-            power: self.power,
         }
     }
 }
@@ -113,7 +110,6 @@ impl Mul<Number> for Polynomial {
             quotient: self.quotient * rhs,
             divisor: self.divisor,
             functions: self.functions,
-            power: self.power,
         }
     }
 }
@@ -124,7 +120,6 @@ impl Div<Number> for Polynomial {
             quotient: self.quotient / rhs,
             divisor: self.divisor,
             functions: self.functions,
-            power: self.power,
         }
     }
 }
@@ -135,7 +130,6 @@ impl Sub<Polynomial> for Number {
             quotient: (rhs.divisor.clone() * self) - rhs.quotient,
             divisor: rhs.divisor,
             functions: rhs.functions,
-            power: rhs.power,
         }
     }
 }
@@ -147,7 +141,6 @@ impl Div<Polynomial> for Number {
             quotient: rhs.divisor * self,
             divisor: rhs.quotient,
             functions: rhs.functions,
-            power: rhs.power,
         }
     }
 }
