@@ -41,6 +41,15 @@ impl Poly {
         self.mul_assign_buffer(rhs, buffer);
         self
     }
+    pub fn simplify(&mut self) {
+        self.0.drain(self.len()..);
+    }
+    pub fn last(&self) -> &Number {
+        &self[self.len() - 1]
+    }
+    pub fn len(&self) -> usize {
+        self.as_ref().len()
+    }
     pub fn mul_assign_buffer(&mut self, rhs: &Self, buffer: &mut Poly) {
         buffer
             .0
@@ -56,6 +65,22 @@ impl Poly {
                 *a = Number::default()
             }
         }
+    }
+    pub fn is_zero(&self) -> bool {
+        self.iter().all(|a| a.is_zero())
+    }
+    pub fn div_buffer(mut self, rhs: &Self, buffer: &mut Poly) -> Self {
+        while !self.is_zero() && self.0.len() >= rhs.0.len() {
+            let tmp = self.0.last().unwrap().clone() / rhs.0.last().unwrap().clone();
+            self.0.pop();
+            let start = (self.0.len() + 1) - rhs.len();
+            self.0[start..]
+                .iter_mut()
+                .zip(rhs.iter())
+                .for_each(|(a, b)| *a -= tmp.clone() * b.clone());
+            buffer.0.insert(0, tmp);
+        }
+        self
     }
 }
 impl PolynomialRef<'_> {

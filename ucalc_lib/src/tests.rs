@@ -1,10 +1,12 @@
 use crate::functions::Function;
 use crate::operators::Operators;
+use crate::polynomial::Poly;
 use crate::tokens::ParseError;
 use crate::tokens::{Token, Tokens};
 use crate::variable::{Functions, Variables};
 use crate::{FunctionVar, Number, Variable};
 use ucalc_numbers::{Constant, Float, FloatTrait};
+
 macro_rules! assert_teq {
     ($a:expr, $b:expr, $c:expr) => {
         assert_eq!($a, $b);
@@ -59,6 +61,16 @@ fn var(n: &str) -> Token {
             .position(|v| v.name == n)
             .unwrap(),
     )
+}
+#[test]
+fn test_poly_div() {
+    let mut buffer = Poly(Vec::new());
+    assert_eq!(
+        Poly(vec![res(-10), res(21), res(-12), res(1)])
+            .div_buffer(&Poly(vec![res(1), res(-2), res(1)]), &mut buffer),
+        Poly(vec![res(0), res(0)])
+    );
+    assert_eq!(buffer, Poly(vec![res(-10), res(1)]));
 }
 #[test]
 fn parse_neg() {
