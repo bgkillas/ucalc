@@ -167,6 +167,31 @@ fn parse_pow() {
         res(16)
     );
     assert_correct!(
+        infix("2^-4"),
+        rpn("2 4 _ ^"),
+        vec![
+            num(2),
+            num(4),
+            Operators::Negate.into(),
+            Operators::Pow.into()
+        ],
+        res(16).recip()
+    );
+    assert_correct!(
+        infix("1+-2^-4"),
+        rpn("1 2 4 _ ^ _ +"),
+        vec![
+            num(1),
+            num(2),
+            num(4),
+            Operators::Negate.into(),
+            Operators::Pow.into(),
+            Operators::Negate.into(),
+            Operators::Add.into()
+        ],
+        res(1) - res(16).recip()
+    );
+    assert_correct!(
         infix("2**4"),
         rpn("2 4 **"),
         vec![num(2), num(4), Operators::Pow.into()],

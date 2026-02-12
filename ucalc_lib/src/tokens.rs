@@ -283,6 +283,7 @@ impl Tokens {
                             && (top.precedence() > operator.precedence()
                                 || (top.precedence() == operator.precedence()
                                     && operator.left_associative()))
+                            && !(negate && operator == Operators::Negate && *top == Operators::Pow)
                         {
                             tokens.push(operator_stack.pop().unwrap().into());
                         }
