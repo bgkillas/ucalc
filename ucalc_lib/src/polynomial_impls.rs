@@ -1,5 +1,5 @@
 use crate::Number;
-use crate::polynomial::{Poly, PolyRef, Polynomial};
+use crate::polynomial::{Func, Poly, PolyRef, Polynomial};
 use std::mem;
 use std::ops::{
     Add, AddAssign, Deref, DerefMut, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign,
@@ -51,24 +51,21 @@ impl From<Number> for Polynomial {
     }
 }
 impl Pow<Number> for Polynomial {
-    type Output = Option<Self>;
+    type Output = Self;
     fn pow(mut self, rhs: Number) -> Self::Output {
-        #[cfg(feature = "complex")]
-        if !rhs.imag.is_zero() {
-            return None;
+        if !rhs.imag.is_zero() || !rhs.real().clone().fract().is_zero() {
+            //TODO
+            self.functions.push(Func::Power(rhs));
+            return self;
         }
-        if rhs.real().clone().fract().is_zero() {
-            let n = rhs.real().clone().into_isize();
-            let k = n.unsigned_abs();
-            self.quotient.pow_assign(k);
-            self.divisor.pow_assign(k);
-            if n.is_negative() {
-                self = self.recip()
-            }
-            Some(self)
-        } else {
-            None
+        let n = rhs.real().clone().into_isize();
+        let k = n.unsigned_abs();
+        self.quotient.pow_assign(k);
+        self.divisor.pow_assign(k);
+        if n.is_negative() {
+            self.recip_mut();
         }
+        self
     }
 }
 impl Pow<usize> for Poly {

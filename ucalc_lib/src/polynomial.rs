@@ -2,7 +2,7 @@ use crate::inverse::Inverse;
 use crate::tokens::TokensRef;
 use crate::{Function, Functions, Number, Operators, Token, Tokens, Variables};
 use std::mem;
-use ucalc_numbers::{Float, FloatTrait, NegAssign, Pow};
+use ucalc_numbers::{Float, FloatTrait, NegAssign, PowAssign};
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct Poly(pub Vec<Number>);
 #[derive(Debug, Clone)]
@@ -11,16 +11,6 @@ pub struct PolyRef<'a>(pub &'a [Number]);
 pub enum Func {
     Function(Function),
     Power(Number),
-}
-impl From<Func> for Inverse {
-    fn from(value: Func) -> Self {
-        match value {
-            Func::Function(func) => func.into(),
-            Func::Power(_) => {
-                todo!()
-            }
-        }
-    }
 }
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct Polynomial {
@@ -138,11 +128,10 @@ impl Polynomial {
             return None;
         };
         ret.iter_mut().for_each(|a| {
-            self.functions.iter().rev().for_each(|f| {
-                Inverse::from(f.clone())
-                    .get_inverse()
-                    .unwrap()
-                    .compute_on(a, &[])
+            self.functions.iter().rev().for_each(|f| match f {
+                Func::Function(f) => Inverse::from(*f).get_inverse().unwrap().compute_on(a, &[]),
+                //TODO
+                Func::Power(p) => a.pow_assign(p.clone().recip()),
             })
         });
         Some(ret[0].clone())
@@ -160,8 +149,11 @@ impl Polynomial {
         }
     }
     pub fn recip(mut self) -> Self {
-        mem::swap(&mut self.quotient, &mut self.divisor);
+        self.recip_mut();
         self
+    }
+    pub fn recip_mut(&mut self) {
+        mem::swap(&mut self.quotient, &mut self.divisor)
     }
     pub fn neg_mut(&mut self) {
         self.quotient.iter_mut().for_each(|a| a.neg_assign())
@@ -302,9 +294,10 @@ impl TokensRef<'_> {
     }
 }
 impl Function {
-    pub fn compute_poly(self, a: &mut Polynomial) {
+    pub fn compute_poly(self, a: &mut Polynomial) -> Option<()> {
         //TODO
         a.functions.push(Func::Function(self));
+        Some(())
     }
 }
 impl Operators {
@@ -324,7 +317,7 @@ impl Operators {
             } else {
                 match self {
                     Self::Negate => a.neg_mut(),
-                    Self::Function(fun) => fun.compute_poly(a),
+                    Self::Function(fun) => fun.compute_poly(a)?,
                     _ => return None,
                 }
             }
@@ -352,14 +345,8 @@ impl Operators {
             Self::Sub => *a -= b,
             Self::Mul => *a *= b,
             Self::Div => *a /= b,
-            Self::Pow => {
-                let old = mem::take(a);
-                *a = old.pow(b)?
-            }
-            Self::Root => {
-                let old = mem::take(a);
-                *a = old.pow(b.recip())?
-            }
+            Self::Pow => a.pow_assign(b),
+            Self::Root => a.pow_assign(b.recip()),
             _ => return None,
         }
         Some(())
