@@ -137,6 +137,7 @@ impl Tokens {
         let mut negate = true;
         let mut last_abs = false;
         let mut req_input = false;
+        let mut last_mul = false;
         let mut abs = 0;
         while let Some((i, c)) = chars.next() {
             match c {
@@ -155,16 +156,34 @@ impl Tokens {
                     let s = &value[i..i + l];
                     if let Some(i) = funs.iter().position(|v| v.name == s) {
                         operator_stack.push(Function::Custom(i).into());
+                        last_mul = false;
                     } else if let Ok(fun) = Function::try_from(s) {
                         operator_stack.push(fun.into());
+                        last_mul = false;
                     } else if let Some(i) = inner_vars.iter().position(|v| *v == s) {
                         tokens.push(Token::InnerVar(i));
+                        if last_mul {
+                            tokens.push(Operators::Mul.into())
+                        } else {
+                            last_mul = true;
+                        }
                     } else if let Some(i) = vars.iter().position(|v| v.name == s) {
                         tokens.push(Token::Var(i));
+                        if last_mul {
+                            tokens.push(Operators::Mul.into())
+                        } else {
+                            last_mul = true;
+                        }
                     } else if let Some(i) = graph_vars.iter().position(|v| v == &s) {
                         tokens.push(Token::GraphVar(i));
+                        if last_mul {
+                            tokens.push(Operators::Mul.into())
+                        } else {
+                            last_mul = true;
+                        }
                     } else if s.chars().all(|c| c.is_ascii_alphabetic()) {
                         inner_vars.push(s);
+                        last_mul = false;
                     } else {
                         return Err(ParseError::UnknownToken(s.to_string()));
                     }
@@ -188,6 +207,11 @@ impl Tokens {
                     };
                     tokens.push(float.into());
                     let _ = chars.advance_by(l - 1);
+                    if last_mul {
+                        tokens.push(Operators::Mul.into())
+                    } else {
+                        last_mul = true;
+                    }
                     negate = false;
                     last_abs = false;
                     req_input = false;
@@ -200,6 +224,7 @@ impl Tokens {
                     }
                     negate = true;
                     last_abs = false;
+                    last_mul = false;
                 }
                 ')' => {
                     if req_input {
@@ -217,6 +242,7 @@ impl Tokens {
                         return Err(ParseError::LeftParenthesisNotFound);
                     }
                     tokens.close_off_bracket(&mut operator_stack, &mut inner_vars, funs);
+                    last_mul = true;
                     negate = false;
                     last_abs = false;
                 }
@@ -225,6 +251,7 @@ impl Tokens {
                     negate = true;
                     last_abs = false;
                     req_input = false;
+                    last_mul = false;
                 }
                 '|' => {
                     if abs == 0 || last_abs || req_input {
@@ -233,6 +260,7 @@ impl Tokens {
                         negate = true;
                         last_abs = true;
                         req_input = false;
+                        last_mul = false;
                     } else {
                         while let Some(top) = operator_stack.last()
                             && !matches!(top, Operators::Bracket(_))
@@ -248,6 +276,7 @@ impl Tokens {
                         tokens.close_off_bracket(&mut operator_stack, &mut inner_vars, funs);
                         tokens.push(Function::Abs.into());
                         abs -= 1;
+                        last_mul = true;
                         negate = false;
                         last_abs = false;
                     }
@@ -296,6 +325,7 @@ impl Tokens {
                     } else {
                         return Err(ParseError::UnknownToken(s.to_string()));
                     }
+                    last_mul = false;
                 }
             }
         }
