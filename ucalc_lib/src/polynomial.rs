@@ -83,30 +83,6 @@ impl Poly {
         self
     }
 }
-impl PolynomialRef<'_> {
-    #[cfg(feature = "list")]
-    pub fn roots(&self) -> Option<Number> {
-        let mut roots = self.quotient.roots()?;
-        if self.divisor.len() != 1 {
-            let anti_roots = self.divisor.roots()?;
-            roots.retain(|r| !anti_roots.contains(r));
-        }
-        Some(ucalc_numbers::Number::List(roots))
-    }
-    #[cfg(not(feature = "list"))]
-    pub fn roots(&self) -> Option<Vec<Number>> {
-        let mut roots = self.quotient.roots()?;
-        if self.divisor.len() != 1 {
-            let anti_roots = self.divisor.roots()?;
-            for r in anti_roots {
-                if let Some(i) = roots.iter().position(|a| *a == r) {
-                    roots.remove(i);
-                }
-            }
-        }
-        Some(roots)
-    }
-}
 impl PolyRef<'_> {
     pub fn len(&self) -> usize {
         if let Some(n) = self.iter().rposition(|a| !a.is_zero()) {
@@ -143,6 +119,34 @@ impl PolyRef<'_> {
     }
 }
 impl Polynomial {
+    pub fn roots(self) -> Option<Number> {
+        let mut ret = if self.quotient.len() >= self.divisor.len() {
+            let mut poly = Poly(Vec::with_capacity(8));
+            self.quotient.div_buffer(&self.divisor, &mut poly);
+            poly.as_ref().roots()?
+        } else if let Some(mut roots) = self.quotient.as_ref().roots() {
+            if self.divisor.len() != 1 {
+                let anti_roots = self.divisor.as_ref().roots()?;
+                for r in anti_roots {
+                    if let Some(i) = roots.iter().position(|a| *a == r) {
+                        roots.remove(i);
+                    }
+                }
+            }
+            roots
+        } else {
+            return None;
+        };
+        ret.iter_mut().for_each(|a| {
+            self.functions.iter().rev().for_each(|f| {
+                Inverse::from(f.clone())
+                    .get_inverse()
+                    .unwrap()
+                    .compute_on(a, &[])
+            })
+        });
+        Some(ret[0].clone())
+    }
     pub fn new() -> Self {
         let mut quotient = Vec::with_capacity(8);
         quotient.push(Number::from(0));
@@ -167,30 +171,6 @@ impl Polynomial {
             quotient: self.quotient.as_ref(),
             divisor: self.divisor.as_ref(),
         }
-    }
-    #[cfg(feature = "list")]
-    pub fn roots(self) -> Option<Number> {
-        let mut ret = self.as_ref().roots()?;
-        ret.iter_mut().for_each(|a| {
-            self.functions
-                .iter()
-                .rev()
-                .for_each(|f| Inverse::from(*f).get_inverse().unwrap().compute_on(a, &[]))
-        });
-        Some(ret)
-    }
-    #[cfg(not(feature = "list"))]
-    pub fn roots(self) -> Option<Number> {
-        let mut ret = self.as_ref().roots()?;
-        ret.iter_mut().for_each(|a| {
-            self.functions.iter().rev().for_each(|f| {
-                Inverse::from(f.clone())
-                    .get_inverse()
-                    .unwrap()
-                    .compute_on(a, &[])
-            })
-        });
-        Some(ret[0].clone())
     }
     pub fn is_constant(&self) -> bool {
         self.quotient.len() <= 1 && self.divisor.len() <= 1
