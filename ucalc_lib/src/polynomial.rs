@@ -59,7 +59,7 @@ impl Poly {
             if !a.is_zero() {
                 for (j, b) in rhs.iter().enumerate() {
                     if !b.is_zero() {
-                        self[i + j] = a.clone() * b.clone();
+                        self[i + j] = a.clone() * b;
                     }
                 }
                 *a = Number::default()
@@ -71,13 +71,13 @@ impl Poly {
     }
     pub fn div_buffer(mut self, rhs: &Self, buffer: &mut Poly) -> Self {
         while !self.is_zero() && self.0.len() >= rhs.0.len() {
-            let tmp = self.0.last().unwrap().clone() / rhs.0.last().unwrap().clone();
+            let tmp = self.0.last().unwrap().clone() / rhs.0.last().unwrap();
             self.0.pop();
             let start = (self.0.len() + 1) - rhs.len();
             self.0[start..]
                 .iter_mut()
                 .zip(rhs.iter())
-                .for_each(|(a, b)| *a -= tmp.clone() * b.clone());
+                .for_each(|(a, b)| *a -= tmp.clone() * b);
             buffer.0.insert(0, tmp);
         }
         self
@@ -126,16 +126,14 @@ impl PolyRef<'_> {
         }
     }
     pub fn linear(&self) -> Number {
-        self[0].clone() / self[1].clone()
+        self[0].clone() / &self[1]
     }
     pub fn quadratic(&self) -> [Number; 2] {
         let t = self[2].clone() * Float::from(2);
-        let a = -self[1].clone() / t.clone();
-        let b = (self[1].clone() * self[1].clone()
-            - self[2].clone() * self[0].clone() * Float::from(4))
-        .sqrt()
-            / t;
-        [a.clone() + b.clone(), a - b]
+        let a = -self[1].clone() / &t;
+        let b =
+            (self[1].clone() * &self[1] - self[2].clone() * &self[0] * Float::from(4)).sqrt() / t;
+        [a.clone() + &b, a - b]
     }
     pub fn cubic(&self) -> [Number; 3] {
         todo!()

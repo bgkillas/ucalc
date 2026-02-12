@@ -1,6 +1,7 @@
 use crate::inverse::Inverse;
 use crate::tokens::{Token, TokensRef};
 use crate::{Functions, Number, Tokens, Variables};
+use std::ops::Deref;
 impl<'a> TokensRef<'a> {
     pub fn get_inverse(
         &'a self,
@@ -140,7 +141,7 @@ impl<'a> TokensRef<'a> {
                                         .unwrap_or(fun_vars.len()),
                                     ),
                                 )?;
-                                let poly = *poly.poly() - ret.clone();
+                                let poly = *poly.poly() - ret.deref();
                                 let roots = poly.roots();
                                 return Some(roots);
                             } else {

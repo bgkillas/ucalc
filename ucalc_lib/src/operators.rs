@@ -158,27 +158,29 @@ impl Operators {
     }
     pub fn compute_on(self, a: &mut Number, b: &[Token]) {
         let b_ref = || b[0].num_ref();
-        let b_clone = || b_ref().clone();
         match self {
-            Self::Add => *a += b_clone(),
-            Self::Sub => *a -= b_clone(),
-            Self::Mul => *a *= b_clone(),
-            Self::Div => *a /= b_clone(),
-            Self::Rem => *a %= b_clone(),
-            Self::Factorial => *a = (a.clone() + Float::from(1)).gamma(),
-            Self::Pow => a.pow_assign(b_clone()),
-            Self::Root => a.pow_assign(b_clone().recip()),
+            Self::Add => *a += b_ref(),
+            Self::Sub => *a -= b_ref(),
+            Self::Mul => *a *= b_ref(),
+            Self::Div => *a /= b_ref(),
+            Self::Rem => *a %= b_ref(),
+            Self::Factorial => {
+                *a += Float::from(1);
+                a.gamma_mut()
+            }
+            Self::Pow => a.pow_assign(b_ref()),
+            Self::Root => a.pow_assign(b_ref().clone().recip()),
             Self::Negate => a.neg_assign(),
             Self::Tetration => a.tetration_mut(b_ref()),
             Self::SubFactorial => a.subfactorial_mut(),
-            Self::Equal => *a = Number::from(*a == b_clone()),
-            Self::NotEqual => *a = Number::from(*a != b_clone()),
+            Self::Equal => *a = Number::from(a == b_ref()),
+            Self::NotEqual => *a = Number::from(a != b_ref()),
             Self::Greater => *a = Number::from(a.total_cmp(b_ref()).is_gt()),
             Self::Less => *a = Number::from(a.total_cmp(b_ref()).is_lt()),
             Self::GreaterEqual => *a = Number::from(a.total_cmp(b_ref()).is_ge()),
             Self::LessEqual => *a = Number::from(a.total_cmp(b_ref()).is_le()),
-            Self::And => *a = Number::from(!a.is_zero() && !b_clone().is_zero()),
-            Self::Or => *a = Number::from(!a.is_zero() || !b_clone().is_zero()),
+            Self::And => *a = Number::from(!a.is_zero() && !b_ref().is_zero()),
+            Self::Or => *a = Number::from(!a.is_zero() || !b_ref().is_zero()),
             Self::Not => *a = Number::from(a.is_zero()),
             Self::Function(fun) => fun.compute(a, b),
             Self::Bracket(_) => {

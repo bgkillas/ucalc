@@ -1,6 +1,7 @@
 use crate::polynomial::PolyRef;
 use crate::tokens::Token;
 use crate::{Functions, Number, Tokens, Variables};
+use std::ops::Deref;
 #[cfg(feature = "complex")]
 use ucalc_numbers::ComplexTrait;
 use ucalc_numbers::{Constant, Float, FloatTrait, PowAssign, RealTrait};
@@ -178,7 +179,7 @@ impl Function {
             Self::Atanh => a.atanh_mut(),
             Self::Cbrt => a.pow_assign(Float::from(3).recip()),
             Self::Sq => *a *= a.clone(),
-            Self::Cb => *a = a.clone() * a.clone() * a.clone(),
+            Self::Cb => *a = a.clone() * a.deref() * a.deref(),
             Self::Atan => a.atan_mut(),
             Self::Atan2 => a.atan2_mut(b[0].num_ref()),
             Self::Max => a.max_mut(b[0].num_ref()),

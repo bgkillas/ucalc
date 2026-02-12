@@ -93,6 +93,16 @@ impl Sub<Number> for Polynomial {
         }
     }
 }
+impl Sub<&Number> for Polynomial {
+    type Output = Self;
+    fn sub(self, rhs: &Number) -> Self::Output {
+        Self {
+            quotient: self.quotient - (self.divisor.clone() * rhs),
+            divisor: self.divisor,
+            functions: self.functions,
+        }
+    }
+}
 impl Add<Number> for Polynomial {
     type Output = Self;
     fn add(self, rhs: Number) -> Self::Output {
@@ -116,6 +126,26 @@ impl Mul<Number> for Polynomial {
 impl Div<Number> for Polynomial {
     type Output = Self;
     fn div(self, rhs: Number) -> Self::Output {
+        Self {
+            quotient: self.quotient / rhs,
+            divisor: self.divisor,
+            functions: self.functions,
+        }
+    }
+}
+impl Mul<&Number> for Polynomial {
+    type Output = Self;
+    fn mul(self, rhs: &Number) -> Self::Output {
+        Self {
+            quotient: self.quotient * rhs,
+            divisor: self.divisor,
+            functions: self.functions,
+        }
+    }
+}
+impl Div<&Number> for Polynomial {
+    type Output = Self;
+    fn div(self, rhs: &Number) -> Self::Output {
         Self {
             quotient: self.quotient / rhs,
             divisor: self.divisor,
@@ -178,21 +208,45 @@ impl Div<Number> for Poly {
         self
     }
 }
+impl Mul<&Number> for Poly {
+    type Output = Poly;
+    fn mul(mut self, rhs: &Number) -> Self::Output {
+        self *= rhs;
+        self
+    }
+}
+impl Div<&Number> for Poly {
+    type Output = Poly;
+    fn div(mut self, rhs: &Number) -> Self::Output {
+        self /= rhs;
+        self
+    }
+}
 impl Sub<Poly> for Number {
     type Output = Poly;
     fn sub(self, mut rhs: Poly) -> Self::Output {
-        rhs.iter_mut().for_each(|b| *b = self.clone() - b.clone());
+        rhs.iter_mut().for_each(|b| *b = self.clone() - b.deref());
         rhs
     }
 }
 impl MulAssign<Number> for Poly {
     fn mul_assign(&mut self, rhs: Number) {
-        self.iter_mut().for_each(|c| *c *= rhs.clone())
+        self.iter_mut().for_each(|c| *c *= &rhs)
     }
 }
 impl DivAssign<Number> for Poly {
     fn div_assign(&mut self, rhs: Number) {
-        self.iter_mut().for_each(|c| *c /= rhs.clone())
+        self.iter_mut().for_each(|c| *c /= &rhs)
+    }
+}
+impl MulAssign<&Number> for Poly {
+    fn mul_assign(&mut self, rhs: &Number) {
+        self.iter_mut().for_each(|c| *c *= rhs)
+    }
+}
+impl DivAssign<&Number> for Poly {
+    fn div_assign(&mut self, rhs: &Number) {
+        self.iter_mut().for_each(|c| *c /= rhs)
     }
 }
 impl AddAssign<Poly> for Poly {
