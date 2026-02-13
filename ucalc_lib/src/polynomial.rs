@@ -2,7 +2,7 @@ use crate::inverse::Inverse;
 use crate::tokens::TokensRef;
 use crate::{Function, Functions, Number, Operators, Token, Tokens, Variables};
 use std::mem;
-use ucalc_numbers::{Float, FloatTrait, NegAssign, PowAssign};
+use ucalc_numbers::{ComplexTrait, Float, FloatTrait, NegAssign, Pow, PowAssign};
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct Poly(pub Vec<Number>);
 #[derive(Debug, Clone)]
@@ -134,7 +134,34 @@ impl PolyRef<'_> {
         [a.clone() + &b, a - b]
     }
     pub fn cubic(&self) -> [Number; 3] {
-        todo!()
+        let d = self[0].clone() / &self[3];
+        let c = self[1].clone() / &self[3];
+        let b = self[2].clone() / &self[3];
+        let d0 = b.clone() * &b - c.clone() * Float::from(3);
+        let d1 = b.clone() * &b * &b * Float::from(2) - b.clone() * &c * Float::from(9)
+            + d.clone() * Float::from(27);
+        let c = d1.clone() * &d1 - d0.clone() * &d0 * &d0 * Float::from(4);
+        let c = (d1 + c.sqrt()) / Float::from(2);
+        let c = c.pow(Float::from(3).recip());
+        let omega = Number::from(3).sqrt().mul_i(false) / Float::from(2) - Float::from(0.5);
+        let z1 = if d0.is_zero() {
+            -(b.clone() + &c) / Float::from(3)
+        } else {
+            -(b.clone() + &c + d0.clone() / &c) / Float::from(3)
+        };
+        let c0 = c.clone() * &omega;
+        let z2 = if d0.is_zero() {
+            -(b.clone() + &c0) / Float::from(3)
+        } else {
+            -(b.clone() + &c0 + d0.clone() / c0) / Float::from(3)
+        };
+        let c1 = c * omega.conj();
+        let z3 = if d0.is_zero() {
+            -(b + &c1) / Float::from(3)
+        } else {
+            -(b + &c1 + d0 / c1) / Float::from(3)
+        };
+        [z1, z2, z3]
     }
     pub fn quartic(&self) -> [Number; 4] {
         todo!()
@@ -162,8 +189,7 @@ impl Polynomial {
         ret.iter_mut().for_each(|a| {
             self.functions.iter().rev().for_each(|f| match f {
                 Func::Function(f) => Inverse::from(*f).get_inverse().unwrap().compute_on(a, &[]),
-                //TODO
-                Func::Power(p) => a.pow_assign(p.clone().recip()),
+                Func::Power(p) => Inverse::pow_assign(a, p.clone().recip()),
             })
         });
         Some(ret[0].clone())
@@ -327,9 +353,15 @@ impl TokensRef<'_> {
 }
 impl Function {
     pub fn compute_poly(self, a: &mut Polynomial) -> Option<()> {
-        //TODO
-        a.functions.push(Func::Function(self));
-        Some(())
+        if a.quotient.iter().filter(|a| a.is_zero()).count() == 1
+            && a.divisor.len() == 1
+            && a.divisor[0] == Number::from(1)
+        {
+            a.functions.push(Func::Function(self));
+            Some(())
+        } else {
+            None
+        }
     }
 }
 impl Operators {
@@ -377,8 +409,14 @@ impl Operators {
             Self::Sub => *a -= b,
             Self::Mul => *a *= b,
             Self::Div => *a /= b,
-            Self::Pow => a.pow_assign(b),
-            Self::Root => a.pow_assign(b.recip()),
+            Self::Pow => {
+                let old = mem::take(a);
+                *a = old.pow(b)?
+            }
+            Self::Root => {
+                let old = mem::take(a);
+                *a = old.pow(b.recip())?
+            }
             _ => return None,
         }
         Some(())

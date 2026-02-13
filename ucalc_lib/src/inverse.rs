@@ -69,8 +69,8 @@ impl Inverse {
             Self::Sub => *a += b,
             Self::Mul => *a /= b,
             Self::Div => *a *= b,
-            Self::Pow => a.pow_assign(b.recip()),
-            Self::Root => a.pow_assign(b),
+            Self::Pow => Inverse::pow_assign(a, b.recip()),
+            Self::Root => Inverse::pow_assign(a, b),
             _ => unreachable!(),
         }
     }
@@ -97,6 +97,10 @@ impl Inverse {
             }
             _ => unreachable!(),
         }
+    }
+    pub fn pow_assign(a: &mut Number, b: Number) {
+        //TODO
+        a.pow_assign(b)
     }
 }
 impl From<Operators> for Inverse {

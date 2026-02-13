@@ -51,7 +51,7 @@ impl From<Number> for Polynomial {
     }
 }
 impl Pow<Number> for Polynomial {
-    type Output = Self;
+    type Output = Option<Self>;
     fn pow(mut self, rhs: Number) -> Self::Output {
         if {
             #[cfg(feature = "complex")]
@@ -64,9 +64,15 @@ impl Pow<Number> for Polynomial {
             }
         } || !rhs.real().clone().fract().is_zero()
         {
-            //TODO
-            self.functions.push(Func::Power(rhs));
-            return self;
+            return if self.quotient.iter().filter(|a| a.is_zero()).count() == 1
+                && self.divisor.len() == 1
+                && self.divisor[0] == Number::from(1)
+            {
+                self.functions.push(Func::Power(rhs));
+                Some(self)
+            } else {
+                None
+            };
         }
         let n = rhs.real().clone().into_isize();
         let k = n.unsigned_abs();
@@ -75,13 +81,12 @@ impl Pow<Number> for Polynomial {
         if n.is_negative() {
             self.recip_mut();
         }
-        self
+        Some(self)
     }
 }
 impl Pow<usize> for Poly {
     type Output = Self;
     fn pow(self, rhs: usize) -> Self {
-        //TODO
         let mut poly = self.clone();
         let mut buffer = Vec::with_capacity(8).into();
         for _ in 1..rhs {
