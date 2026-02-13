@@ -77,11 +77,9 @@ fn var(n: &str) -> Token {
 #[test]
 fn test_poly_div() {
     let mut buffer = Poly(Vec::new());
-    assert_eq!(
-        Poly(vec![res(-10), res(21), res(-12), res(1)])
-            .div_buffer(&Poly(vec![res(1), res(-2), res(1)]), &mut buffer),
-        Poly(vec![res(0), res(0)])
-    );
+    let mut poly = Poly(vec![res(-10), res(21), res(-12), res(1)]);
+    poly.div_buffer(&Poly(vec![res(1), res(-2), res(1)]), &mut buffer);
+    assert_eq!(poly, Poly(vec![res(0), res(0)]));
     assert_eq!(buffer, Poly(vec![res(-10), res(1)]));
 }
 #[test]
@@ -729,6 +727,20 @@ fn test_set() {
 }
 #[test]
 fn test_solve() {
+    assert_correct!(
+        infix("solve(x,4-x-x)"),
+        rpn("x 4 x - x - solve"),
+        vec![
+            Token::Skip(5),
+            num(4),
+            Token::InnerVar(0).into(),
+            Operators::Sub.into(),
+            Token::InnerVar(0).into(),
+            Operators::Sub.into(),
+            Function::Solve.into()
+        ],
+        res(2)
+    );
     assert_correct!(
         infix("solve(x,x^2-2)"),
         rpn("x x 2 ^ 2 - solve"),

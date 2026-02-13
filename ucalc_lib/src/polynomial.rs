@@ -2,7 +2,7 @@ use crate::inverse::Inverse;
 use crate::tokens::TokensRef;
 use crate::{Function, Functions, Number, Operators, Token, Tokens, Variables};
 use std::mem;
-use ucalc_numbers::{Float, FloatTrait, NegAssign, PowAssign};
+use ucalc_numbers::{Float, FloatTrait, NegAssign, Pow, PowAssign};
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct Poly(pub Vec<Number>);
 #[derive(Debug, Clone)]
@@ -59,7 +59,7 @@ impl Poly {
     pub fn is_zero(&self) -> bool {
         self.iter().all(|a| a.is_zero())
     }
-    pub fn div_buffer(mut self, rhs: &Self, buffer: &mut Poly) -> Self {
+    pub fn div_buffer(&mut self, rhs: &Self, buffer: &mut Poly) {
         while !self.is_zero() && self.0.len() >= rhs.0.len() {
             let tmp = self.0.last().unwrap().clone() / rhs.0.last().unwrap();
             self.0.pop();
@@ -70,7 +70,6 @@ impl Poly {
                 .for_each(|(a, b)| *a -= tmp.clone() * b);
             buffer.0.insert(0, tmp);
         }
-        self
     }
 }
 impl PolyRef<'_> {
@@ -82,13 +81,18 @@ impl PolyRef<'_> {
         }
     }
     pub fn roots(&self) -> Option<Vec<Number>> {
-        match self.len() {
-            2 => Some(vec![self.linear()]),
-            3 => Some(self.quadratic().into()),
-            4 => Some(self.cubic().into()),
-            5 => Some(self.quartic().into()),
-            //TODO
-            _ => None,
+        println!("{self:?}");
+        if self[1..self.len()].iter().all(|a| a.is_zero()) {
+            Some(vec![self[0].clone().pow(Float::from(self.len()))])
+        } else {
+            match self.len() {
+                2 => Some(vec![self.linear()]),
+                3 => Some(self.quadratic().into()),
+                4 => Some(self.cubic().into()),
+                5 => Some(self.quartic().into()),
+                //TODO
+                _ => None,
+            }
         }
     }
     pub fn linear(&self) -> Number {
@@ -109,10 +113,12 @@ impl PolyRef<'_> {
     }
 }
 impl Polynomial {
-    pub fn roots(self) -> Option<Number> {
+    pub fn roots(mut self) -> Option<Number> {
         let mut ret = if self.quotient.len() >= self.divisor.len() {
             let mut poly = Poly(Vec::with_capacity(8));
+            println!("{:?} {:?} {:?}", self.quotient, self.divisor, poly);
             self.quotient.div_buffer(&self.divisor, &mut poly);
+            println!("{:?} {:?} {:?}", self.quotient, self.divisor, poly);
             poly.as_ref().roots()?
         } else if let Some(mut roots) = self.quotient.as_ref().roots() {
             if self.divisor.len() != 1 {
