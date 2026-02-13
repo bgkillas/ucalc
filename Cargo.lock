@@ -85,21 +85,21 @@ dependencies = [
 
 [[package]]
 name = "ucalc"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "ucalc_lib",
 ]
 
 [[package]]
 name = "ucalc_lib"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "ucalc_numbers",
 ]
 
 [[package]]
 name = "ucalc_numbers"
-version = "0.1.0"
+version = "0.0.1"
 dependencies = [
  "fastnum",
  "rug",
