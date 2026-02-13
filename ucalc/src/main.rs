@@ -21,9 +21,9 @@ fn run_line(line: &str, infix: &mut bool, vars: &mut Variables, funs: &mut Funct
     }
     match tmr(|| {
         if *infix {
-            Tokens::infix(line, vars, &[], funs)
+            Tokens::infix(line, vars, funs, &[], false)
         } else {
-            Tokens::rpn(line, vars, &[], funs)
+            Tokens::rpn(line, vars, funs, &[], false)
         }
     }) {
         Ok(Some(tokens)) => {

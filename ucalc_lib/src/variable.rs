@@ -6,12 +6,14 @@ use ucalc_numbers::Constant;
 pub struct Variable {
     pub name: String,
     pub value: Number,
+    pub enabled: bool,
 }
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionVar {
     pub name: String,
     pub inputs: usize,
     pub tokens: Tokens,
+    pub enabled: bool,
 }
 impl FunctionVar {
     pub fn new(name: impl Into<String>, inputs: usize, tokens: Tokens) -> Self {
@@ -19,6 +21,7 @@ impl FunctionVar {
             name: name.into(),
             inputs,
             tokens,
+            enabled: true,
         }
     }
 }
@@ -27,13 +30,24 @@ impl Variable {
         Self {
             name: name.into(),
             value,
+            enabled: true,
         }
     }
 }
 #[derive(Debug, Clone, PartialEq)]
 pub struct Variables(pub Vec<Variable>);
+impl Variables {
+    pub fn position(&self, name: &str) -> Option<usize> {
+        self.iter().position(|v| v.enabled && v.name == name)
+    }
+}
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct Functions(pub Vec<FunctionVar>);
+impl Functions {
+    pub fn position(&self, name: &str) -> Option<usize> {
+        self.iter().position(|v| v.enabled && v.name == name)
+    }
+}
 impl Default for Variables {
     fn default() -> Self {
         Self(vec![

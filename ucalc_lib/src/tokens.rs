@@ -68,66 +68,101 @@ impl<'a> Display for TokensRef<'a> {
     }
 }
 impl Tokens {
+    fn end(
+        self,
+        inputs: Option<(&str, bool)>,
+        vars: &mut Variables,
+        funs: &mut Functions,
+    ) -> Option<Self> {
+        if let Some((name, is_fun)) = inputs {
+            if !is_fun {
+                vars.iter_mut().for_each(|v| {
+                    if v.name == name {
+                        v.enabled = false
+                    }
+                });
+                funs.iter_mut().for_each(|v| {
+                    if v.name == name {
+                        v.enabled = false
+                    }
+                });
+                let val = self.compute(&[], funs, vars);
+                vars.push(Variable::new(name, val));
+            } else {
+                vars.iter_mut().for_each(|v| {
+                    if v.name == name {
+                        v.enabled = false
+                    }
+                });
+                let end = funs.len();
+                funs[..end.saturating_sub(1)].iter_mut().for_each(|v| {
+                    if v.name == name {
+                        v.enabled = false
+                    }
+                });
+                let fun = funs.last_mut().unwrap();
+                fun.tokens = self;
+            }
+            None
+        } else {
+            Some(self)
+        }
+    }
     pub fn rpn(
         value: &str,
         vars: &mut Variables,
-        graph_vars: &[&str],
         funs: &mut Functions,
+        graph_vars: &[&str],
+        mut expect_let: bool,
     ) -> Result<Option<Self>, ParseError> {
         let mut tokens = Tokens(Vec::with_capacity(value.len()));
         let mut inner_vars: Vec<&str> = Vec::with_capacity(value.len());
         let mut inputs = None;
         for token in value.split(' ') {
-            if token.is_empty() {
-                continue;
-            }
-            if token == "=" {
-                let Some(name) = inner_vars.pop() else {
-                    return Err(ParseError::VarExpectedName);
-                };
-                inputs = Some((name, inner_vars.is_empty()));
-                tokens.drain(..);
-                if !inner_vars.is_empty() {
-                    funs.push(FunctionVar::new(name, inner_vars.len(), Tokens::default()))
+            match token {
+                "" => {}
+                "let" => expect_let = true,
+                "=" if expect_let => {
+                    expect_let = false;
+                    let Some(name) = inner_vars.pop() else {
+                        return Err(ParseError::VarExpectedName);
+                    };
+                    if !inner_vars.is_empty() {
+                        funs.push(FunctionVar::new(name, inner_vars.len(), Tokens::default()));
+                        inputs = Some((name, true));
+                    } else {
+                        inputs = Some((name, false));
+                    }
                 }
-            } else if let Ok(operator) = Operators::try_from(token) {
-                tokens.push(operator.into());
-            } else if let Some(i) = funs.iter().position(|v| v.name == token) {
-                tokens.push(Token::Fun(i))
-            } else if let Ok(fun) = Function::try_from(token) {
-                tokens.compact_args(&fun, &mut inner_vars, funs);
-                tokens.push(fun.into());
-            } else if let Some(i) = inner_vars.iter().position(|v| *v == token) {
-                tokens.push(Token::InnerVar(i));
-            } else if let Some(i) = vars.iter().position(|v| v.name == token) {
-                tokens.push(Token::Var(i));
-            } else if let Some(i) = graph_vars.iter().position(|v| v == &token) {
-                tokens.push(Token::GraphVar(i));
-            } else if let Some(n) = NumberBase::parse_radix(token, 10) {
-                tokens.push(n.into());
-            } else if token.chars().all(|c| c.is_ascii_alphabetic()) {
-                inner_vars.push(token);
-            } else {
-                return Err(ParseError::UnknownToken(token.to_string()));
+                _ if expect_let && token.chars().all(|c| c.is_ascii_alphabetic()) => {
+                    inner_vars.push(token)
+                }
+                _ if let Ok(operator) = Operators::try_from(token) => tokens.push(operator.into()),
+                _ if let Some(i) = funs.position(token) => tokens.push(Token::Fun(i)),
+                _ if let Some(i) = inner_vars.iter().position(|v| *v == token) => {
+                    tokens.push(Token::InnerVar(i))
+                }
+                _ if let Some(i) = vars.position(token) => tokens.push(Token::Var(i)),
+                _ if let Some(i) = graph_vars.iter().position(|v| v == &token) => {
+                    tokens.push(Token::GraphVar(i))
+                }
+                _ if let Ok(fun) = Function::try_from(token) => {
+                    tokens.compact_args(&fun, &mut inner_vars, funs);
+                    tokens.push(fun.into());
+                }
+                _ if token.chars().all(|c| c.is_ascii_alphabetic()) => inner_vars.push(token),
+                _ if let Some(n) = NumberBase::parse_radix(token, 10) => tokens.push(n.into()),
+                _ => return Err(ParseError::UnknownToken(token.to_string())),
             }
         }
-        Ok(if let Some((name, is_fun)) = inputs {
-            if is_fun {
-                let val = tokens.compute(&[], funs, vars);
-                vars.push(Variable::new(name, val));
-            } else {
-                funs.last_mut().unwrap().tokens = tokens
-            }
-            None
-        } else {
-            Some(tokens)
-        })
+        Ok(tokens.end(inputs, vars, funs))
     }
     pub fn infix(
         value: &str,
         vars: &mut Variables,
-        graph_vars: &[&str],
         funs: &mut Functions,
+        graph_vars: &[&str],
+        mut expect_let: bool,
     ) -> Result<Option<Self>, ParseError> {
         let mut tokens = Tokens(Vec::with_capacity(value.len()));
         let mut operator_stack: Vec<Operators> = Vec::with_capacity(value.len());
@@ -154,11 +189,12 @@ impl Tokens {
                         }
                     }
                     let s = &value[i..i + l];
-                    if let Some(i) = funs.iter().position(|v| v.name == s) {
+                    if s == "let" {
+                        expect_let = true;
+                    } else if expect_let && s.chars().all(|c| c.is_ascii_alphabetic()) {
+                        inner_vars.push(s);
+                    } else if let Some(i) = funs.position(s) {
                         operator_stack.push(Function::Custom(i).into());
-                        last_mul = false;
-                    } else if let Ok(fun) = Function::try_from(s) {
-                        operator_stack.push(fun.into());
                         last_mul = false;
                     } else if let Some(i) = inner_vars.iter().position(|v| *v == s) {
                         tokens.push(Token::InnerVar(i));
@@ -167,7 +203,7 @@ impl Tokens {
                         } else {
                             last_mul = true;
                         }
-                    } else if let Some(i) = vars.iter().position(|v| v.name == s) {
+                    } else if let Some(i) = vars.position(s) {
                         tokens.push(Token::Var(i));
                         if last_mul {
                             tokens.push(Operators::Mul.into())
@@ -181,6 +217,9 @@ impl Tokens {
                         } else {
                             last_mul = true;
                         }
+                    } else if let Ok(fun) = Function::try_from(s) {
+                        operator_stack.push(fun.into());
+                        last_mul = false;
                     } else if s.chars().all(|c| c.is_ascii_alphabetic()) {
                         inner_vars.push(s);
                         last_mul = false;
@@ -290,14 +329,16 @@ impl Tokens {
                         l += next.len_utf8();
                     }
                     let s = &value[i..i + l];
-                    if s == "=" {
+                    if expect_let && s == "=" {
+                        expect_let = false;
                         let Some(name) = inner_vars.try_remove(0) else {
                             return Err(ParseError::VarExpectedName);
                         };
-                        inputs = Some((name, inner_vars.is_empty()));
-                        tokens.drain(..);
                         if !inner_vars.is_empty() {
-                            funs.push(FunctionVar::new(name, inner_vars.len(), Tokens::default()))
+                            funs.push(FunctionVar::new(name, inner_vars.len(), Tokens::default()));
+                            inputs = Some((name, true));
+                        } else {
+                            inputs = Some((name, false));
                         }
                     } else if let Ok(mut operator) = Operators::try_from(s) {
                         if negate {
@@ -338,17 +379,7 @@ impl Tokens {
             }
             tokens.push(operator.into());
         }
-        Ok(if let Some((name, is_fun)) = inputs {
-            if is_fun {
-                let val = tokens.compute(&[], funs, vars);
-                vars.push(Variable::new(name, val));
-            } else {
-                funs.last_mut().unwrap().tokens = tokens
-            }
-            None
-        } else {
-            Some(tokens)
-        })
+        Ok(tokens.end(inputs, vars, funs))
     }
     pub fn close_off_bracket(
         &mut self,
