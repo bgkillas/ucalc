@@ -134,6 +134,30 @@ fn parse_mul() {
         ],
         res(8)
     );
+    assert_correct!(
+        infix("2/3*3"),
+        rpn("2 3 / 3 *"),
+        vec![
+            num(2),
+            num(3),
+            Operators::Div.into(),
+            num(3),
+            Operators::Mul.into(),
+        ],
+        res(2)
+    );
+    assert_correct!(
+        infix("2/3 3"),
+        rpn("2 3 / 3 *"),
+        vec![
+            num(2),
+            num(3),
+            Operators::Div.into(),
+            num(3),
+            Operators::Mul.into(),
+        ],
+        res(2)
+    );
 }
 #[test]
 fn parse_add() {

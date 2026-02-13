@@ -197,26 +197,14 @@ impl Tokens {
                         operator_stack.push(Function::Custom(i).into());
                         last_mul = false;
                     } else if let Some(i) = inner_vars.iter().position(|v| *v == s) {
+                        tokens.last_mul(&mut operator_stack, negate, &mut last_mul);
                         tokens.push(Token::InnerVar(i));
-                        if last_mul {
-                            operator_stack.push(Operators::Mul)
-                        } else {
-                            last_mul = true;
-                        }
                     } else if let Some(i) = vars.position(s) {
+                        tokens.last_mul(&mut operator_stack, negate, &mut last_mul);
                         tokens.push(Token::Var(i));
-                        if last_mul {
-                            operator_stack.push(Operators::Mul)
-                        } else {
-                            last_mul = true;
-                        }
                     } else if let Some(i) = graph_vars.iter().position(|v| v == &s) {
+                        tokens.last_mul(&mut operator_stack, negate, &mut last_mul);
                         tokens.push(Token::GraphVar(i));
-                        if last_mul {
-                            operator_stack.push(Operators::Mul)
-                        } else {
-                            last_mul = true;
-                        }
                     } else if let Ok(fun) = Function::try_from(s) {
                         operator_stack.push(fun.into());
                         last_mul = false;
@@ -244,13 +232,9 @@ impl Tokens {
                     let Some(float) = NumberBase::parse_radix(s, 10) else {
                         return Err(ParseError::UnknownToken(s.to_string()));
                     };
+                    tokens.last_mul(&mut operator_stack, negate, &mut last_mul);
                     tokens.push(float.into());
                     let _ = chars.advance_by(l - 1);
-                    if last_mul {
-                        operator_stack.push(Operators::Mul)
-                    } else {
-                        last_mul = true;
-                    }
                     negate = false;
                     last_abs = false;
                     req_input = false;
@@ -348,16 +332,7 @@ impl Tokens {
                                 _ => {}
                             }
                         }
-                        while let Some(top) = operator_stack.last()
-                            && !matches!(top, Operators::Bracket(_))
-                            && (top.precedence() > operator.precedence()
-                                || (top.precedence() == operator.precedence()
-                                    && operator.left_associative()))
-                            && !(negate && operator == Operators::Negate && *top == Operators::Pow)
-                        {
-                            tokens.push(operator_stack.pop().unwrap().into());
-                        }
-                        operator_stack.push(operator);
+                        tokens.pop_stack(&mut operator_stack, operator, negate);
                         if operator.inputs() == 2 {
                             req_input = true;
                         }
@@ -380,6 +355,34 @@ impl Tokens {
             tokens.push(operator.into());
         }
         Ok(tokens.end(inputs, vars, funs))
+    }
+    pub fn last_mul(
+        &mut self,
+        operator_stack: &mut Vec<Operators>,
+        negate: bool,
+        last_mul: &mut bool,
+    ) {
+        if *last_mul {
+            self.pop_stack(operator_stack, Operators::Mul, negate);
+        } else {
+            *last_mul = true;
+        }
+    }
+    pub fn pop_stack(
+        &mut self,
+        operator_stack: &mut Vec<Operators>,
+        operator: Operators,
+        negate: bool,
+    ) {
+        while let Some(top) = operator_stack.last()
+            && !matches!(top, Operators::Bracket(_))
+            && (top.precedence() > operator.precedence()
+                || (top.precedence() == operator.precedence() && operator.left_associative()))
+            && !(negate && operator == Operators::Negate && *top == Operators::Pow)
+        {
+            self.push(operator_stack.pop().unwrap().into());
+        }
+        operator_stack.push(operator);
     }
     pub fn close_off_bracket(
         &mut self,

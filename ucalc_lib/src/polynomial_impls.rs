@@ -86,7 +86,12 @@ impl Pow<Number> for Polynomial {
 }
 impl Pow<usize> for Poly {
     type Output = Self;
-    fn pow(self, rhs: usize) -> Self {
+    fn pow(mut self, rhs: usize) -> Self {
+        if rhs == 0 {
+            self.0.clear();
+            self.0.push(Number::from(1));
+            return self;
+        }
         let mut poly = self.clone();
         let mut buffer = Vec::with_capacity(8).into();
         for _ in 1..rhs {
