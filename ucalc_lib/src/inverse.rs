@@ -172,7 +172,8 @@ impl From<Function> for Inverse {
             | Function::Set
             | Function::Solve => Self::None,
             #[cfg(feature = "complex")]
-            Function::Arg | Function::Real | Function::Imag | Function::Custom(_) => Self::None,
+            Function::Arg | Function::Real | Function::Imag => Self::None,
+            Function::Custom(_) => Self::None,
         }
     }
 }

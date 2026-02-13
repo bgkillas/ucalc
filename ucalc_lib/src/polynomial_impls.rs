@@ -53,7 +53,17 @@ impl From<Number> for Polynomial {
 impl Pow<Number> for Polynomial {
     type Output = Self;
     fn pow(mut self, rhs: Number) -> Self::Output {
-        if !rhs.imag.is_zero() || !rhs.real().clone().fract().is_zero() {
+        if {
+            #[cfg(feature = "complex")]
+            {
+                !rhs.imag.is_zero()
+            }
+            #[cfg(not(feature = "complex"))]
+            {
+                false
+            }
+        } || !rhs.real().clone().fract().is_zero()
+        {
             //TODO
             self.functions.push(Func::Power(rhs));
             return self;
