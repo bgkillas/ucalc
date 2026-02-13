@@ -267,9 +267,11 @@ impl AddAssign<Poly> for Poly {
 impl SubAssign<Poly> for Poly {
     fn sub_assign(&mut self, mut rhs: Poly) {
         if rhs.len() > self.len() {
-            mem::swap(self, &mut rhs)
+            rhs.neg_assign();
+            self.add_assign(rhs);
+        } else {
+            self.iter_mut().zip(rhs.0).for_each(|(a, b)| *a -= b);
         }
-        self.iter_mut().zip(rhs.0).for_each(|(a, b)| *a -= b);
     }
 }
 impl Add<Self> for Poly {
@@ -284,11 +286,8 @@ impl Add<Self> for Poly {
 }
 impl Sub<Self> for Poly {
     type Output = Poly;
-    fn sub(mut self, mut rhs: Self) -> Self::Output {
-        if rhs.len() > self.len() {
-            mem::swap(&mut self, &mut rhs)
-        }
-        self.iter_mut().zip(rhs.0).for_each(|(a, b)| *a -= b);
+    fn sub(mut self, rhs: Self) -> Self::Output {
+        self -= rhs;
         self
     }
 }

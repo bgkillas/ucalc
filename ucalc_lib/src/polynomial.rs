@@ -81,7 +81,6 @@ impl PolyRef<'_> {
         }
     }
     pub fn roots(&self) -> Option<Vec<Number>> {
-        println!("{self:?}");
         if self[1..self.len()].iter().all(|a| a.is_zero()) {
             Some(vec![self[0].clone().pow(Float::from(self.len()))])
         } else {
@@ -96,7 +95,7 @@ impl PolyRef<'_> {
         }
     }
     pub fn linear(&self) -> Number {
-        self[0].clone() / &self[1]
+        -self[0].clone() / &self[1]
     }
     pub fn quadratic(&self) -> [Number; 2] {
         let t = self[2].clone() * Float::from(2);
@@ -116,9 +115,7 @@ impl Polynomial {
     pub fn roots(mut self) -> Option<Number> {
         let mut ret = if self.quotient.len() >= self.divisor.len() {
             let mut poly = Poly(Vec::with_capacity(8));
-            println!("{:?} {:?} {:?}", self.quotient, self.divisor, poly);
             self.quotient.div_buffer(&self.divisor, &mut poly);
-            println!("{:?} {:?} {:?}", self.quotient, self.divisor, poly);
             poly.as_ref().roots()?
         } else if let Some(mut roots) = self.quotient.as_ref().roots() {
             if self.divisor.len() != 1 {
@@ -315,7 +312,7 @@ impl Operators {
         if let Token::Polynomial(a) = a {
             if b.len() == 1 {
                 if let Token::Num(n) = b[0].clone() {
-                    self.poly_complex(a, n);
+                    self.poly_num(a, n);
                 } else {
                     let b = b[0].poly_ref();
                     self.poly(a, b, buffer);
@@ -330,7 +327,7 @@ impl Operators {
         } else if let Token::Num(_) = b[0] {
             self.compute_on(a.num_mut(), b)
         } else if let Token::Num(c) = a {
-            *a = self.complex_poly(c, mem::take(b[0].poly_mut()))?.into()
+            *a = self.num_poly(c, mem::take(b[0].poly_mut()))?.into()
         }
         Some(())
     }
@@ -345,7 +342,7 @@ impl Operators {
         }
         Some(())
     }
-    fn poly_complex(self, a: &mut Polynomial, b: Number) -> Option<()> {
+    fn poly_num(self, a: &mut Polynomial, b: Number) -> Option<()> {
         match self {
             Self::Add => *a += b,
             Self::Sub => *a -= b,
@@ -357,7 +354,7 @@ impl Operators {
         }
         Some(())
     }
-    fn complex_poly(self, a: &Number, b: Polynomial) -> Option<Polynomial> {
+    fn num_poly(self, a: &Number, b: Polynomial) -> Option<Polynomial> {
         Some(match self {
             Self::Add => b + a.clone(),
             Self::Sub => a.clone() - b,
