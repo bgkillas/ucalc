@@ -2,7 +2,7 @@ use crate::inverse::Inverse;
 use crate::tokens::TokensRef;
 use crate::{Function, Functions, Number, Operators, Token, Tokens, Variables};
 use std::mem;
-use ucalc_numbers::{Float, FloatTrait, NegAssign, Pow, PowAssign};
+use ucalc_numbers::{Float, FloatTrait, NegAssign, PowAssign};
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct Poly(pub Vec<Number>);
 #[derive(Debug, Clone)]
@@ -80,16 +80,45 @@ impl PolyRef<'_> {
             0
         }
     }
+    pub fn gcd(&self) -> usize {
+        fn gcd(mut a: usize, mut b: usize) -> usize {
+            while b != 0 {
+                let r = a % b;
+                a = b;
+                b = r;
+            }
+            a
+        }
+        self.iter()
+            .skip(1)
+            .enumerate()
+            .filter(|(_, a)| a.is_zero())
+            .map(|(i, _)| i)
+            .reduce(gcd)
+            .unwrap_or(1)
+    }
     pub fn roots(&self) -> Option<Vec<Number>> {
-        if self[1..self.len()].iter().all(|a| a.is_zero()) {
-            Some(vec![self[0].clone().pow(Float::from(self.len()))])
+        let gcd = self.gcd();
+        if gcd > 1 {
+            let len = self.len().div_ceil(gcd);
+            let mut poly = Vec::with_capacity(len);
+            for i in 0..len {
+                poly.push(self[i * gcd].clone());
+            }
+            if let Some(mut roots) = PolyRef(&poly).roots() {
+                roots
+                    .iter_mut()
+                    .for_each(|a| a.pow_assign(Float::from(gcd).recip()));
+                Some(roots)
+            } else {
+                None
+            }
         } else {
             match self.len() {
                 2 => Some(vec![self.linear()]),
                 3 => Some(self.quadratic().into()),
                 4 => Some(self.cubic().into()),
                 5 => Some(self.quartic().into()),
-                //TODO
                 _ => None,
             }
         }

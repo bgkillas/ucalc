@@ -119,6 +119,21 @@ fn parse_mul() {
         vec![num(2), num(4), Operators::Mul.into()],
         res(8)
     );
+    assert_correct!(
+        infix("set(x,2,2x^2)"),
+        rpn("x 2 2 x 2 ^ * set"),
+        vec![
+            num(2),
+            Token::Skip(5),
+            num(2),
+            Token::InnerVar(0),
+            num(2),
+            Operators::Pow.into(),
+            Operators::Mul.into(),
+            Function::Set.into()
+        ],
+        res(8)
+    );
 }
 #[test]
 fn parse_add() {
@@ -727,6 +742,26 @@ fn test_set() {
 }
 #[test]
 fn test_solve() {
+    assert_correct!(
+        infix("solve(x,x^4-2x^2+1)"),
+        rpn("x x 4 ^ 2 x 2 ^ * - 1 + solve"),
+        vec![
+            Token::Skip(11),
+            Token::InnerVar(0).into(),
+            num(4),
+            Operators::Pow.into(),
+            num(2),
+            Token::InnerVar(0).into(),
+            num(2),
+            Operators::Pow.into(),
+            Operators::Mul.into(),
+            Operators::Sub.into(),
+            num(1),
+            Operators::Add.into(),
+            Function::Solve.into()
+        ],
+        res(1)
+    );
     assert_correct!(
         infix("solve(x,4-x-x)"),
         rpn("x 4 x - x - solve"),

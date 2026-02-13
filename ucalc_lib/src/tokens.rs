@@ -199,21 +199,21 @@ impl Tokens {
                     } else if let Some(i) = inner_vars.iter().position(|v| *v == s) {
                         tokens.push(Token::InnerVar(i));
                         if last_mul {
-                            tokens.push(Operators::Mul.into())
+                            operator_stack.push(Operators::Mul)
                         } else {
                             last_mul = true;
                         }
                     } else if let Some(i) = vars.position(s) {
                         tokens.push(Token::Var(i));
                         if last_mul {
-                            tokens.push(Operators::Mul.into())
+                            operator_stack.push(Operators::Mul)
                         } else {
                             last_mul = true;
                         }
                     } else if let Some(i) = graph_vars.iter().position(|v| v == &s) {
                         tokens.push(Token::GraphVar(i));
                         if last_mul {
-                            tokens.push(Operators::Mul.into())
+                            operator_stack.push(Operators::Mul)
                         } else {
                             last_mul = true;
                         }
@@ -247,7 +247,7 @@ impl Tokens {
                     tokens.push(float.into());
                     let _ = chars.advance_by(l - 1);
                     if last_mul {
-                        tokens.push(Operators::Mul.into())
+                        operator_stack.push(Operators::Mul)
                     } else {
                         last_mul = true;
                     }
