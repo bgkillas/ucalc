@@ -2,7 +2,7 @@ cargo-features = ["panic-immediate-abort"]
 [workspace.package]
 version = "0.0.1"
 edition = "2024"
-license = "GPL-3"
+license = "GPL-3.0-only"
 repository = "https://github.com/bgkillas/ucalc"
 homepage = "https://github.com/bgkillas/ucalc"
 description = "a simple to use calculator"
