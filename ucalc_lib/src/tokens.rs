@@ -191,25 +191,27 @@ impl Tokens {
                     let s = &value[i..i + l];
                     if s == "let" {
                         expect_let = true;
+                    } else if expect_let && s.chars().all(|c| c.is_ascii_alphabetic()) {
+                        inner_vars.push(s);
+                    } else if let Some(i) = funs.position(s) {
+                        tokens.last_mul(&mut operator_stack, negate, &mut last_mul, false);
+                        operator_stack.push(Function::Custom(i).into());
+                    } else if let Some(i) = inner_vars.iter().position(|v| *v == s) {
+                        tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
+                        tokens.push(Token::InnerVar(i));
+                    } else if let Some(i) = vars.position(s) {
+                        tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
+                        tokens.push(Token::Var(i));
+                    } else if let Some(i) = graph_vars.iter().position(|v| v == &s) {
+                        tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
+                        tokens.push(Token::GraphVar(i));
+                    } else if let Ok(fun) = Function::try_from(s) {
+                        tokens.last_mul(&mut operator_stack, negate, &mut last_mul, false);
+                        operator_stack.push(fun.into());
+                    } else if s.chars().all(|c| c.is_ascii_alphabetic()) {
+                        inner_vars.push(s);
                     } else {
-                        tokens.last_mul(&mut operator_stack, negate, &mut last_mul);
-                        if expect_let && s.chars().all(|c| c.is_ascii_alphabetic()) {
-                            inner_vars.push(s);
-                        } else if let Some(i) = funs.position(s) {
-                            operator_stack.push(Function::Custom(i).into());
-                        } else if let Some(i) = inner_vars.iter().position(|v| *v == s) {
-                            tokens.push(Token::InnerVar(i));
-                        } else if let Some(i) = vars.position(s) {
-                            tokens.push(Token::Var(i));
-                        } else if let Some(i) = graph_vars.iter().position(|v| v == &s) {
-                            tokens.push(Token::GraphVar(i));
-                        } else if let Ok(fun) = Function::try_from(s) {
-                            operator_stack.push(fun.into());
-                        } else if s.chars().all(|c| c.is_ascii_alphabetic()) {
-                            inner_vars.push(s);
-                        } else {
-                            return Err(ParseError::UnknownToken(s.to_string()));
-                        }
+                        return Err(ParseError::UnknownToken(s.to_string()));
                     }
                     let _ = chars.advance_by(count - 1);
                     negate = false;
@@ -229,7 +231,7 @@ impl Tokens {
                     let Some(float) = NumberBase::parse_radix(s, 10) else {
                         return Err(ParseError::UnknownToken(s.to_string()));
                     };
-                    tokens.last_mul(&mut operator_stack, negate, &mut last_mul);
+                    tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
                     tokens.push(float.into());
                     let _ = chars.advance_by(l - 1);
                     negate = false;
@@ -358,12 +360,12 @@ impl Tokens {
         operator_stack: &mut Vec<Operators>,
         negate: bool,
         last_mul: &mut bool,
+        new: bool,
     ) {
         if *last_mul {
             self.pop_stack(operator_stack, Operators::Mul, negate);
-        } else {
-            *last_mul = true;
         }
+        *last_mul = new;
     }
     pub fn pop_stack(
         &mut self,
