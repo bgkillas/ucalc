@@ -84,6 +84,7 @@ fn test_poly_div() {
 }
 #[test]
 #[ignore]
+#[cfg(feature = "complex")]
 fn test_solve_poly() {
     let n = 4usize;
     let k = 8u32;
@@ -412,10 +413,10 @@ fn parse_sin() {
 #[test]
 fn parse_sinh() {
     assert_correct!(
-        infix("2*sinh(1)"),
-        rpn("2 1 sinh *"),
-        vec![num(2), num(1), Function::Sinh.into(), Operators::Mul.into(),],
-        res(Constant::E) - res(Constant::E).recip()
+        infix("sinh(ln(2))"),
+        rpn("2 ln sinh"),
+        vec![num(2), Function::Ln.into(), Function::Sinh.into()],
+        res(0.75)
     );
     assert_correct!(
         infix("asinh((e-1/e)/2)"),
@@ -436,10 +437,10 @@ fn parse_sinh() {
 #[test]
 fn parse_cosh() {
     assert_correct!(
-        infix("2*cosh(1)"),
-        rpn("2 1 cosh *"),
-        vec![num(2), num(1), Function::Cosh.into(), Operators::Mul.into(),],
-        res(Constant::E) + res(Constant::E).recip()
+        infix("cosh(ln(2))"),
+        rpn("2 ln cosh"),
+        vec![num(2), Function::Ln.into(), Function::Cosh.into()],
+        res(1.25)
     );
     assert_correct!(
         infix("acosh((e+1/e)/2)"),
@@ -462,13 +463,13 @@ fn parse_tanh() {
     assert_correct!(
         infix("tanh(1)"),
         rpn("1 tanh"),
-        vec![num(1), Function::Tanh.into(),],
+        vec![num(1), Function::Tanh.into()],
         res(1).sinh() / res(1).cosh()
     );
     assert_correct!(
         infix("atanh(1)"),
         rpn("1 atanh"),
-        vec![num(1), Function::Atanh.into(),],
+        vec![num(1), Function::Atanh.into()],
         res(1).atanh()
     );
 }
@@ -562,7 +563,7 @@ fn parse_abs() {
     assert_correct!(
         infix("|1|"),
         rpn("1 abs"),
-        vec![num(1), Function::Abs.into(),],
+        vec![num(1), Function::Abs.into()],
         res(1)
     );
     assert_correct!(

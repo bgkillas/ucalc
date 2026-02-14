@@ -2,7 +2,9 @@ use crate::inverse::Inverse;
 use crate::tokens::TokensRef;
 use crate::{Function, Functions, Number, Operators, Token, Tokens, Variables};
 use std::mem;
-use ucalc_numbers::{ComplexTrait, Float, FloatTrait, NegAssign, Pow, PowAssign};
+#[cfg(feature = "complex")]
+use ucalc_numbers::ComplexTrait;
+use ucalc_numbers::{Float, FloatTrait, NegAssign, Pow, PowAssign};
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct Poly(pub Vec<Number>);
 #[derive(Debug, Clone)]
@@ -136,7 +138,9 @@ impl PolyRef<'_> {
             match self.len() {
                 2 => Some(vec![self.linear()]),
                 3 => Some(self.quadratic().into()),
+                #[cfg(feature = "complex")]
                 4 => Some(self.cubic().into()),
+                #[cfg(feature = "complex")]
                 5 => Some(self.quartic().into()),
                 _ => None,
             }
@@ -152,6 +156,7 @@ impl PolyRef<'_> {
             (self[1].clone() * &self[1] - self[2].clone() * &self[0] * Float::from(4)).sqrt() / t;
         [a.clone() + &b, a - b]
     }
+    #[cfg(feature = "complex")]
     pub fn cubic(&self) -> [Number; 3] {
         let d = self[0].clone() / &self[3];
         let c = self[1].clone() / &self[3];
@@ -169,10 +174,12 @@ impl PolyRef<'_> {
             roots
         }
     }
+    #[cfg(feature = "complex")]
     pub fn quartic(&self) -> [Number; 4] {
         todo!()
     }
 }
+#[cfg(feature = "complex")]
 fn depressed_cubic(p: Number, q: Number) -> [Number; 3] {
     if p.is_zero() && q.is_zero() {
         return [Number::default(), Number::default(), Number::default()];
