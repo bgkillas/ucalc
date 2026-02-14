@@ -2,7 +2,7 @@ use crate::functions::Function;
 use crate::operators::{Bracket, Operators};
 use crate::polynomial::Polynomial;
 use crate::variable::{Functions, Variables};
-use crate::{FunctionVar, Number, NumberBase, Variable};
+use crate::{Number, NumberBase, Variable};
 use std::fmt::{Display, Formatter};
 use std::ops::{Deref, DerefMut};
 use ucalc_numbers::FloatTrait;
@@ -76,32 +76,21 @@ impl Tokens {
     ) -> Option<Self> {
         if let Some((name, is_fun)) = inputs {
             if !is_fun {
-                vars.iter_mut().for_each(|v| {
-                    if v.name == name {
-                        v.enabled = false
-                    }
-                });
-                funs.iter_mut().for_each(|v| {
-                    if v.name == name {
-                        v.enabled = false
-                    }
-                });
                 let val = self.compute(&[], funs, vars);
-                vars.push(Variable::new(name, val));
+                if let Some(v) = vars.position(name) {
+                    vars[v].value = val;
+                } else {
+                    vars.push(Variable::new(name, val));
+                }
+                funs.iter_mut().for_each(|v| {
+                    if v.name.as_ref().is_some_and(|n| n.as_ref() == name) {
+                        v.name = None;
+                    }
+                });
+            } else if let Some(v) = funs.position(name) {
+                funs[v].tokens = self;
             } else {
-                vars.iter_mut().for_each(|v| {
-                    if v.name == name {
-                        v.enabled = false
-                    }
-                });
-                let end = funs.len();
-                funs[..end.saturating_sub(1)].iter_mut().for_each(|v| {
-                    if v.name == name {
-                        v.enabled = false
-                    }
-                });
-                let fun = funs.last_mut().unwrap();
-                fun.tokens = self;
+                unreachable!()
             }
             None
         } else {
@@ -128,7 +117,7 @@ impl Tokens {
                         return Err(ParseError::VarExpectedName);
                     };
                     if !inner_vars.is_empty() {
-                        funs.push(FunctionVar::new(name, inner_vars.len(), Tokens::default()));
+                        funs.add(vars, name, inner_vars.len());
                         inputs = Some((name, true));
                     } else {
                         inputs = Some((name, false));
@@ -318,7 +307,7 @@ impl Tokens {
                             return Err(ParseError::VarExpectedName);
                         };
                         if !inner_vars.is_empty() {
-                            funs.push(FunctionVar::new(name, inner_vars.len(), Tokens::default()));
+                            funs.add(vars, name, inner_vars.len());
                             inputs = Some((name, true));
                         } else {
                             inputs = Some((name, false));

@@ -4,33 +4,29 @@ use std::ops::{Deref, DerefMut};
 use ucalc_numbers::Constant;
 #[derive(Debug, Clone, PartialEq)]
 pub struct Variable {
-    pub name: String,
+    pub name: Option<Box<str>>,
     pub value: Number,
-    pub enabled: bool,
 }
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionVar {
-    pub name: String,
+    pub name: Option<Box<str>>,
     pub inputs: usize,
     pub tokens: Tokens,
-    pub enabled: bool,
 }
 impl FunctionVar {
-    pub fn new(name: impl Into<String>, inputs: usize, tokens: Tokens) -> Self {
+    pub fn new(name: impl Into<Box<str>>, inputs: usize, tokens: Tokens) -> Self {
         Self {
-            name: name.into(),
+            name: Some(name.into()),
             inputs,
             tokens,
-            enabled: true,
         }
     }
 }
 impl Variable {
-    pub fn new(name: impl Into<String>, value: Number) -> Self {
+    pub fn new(name: impl Into<Box<str>>, value: Number) -> Self {
         Self {
-            name: name.into(),
+            name: Some(name.into()),
             value,
-            enabled: true,
         }
     }
 }
@@ -38,14 +34,28 @@ impl Variable {
 pub struct Variables(pub Vec<Variable>);
 impl Variables {
     pub fn position(&self, name: &str) -> Option<usize> {
-        self.iter().position(|v| v.enabled && v.name == name)
+        self.iter()
+            .position(|v| v.name.as_ref().is_some_and(|n| n.as_ref() == name))
     }
 }
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct Functions(pub Vec<FunctionVar>);
 impl Functions {
     pub fn position(&self, name: &str) -> Option<usize> {
-        self.iter().position(|v| v.enabled && v.name == name)
+        self.iter()
+            .position(|v| v.name.as_ref().is_some_and(|n| n.as_ref() == name))
+    }
+    pub fn add(&mut self, vars: &mut Variables, name: &str, inputs: usize) {
+        vars.iter_mut().for_each(|v| {
+            if v.name.as_ref().is_some_and(|n| n.as_ref() == name) {
+                v.name = None;
+            }
+        });
+        if let Some(v) = self.position(name) {
+            self[v].inputs = inputs;
+        } else {
+            self.push(FunctionVar::new(name, inputs, Tokens::default()));
+        }
     }
 }
 impl Default for Variables {

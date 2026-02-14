@@ -70,7 +70,7 @@ fn var(n: &str) -> Token {
     Token::Var(
         Variables::default()
             .iter()
-            .position(|v| v.name == n)
+            .position(|v| v.name.as_ref().is_some_and(|v| v.as_ref() == n))
             .unwrap(),
     )
 }
