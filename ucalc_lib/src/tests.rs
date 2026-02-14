@@ -5,7 +5,7 @@ use crate::tokens::ParseError;
 use crate::tokens::{Token, Tokens};
 use crate::variable::{Functions, Variables};
 use crate::{FunctionVar, Number, Variable};
-use ucalc_numbers::{Constant, Float, FloatTrait};
+use ucalc_numbers::*;
 
 macro_rules! assert_teq {
     ($a:expr, $b:expr, $c:expr) => {
@@ -82,6 +82,47 @@ fn test_poly_div() {
     assert_eq!(poly, Poly(vec![res(0), res(0)]));
     assert_eq!(buffer, Poly(vec![res(-10), res(1)]));
 }
+/*#[test]
+fn test_solve_poly() {
+    let n = 4usize;
+    let k = 8u32;
+    let mut fun = Functions(vec![]);
+    assert!(
+        Tokens::infix(
+            "let p(x,a,b,c,d,e,f,g,h)=(a+b i)x^0+(c+d i)x^1+(e+f i)x^2+(g+h i)x^3",
+            &mut Variables::default(),
+            &mut fun,
+            &[],
+            true
+        )
+        .unwrap()
+        .is_none()
+    );
+    let mut buffer = Tokens(Vec::with_capacity(8));
+    for i in 0..n.pow(k) {
+        let [a, b, c, d, e, f, g, h] = std::array::from_fn(|j| (i >> (j * n.ilog2() as usize)) % n);
+        if c != 0 || d != 0 || e != 0 || f != 0 || g != 0 || h != 0 {
+            let res = Tokens::infix(
+                &format!("p(solve(y,p(y,{a}/2,{b}/2,{c}/2,{d}/2,{e}/2,{f}/2,{g}/2,{h}/2)),{a}/2,{b}/2,{c}/2,{d}/2,{e}/2,{f}/2,{g}/2,{h}/2)"),
+                &mut Variables::default(),
+                &mut fun,
+                &[],
+                false,
+            )
+                .unwrap()
+                .unwrap()
+                .compute_buffer_with(
+                    &mut Vec::with_capacity(8),
+                    &[],
+                    &fun,
+                    &Variables::default(),
+                    &mut buffer,
+                    0,
+                );
+            assert!(res.abs() < Float::from(2.0).pow(Float::from(-4)));
+        }
+    }
+}*/
 #[test]
 fn parse_neg() {
     assert_correct!(

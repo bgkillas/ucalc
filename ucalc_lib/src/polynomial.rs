@@ -90,14 +90,33 @@ impl PolyRef<'_> {
             a
         }
         self.iter()
-            .skip(1)
             .enumerate()
-            .filter(|(_, a)| a.is_zero())
+            .skip(1)
+            .filter(|(_, a)| !a.is_zero())
             .map(|(i, _)| i)
             .reduce(gcd)
-            .unwrap_or(1)
+            .unwrap_or(self.len())
+    }
+    pub fn first(&self) -> usize {
+        self.iter().position(|a| !a.is_zero()).unwrap_or(0)
     }
     pub fn roots(&self) -> Option<Vec<Number>> {
+        let first = self.first();
+        if first != 0 {
+            let len = self.len() - first;
+            let mut poly = Vec::with_capacity(len);
+            for i in first..self.len() {
+                poly.push(self[i].clone());
+            }
+            return if let Some(mut roots) = PolyRef(&poly).roots() {
+                for _ in 0..first {
+                    roots.push(Number::from(0));
+                }
+                Some(roots)
+            } else {
+                None
+            };
+        }
         let gcd = self.gcd();
         if gcd > 1 {
             let len = self.len().div_ceil(gcd);
@@ -136,45 +155,55 @@ impl PolyRef<'_> {
     pub fn cubic(&self) -> [Number; 3] {
         let d = self[0].clone() / &self[3];
         let c = self[1].clone() / &self[3];
-        let b = self[2].clone() / &self[3];
-        let d0 = b.clone() * &b - c.clone() * Float::from(3);
-        let d1 = b.clone() * &b * &b * Float::from(2) - b.clone() * &c * Float::from(9)
-            + d.clone() * Float::from(27);
-        let c = d1.clone() * &d1 - d0.clone() * &d0 * &d0 * Float::from(4);
-        let c = (d1 + c.sqrt()) / Float::from(2);
-        let c = c.pow(Float::from(3).recip());
-        let omega = Number::from(3).sqrt().mul_i(false) / Float::from(2) - Float::from(0.5);
-        let z1 = if d0.is_zero() {
-            -(b.clone() + &c) / Float::from(3)
+        if self[2].is_zero() {
+            depressed_cubic(c, d)
         } else {
-            -(b.clone() + &c + d0.clone() / &c) / Float::from(3)
-        };
-        let c0 = c.clone() * &omega;
-        let z2 = if d0.is_zero() {
-            -(b.clone() + &c0) / Float::from(3)
-        } else {
-            -(b.clone() + &c0 + d0.clone() / c0) / Float::from(3)
-        };
-        let c1 = c * omega.conj();
-        let z3 = if d0.is_zero() {
-            -(b + &c1) / Float::from(3)
-        } else {
-            -(b + &c1 + d0 / c1) / Float::from(3)
-        };
-        [z1, z2, z3]
+            let b = self[2].clone() / &self[3];
+            let p = c.clone() - b.clone() * &b / Float::from(3);
+            let q = b.clone() * &b * &b * Float::from(2) / Float::from(27)
+                - b.clone() * &c / Float::from(3)
+                + d;
+            let mut roots = depressed_cubic(p, q);
+            let cov = b / Float::from(3);
+            roots.iter_mut().for_each(|a| *a -= &cov);
+            roots
+        }
     }
     pub fn quartic(&self) -> [Number; 4] {
         todo!()
     }
 }
+fn depressed_cubic(p: Number, q: Number) -> [Number; 3] {
+    if p.is_zero() && q.is_zero() {
+        return [Number::default(), Number::default(), Number::default()];
+    }
+    let omega = Number::from(3).mul_i(false) / Float::from(2.0) - Float::from(1);
+    let omega_conj = omega.clone().conj();
+    let c = q.clone() * &q / Float::from(4) + p.clone() * &p * &p / Float::from(27);
+    let cs = c.sqrt();
+    let q2 = q / Float::from(2);
+    let c1 = cs.clone() - &q2;
+    let c2 = cs + q2;
+    let u = if c2.clone().abs() > c1.clone().abs() {
+        -c2.pow(Float::from(3).recip())
+    } else {
+        c1.pow(Float::from(3).recip())
+    };
+    let v = -p / (Float::from(3) * &u);
+    [
+        u.clone() + v.clone(),
+        omega.clone() * &u + omega_conj.clone() * &v,
+        omega_conj * u + omega * v,
+    ]
+}
 impl Polynomial {
     pub fn roots(mut self) -> Option<Number> {
-        let mut ret = if self.quotient.len() >= self.divisor.len() {
+        let mut ret = if self.quotient.len() >= self.divisor.len() && self.divisor.len() > 1 {
             let mut poly = Poly(Vec::with_capacity(8));
             self.quotient.div_buffer(&self.divisor, &mut poly);
             poly.as_ref().roots()?
         } else if let Some(mut roots) = self.quotient.as_ref().roots() {
-            if self.divisor.len() != 1 {
+            if self.divisor.len() > 1 {
                 let anti_roots = self.divisor.as_ref().roots()?;
                 for r in anti_roots {
                     if let Some(i) = roots.iter().position(|a| *a == r) {
