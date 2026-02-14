@@ -189,28 +189,23 @@ impl Tokens {
                         }
                     }
                     let s = &value[i..i + l];
+                    tokens.last_mul(&mut operator_stack, negate, &mut last_mul);
                     if s == "let" {
                         expect_let = true;
                     } else if expect_let && s.chars().all(|c| c.is_ascii_alphabetic()) {
                         inner_vars.push(s);
                     } else if let Some(i) = funs.position(s) {
                         operator_stack.push(Function::Custom(i).into());
-                        last_mul = false;
                     } else if let Some(i) = inner_vars.iter().position(|v| *v == s) {
-                        tokens.last_mul(&mut operator_stack, negate, &mut last_mul);
                         tokens.push(Token::InnerVar(i));
                     } else if let Some(i) = vars.position(s) {
-                        tokens.last_mul(&mut operator_stack, negate, &mut last_mul);
                         tokens.push(Token::Var(i));
                     } else if let Some(i) = graph_vars.iter().position(|v| v == &s) {
-                        tokens.last_mul(&mut operator_stack, negate, &mut last_mul);
                         tokens.push(Token::GraphVar(i));
                     } else if let Ok(fun) = Function::try_from(s) {
                         operator_stack.push(fun.into());
-                        last_mul = false;
                     } else if s.chars().all(|c| c.is_ascii_alphabetic()) {
                         inner_vars.push(s);
-                        last_mul = false;
                     } else {
                         return Err(ParseError::UnknownToken(s.to_string()));
                     }

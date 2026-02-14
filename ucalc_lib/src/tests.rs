@@ -200,6 +200,18 @@ fn parse_mul() {
         ],
         res(2)
     );
+    assert_correct!(
+        infix("sqrt(4)sqrt(4)"),
+        rpn("4 sqrt 4 sqrt *"),
+        vec![
+            num(4),
+            Function::Sqrt.into(),
+            num(4),
+            Function::Sqrt.into(),
+            Operators::Mul.into(),
+        ],
+        res(4)
+    );
 }
 #[test]
 fn parse_add() {
