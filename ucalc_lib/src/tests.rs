@@ -87,11 +87,11 @@ fn test_poly_div() {
 #[cfg(feature = "complex")]
 fn test_solve_poly() {
     let n = 4usize;
-    let k = 8u32;
+    let k = 10u32;
     let mut fun = Functions(vec![]);
     assert!(
         Tokens::infix(
-            "let p(x,a,b,c,d,e,f,g,h)=(a+b i)x^0+(c+d i)x^1+(e+f i)x^2+(g+h i)x^3",
+            "let p(x,a,b,c,d,e,f,g,h,j,k)=(a+b i)x^0+(c+d i)x^1+(e+f i)x^2+(g+h i)x^3+(j+k i)x^4",
             &mut Variables::default(),
             &mut fun,
             &[],
@@ -102,10 +102,12 @@ fn test_solve_poly() {
     );
     let mut buffer = Tokens(Vec::with_capacity(8));
     for i in 0..n.pow(k) {
-        let [a, b, c, d, e, f, g, h] = std::array::from_fn(|j| (i >> (j * n.ilog2() as usize)) % n);
-        if c != 0 || d != 0 || e != 0 || f != 0 || g != 0 || h != 0 {
+        let [a, b, c, d, e, f, g, h, i, j] = std::array::from_fn(|j| {
+            ((i as isize >> (j as isize * n.ilog2() as isize)) % n as isize) - n as isize / 2
+        });
+        if c != 0 || d != 0 || e != 0 || f != 0 || g != 0 || h != 0 || i != 0 || j != 0 {
             let res = Tokens::infix(
-                &format!("p(solve(y,p(y,{a}/2,{b}/2,{c}/2,{d}/2,{e}/2,{f}/2,{g}/2,{h}/2)),{a}/2,{b}/2,{c}/2,{d}/2,{e}/2,{f}/2,{g}/2,{h}/2)"),
+                &format!("p(solve(y,p(y,{a}/2,{b}/2,{c}/2,{d}/2,{e}/2,{f}/2,{g}/2,{h}/2,{i}/2,{j}/2)),{a}/2,{b}/2,{c}/2,{d}/2,{e}/2,{f}/2,{g}/2,{h}/2,{i}/2,{j}/2)"),
                 &mut Variables::default(),
                 &mut fun,
                 &[],
