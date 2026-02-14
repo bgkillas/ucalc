@@ -257,7 +257,7 @@ fn depressed_cubic(p: Number, q: Number) -> [Number; 3] {
     if p.is_zero() && q.is_zero() {
         return [Number::default(), Number::default(), Number::default()];
     }
-    let omega = Number::from(3).mul_i(false) / Float::from(2.0) - Float::from(1);
+    let omega = Number::from(3).sqrt().mul_i(false) / Float::from(2.0) - Float::from(0.5);
     let omega_conj = omega.clone().conj();
     if p.is_zero() {
         let u = (-q).cbrt();
@@ -307,6 +307,7 @@ impl Polynomial {
                 Func::Power(p) => Inverse::pow_assign(a, p.clone().recip()),
             })
         });
+        ret.sort_by(|a, b| a.total_cmp(b));
         Some(ret[0].clone())
     }
     pub fn new() -> Self {

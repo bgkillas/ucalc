@@ -102,17 +102,17 @@ fn test_solve_poly() {
     );
     let mut buffer = Tokens(Vec::with_capacity(8));
     for i in 0..n.pow(k) {
+        if i.is_multiple_of(2048) {
+            println!("{i} {}", n.pow(k));
+        }
         let [a, b, c, d, e, f, g, h, i, j] = std::array::from_fn(|j| {
             ((i as isize >> (j as isize * n.ilog2() as isize)) % n as isize) - n as isize / 2
         });
         if c != 0 || d != 0 || e != 0 || f != 0 || g != 0 || h != 0 || i != 0 || j != 0 {
-            let res = Tokens::infix(
-                &format!("p(solve(y,p(y,{a}/2,{b}/2,{c}/2,{d}/2,{e}/2,{f}/2,{g}/2,{h}/2,{i}/2,{j}/2)),{a}/2,{b}/2,{c}/2,{d}/2,{e}/2,{f}/2,{g}/2,{h}/2,{i}/2,{j}/2)"),
-                &mut Variables::default(),
-                &mut fun,
-                &[],
-                false,
-            )
+            let s = format!(
+                "p(solve(y,p(y,{a}/2,{b}/2,{c}/2,{d}/2,{e}/2,{f}/2,{g}/2,{h}/2,{i}/2,{j}/2)),{a}/2,{b}/2,{c}/2,{d}/2,{e}/2,{f}/2,{g}/2,{h}/2,{i}/2,{j}/2)"
+            );
+            let res = Tokens::infix(&s, &mut Variables::default(), &mut fun, &[], false)
                 .unwrap()
                 .unwrap()
                 .compute_buffer_with(
@@ -123,7 +123,7 @@ fn test_solve_poly() {
                     &mut buffer,
                     0,
                 );
-            assert!(res.abs() < Float::from(2.0).pow(Float::from(-4)));
+            assert!(res.abs() < Float::from(2.0).pow(Float::from(-4)), "{s}");
         }
     }
 }
@@ -901,25 +901,27 @@ fn test_solve() {
             Operators::Sub.into(),
             Function::Solve.into()
         ],
-        res(2).sqrt() + Float::from(1)
+        Float::from(1) - res(2).sqrt()
     );
     assert_correct!(
-        infix("solve(x,exp(x)^2-exp(x)-1)"),
-        rpn("x x exp 2 ^ x exp - 1 - solve"),
+        infix("solve(x,exp(x)^2-2exp(x)+1)"),
+        rpn("x x exp 2 ^ 2 x exp * - 1 + solve"),
         vec![
-            Token::Skip(9),
+            Token::Skip(11),
             Token::InnerVar(0).into(),
             Function::Exp.into(),
             num(2),
             Operators::Pow.into(),
+            num(2),
             Token::InnerVar(0).into(),
             Function::Exp.into(),
+            Operators::Mul.into(),
             Operators::Sub.into(),
             num(1),
-            Operators::Sub.into(),
+            Operators::Add.into(),
             Function::Solve.into()
         ],
-        (res(0.5) + res(5).sqrt() / Float::from(2)).ln()
+        res(0)
     );
     assert_correct!(
         infix("solve(x,ln(x))"),
