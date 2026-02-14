@@ -165,8 +165,8 @@ impl PolyRef<'_> {
         } else {
             let b = self[2].clone() / &self[3];
             let p = c.clone() - b.clone() * &b / Float::from(3);
-            let q = b.clone() * &b * &b * Float::from(2) / Float::from(27)
-                - b.clone() * &c / Float::from(3)
+            let q = b.clone()
+                * (b.clone() * &b * Float::from(2) / Float::from(27) - c.clone() / Float::from(3))
                 + d;
             let mut roots = depressed_cubic(p, q);
             let cov = b / Float::from(3);
@@ -176,8 +176,53 @@ impl PolyRef<'_> {
     }
     #[cfg(feature = "complex")]
     pub fn quartic(&self) -> [Number; 4] {
-        todo!()
+        let e = self[0].clone() / &self[4];
+        let d = self[1].clone() / &self[4];
+        let c = self[2].clone() / &self[4];
+        if self[3].is_zero() {
+            depressed_quartic(c, d, e)
+        } else {
+            let b = self[3].clone() / &self[4];
+            let p = c.clone() - b.clone() * &b * Float::from(0.375);
+            let q = b.clone()
+                * (b.clone() * &b * Float::from(0.125) - Float::from(0.5) * c.clone())
+                + &d;
+            let r = b.clone()
+                * (b.clone() * (c.clone() * Float::from(0.0625) - d.clone() * &d * Float::from(3))
+                    - d.clone() * Float::from(0.25))
+                + e;
+            let mut roots = depressed_quartic(p, q, r);
+            let cov = b / Float::from(4);
+            roots.iter_mut().for_each(|a| *a -= &cov);
+            roots
+        }
     }
+}
+#[cfg(feature = "complex")]
+fn depressed_quartic(p: Number, q: Number, r: Number) -> [Number; 4] {
+    if p.is_zero() && q.is_zero() && r.is_zero() {
+        return [
+            Number::default(),
+            Number::default(),
+            Number::default(),
+            Number::default(),
+        ];
+    }
+    if q.is_zero() {
+        return if p.is_zero() {
+            let r1 = (-r).pow(Float::from(4).recip());
+            let r2 = r1.clone().mul_i(false);
+            let r3 = r2.clone().mul_i(false);
+            let r4 = r3.clone().mul_i(false);
+            [r1, r2, r3, r4]
+        } else {
+            let [r1, r2] = PolyRef(&[r, p, Number::from(1)]).quadratic();
+            let r1 = r1.sqrt();
+            let r2 = r2.sqrt();
+            [r1.clone(), r2.clone(), -r1, -r2]
+        };
+    }
+    todo!()
 }
 #[cfg(feature = "complex")]
 fn depressed_cubic(p: Number, q: Number) -> [Number; 3] {
@@ -186,6 +231,12 @@ fn depressed_cubic(p: Number, q: Number) -> [Number; 3] {
     }
     let omega = Number::from(3).mul_i(false) / Float::from(2.0) - Float::from(1);
     let omega_conj = omega.clone().conj();
+    if p.is_zero() {
+        let u = (-q).cbrt();
+        let u1 = omega * &u;
+        let u2 = omega_conj * &u;
+        return [u, u1, u2];
+    }
     let c = q.clone() * &q / Float::from(4) + p.clone() * &p * &p / Float::from(27);
     let cs = c.sqrt();
     let q2 = q / Float::from(2);
