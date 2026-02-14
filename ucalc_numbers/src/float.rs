@@ -1,4 +1,4 @@
-use crate::{ComplexTrait, Constant, FloatTrait, Pow, RealTrait};
+use crate::{ComplexTrait, Constant, FloatTrait, NegAssign, Pow, RealTrait};
 use std::cmp::Ordering;
 #[cfg(feature = "f16")]
 use std::f16::consts;
@@ -243,6 +243,12 @@ impl FloatTrait<Float> for Float {
     }
     fn sqrt(self) -> Self {
         Self(self.0.sqrt())
+    }
+    fn cbrt_mut(&mut self) {
+        *self = self.clone().cbrt();
+    }
+    fn cbrt(self) -> Self {
+        Self(self.0.cbrt())
     }
     fn abs_mut(&mut self) {
         self.0 = self.0.abs();
@@ -583,6 +589,24 @@ impl FloatTrait<Float> for Complex {
         self.sqrt_mut();
         self
     }
+    fn cbrt_mut(&mut self) {
+        if self.imag.is_zero() {
+            self.real.cbrt_mut()
+        } else if self.real.is_zero() {
+            self.imag.cbrt_mut();
+            self.imag.neg_assign();
+        } else {
+            let r = self.clone().abs().cbrt();
+            let theta = self.clone().arg() / Float::from(3);
+            let (sin, cos) = theta.sin_cos();
+            self.real = cos * &r;
+            self.imag = sin * r;
+        }
+    }
+    fn cbrt(mut self) -> Self {
+        self.cbrt_mut();
+        self
+    }
     fn abs_mut(&mut self) {
         self.real.hypot_mut(&self.imag);
         self.imag = Float(0.0);
@@ -791,13 +815,19 @@ with_val!(
 impl Pow<Float> for Float {
     type Output = Float;
     default fn pow(self, rhs: Float) -> Self {
-        Self(self.0.powf(rhs.0))
+        self.pow(&rhs)
     }
 }
 impl Pow<&Float> for Float {
     type Output = Float;
     default fn pow(self, rhs: &Float) -> Self {
-        Self(self.0.powf(rhs.0))
+        if rhs.0.fract() == 0.0
+            && let Ok(rhs) = (rhs.0 as i64).try_into()
+        {
+            Self(self.0.powi(rhs))
+        } else {
+            Self(self.0.powf(rhs.0))
+        }
     }
 }
 impl Neg for Float {
@@ -867,6 +897,30 @@ impl Pow<Float> for Complex {
                 }
             } else {
                 self.real.pow(rhs).into()
+            }
+        } else if self.real.is_zero()
+            && rhs.0.fract() == 0.0
+            && let Ok(rhs) = (rhs.0 as i64).try_into()
+        {
+            let f = self.imag.0.powi(rhs);
+            match rhs.rem_euclid(4) {
+                0 => Self {
+                    real: Float(f),
+                    imag: Float::default(),
+                },
+                1 => Self {
+                    real: Float::default(),
+                    imag: Float(f),
+                },
+                2 => Self {
+                    real: Float(-f),
+                    imag: Float::default(),
+                },
+                3 => Self {
+                    real: Float::default(),
+                    imag: Float(-f),
+                },
+                _ => unreachable!(),
             }
         } else {
             (self.ln() * rhs).exp()

@@ -4,7 +4,7 @@ use crate::{Functions, Number, Tokens, Variables};
 use std::ops::Deref;
 #[cfg(feature = "complex")]
 use ucalc_numbers::ComplexTrait;
-use ucalc_numbers::{Constant, Float, FloatTrait, PowAssign, RealTrait};
+use ucalc_numbers::{Constant, Float, FloatTrait, RealTrait};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Function {
     Sin,
@@ -177,7 +177,7 @@ impl Function {
             Self::Acosh => a.acosh_mut(),
             Self::Tanh => a.tanh_mut(),
             Self::Atanh => a.atanh_mut(),
-            Self::Cbrt => a.pow_assign(Float::from(3).recip()),
+            Self::Cbrt => a.cbrt_mut(),
             Self::Sq => *a *= a.clone(),
             Self::Cb => *a = a.clone() * a.deref() * a.deref(),
             Self::Atan => a.atan_mut(),

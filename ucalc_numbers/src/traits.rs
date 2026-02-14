@@ -106,6 +106,8 @@ pub trait FloatTrait<F>: Sized {
     fn recip(self) -> Self;
     fn sqrt_mut(&mut self);
     fn sqrt(self) -> Self;
+    fn cbrt_mut(&mut self);
+    fn cbrt(self) -> Self;
     fn abs_mut(&mut self);
     fn abs(self) -> F;
     fn gamma_mut(&mut self);

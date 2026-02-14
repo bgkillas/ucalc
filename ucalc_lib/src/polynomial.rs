@@ -185,9 +185,9 @@ fn depressed_cubic(p: Number, q: Number) -> [Number; 3] {
     let c1 = cs.clone() - &q2;
     let c2 = cs + q2;
     let u = if c2.clone().abs() > c1.clone().abs() {
-        -c2.pow(Float::from(3).recip())
+        -c2.cbrt()
     } else {
-        c1.pow(Float::from(3).recip())
+        c1.cbrt()
     };
     let v = -p / (Float::from(3) * &u);
     [

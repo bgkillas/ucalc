@@ -82,7 +82,8 @@ fn test_poly_div() {
     assert_eq!(poly, Poly(vec![res(0), res(0)]));
     assert_eq!(buffer, Poly(vec![res(-10), res(1)]));
 }
-/*#[test]
+#[test]
+#[ignore]
 fn test_solve_poly() {
     let n = 4usize;
     let k = 8u32;
@@ -122,7 +123,7 @@ fn test_solve_poly() {
             assert!(res.abs() < Float::from(2.0).pow(Float::from(-4)));
         }
     }
-}*/
+}
 #[test]
 fn parse_neg() {
     assert_correct!(
