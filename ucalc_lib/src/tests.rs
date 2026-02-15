@@ -13,7 +13,7 @@ macro_rules! assert_approx_eq {
 }
 macro_rules! assert_approx_teq {
     ($a:expr, $b:expr, $c:expr) => {
-        assert_approx_eq!($a, $b);
+        assert_eq!($a, $b);
         assert_approx_eq!($a, $c);
     };
 }
@@ -319,6 +319,7 @@ fn test_inverses() {
         #[cfg(feature = "complex")]
         Function::Conj,
         Function::Sinh,
+        #[cfg(feature = "complex")]
         Function::Cosh,
         Function::Asinh,
         Function::Acosh,
@@ -881,6 +882,10 @@ fn parse_abs() {
         ],
         res(1)
     );
+}
+#[test]
+fn test_empty() {
+    assert_correct!(infix(""), rpn(""), vec![num(0),], res(0));
 }
 #[test]
 #[cfg(feature = "complex")]

@@ -172,6 +172,6 @@ impl TokensRef<'_> {
             }
             i += 1;
         }
-        stack.pop().map(|t| t.num()).unwrap_or_default()
+        stack.pop().map(|t| t.num()).unwrap()
     }
 }

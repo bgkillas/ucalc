@@ -69,11 +69,14 @@ impl<'a> Display for TokensRef<'a> {
 }
 impl Tokens {
     fn end(
-        self,
+        mut self,
         inputs: Option<(&str, bool)>,
         vars: &mut Variables,
         funs: &mut Functions,
     ) -> Option<Self> {
+        if self.is_empty() {
+            self.push(Token::Num(Number::default()));
+        }
         if let Some((name, is_fun)) = inputs {
             if !is_fun {
                 let val = self.compute(&[], funs, vars);
