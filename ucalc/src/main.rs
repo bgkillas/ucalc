@@ -41,6 +41,9 @@ fn run_line(line: &str, infix: &mut bool, vars: &mut Variables, funs: &mut Funct
     }) {
         Ok(Some(tokens)) => {
             println!("{tokens:?}");
+            let mut str = String::new();
+            tokens.get_infix(&mut str);
+            println!("{}", str);
             let compute = tmr(|| tokens.compute(&[], funs, vars));
             println!("{}", compute);
         }

@@ -13,7 +13,7 @@ impl<'a> TokensRef<'a> {
     ) -> Option<Number> {
         let mut ret = Number::from(0);
         let mut inner_stack = Tokens(Vec::with_capacity(self.len()));
-        let inner = self.inner(
+        let inner = self.cas_inner(
             fun_vars,
             vars,
             funs,
@@ -26,7 +26,7 @@ impl<'a> TokensRef<'a> {
         Some(if let Some(inner) = inner { inner } else { ret })
     }
     #[allow(clippy::too_many_arguments)]
-    fn inner(
+    fn cas_inner(
         &'a self,
         fun_vars: &mut Vec<Number>,
         vars: &[Number],
@@ -69,7 +69,7 @@ impl<'a> TokensRef<'a> {
                             fun_vars.push(n)
                         }
                     }
-                    let roots = TokensRef(&fun.tokens).inner(
+                    let roots = TokensRef(&fun.tokens).cas_inner(
                         fun_vars,
                         vars,
                         funs,
@@ -83,7 +83,7 @@ impl<'a> TokensRef<'a> {
                         *ret = n;
                     }
                     fun_vars.drain(end..);
-                    return args[0].inner(
+                    return args[0].cas_inner(
                         fun_vars,
                         vars,
                         funs,

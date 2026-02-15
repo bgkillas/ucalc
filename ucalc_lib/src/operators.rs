@@ -1,4 +1,5 @@
 use crate::functions::Function;
+use std::fmt::{Display, Formatter};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Operators {
     Add,
@@ -24,9 +25,64 @@ pub enum Operators {
     Bracket(Bracket),
     Function(Function),
 }
-impl From<Function> for Operators {
-    fn from(value: Function) -> Self {
-        Self::Function(value)
+impl Display for Operators {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Operators::Add => "+",
+                Operators::Sub => "-",
+                Operators::Mul => "*",
+                Operators::Div => "/",
+                Operators::Pow => "^",
+                Operators::Tetration => "^^",
+                Operators::Root => "//",
+                Operators::Rem => "%",
+                Operators::Negate => "-",
+                Operators::Factorial => "!",
+                Operators::SubFactorial => "!",
+                Operators::Equal => "==",
+                Operators::NotEqual => "!=",
+                Operators::Greater => ">",
+                Operators::Less => "<",
+                Operators::GreaterEqual => ">=",
+                Operators::LessEqual => "<=",
+                Operators::And => "&",
+                Operators::Or => "?",
+                Operators::Not => "'",
+                Operators::Bracket(_) => unreachable!(),
+                Operators::Function(_) => unreachable!(),
+            }
+        )
+    }
+}
+impl TryFrom<Function> for Operators {
+    type Error = ();
+    fn try_from(value: Function) -> Result<Self, Self::Error> {
+        Ok(match value {
+            Function::Add => Self::Add,
+            Function::Sub => Self::Sub,
+            Function::Mul => Self::Mul,
+            Function::Div => Self::Div,
+            Function::Pow => Self::Pow,
+            Function::Tetration => Self::Tetration,
+            Function::Root => Self::Root,
+            Function::Rem => Self::Rem,
+            Function::Negate => Self::Negate,
+            Function::Factorial => Self::Factorial,
+            Function::SubFactorial => Self::SubFactorial,
+            Function::Equal => Self::Equal,
+            Function::NotEqual => Self::NotEqual,
+            Function::Greater => Self::Greater,
+            Function::Less => Self::Less,
+            Function::GreaterEqual => Self::GreaterEqual,
+            Function::LessEqual => Self::LessEqual,
+            Function::And => Self::And,
+            Function::Or => Self::Or,
+            Function::Not => Self::Not,
+            _ => return Err(()),
+        })
     }
 }
 impl From<Bracket> for Operators {

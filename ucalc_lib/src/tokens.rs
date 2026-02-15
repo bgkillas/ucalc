@@ -67,7 +67,64 @@ impl<'a> Display for TokensRef<'a> {
         Ok(())
     }
 }
+impl TokensRef<'_> {
+    fn infix_inner(self, buffer: &mut String, offset: usize) {
+        println!("{self:?}");
+        match self.0.last().unwrap() {
+            Token::Num(n) => {
+                buffer.insert_str(offset, &n.to_string());
+            }
+            Token::Polynomial(_) => {
+                unreachable!()
+            }
+            Token::InnerVar(i) => {
+                buffer.insert(offset, (b'n' + *i as u8) as char);
+            }
+            Token::GraphVar(_) => {
+                todo!()
+            }
+            Token::Fun(j) => {
+                buffer.insert(offset, (b'f' + *j as u8) as char);
+            }
+            Token::Var(_) => {
+                todo!()
+            }
+            Token::Skip(_) => {}
+            Token::Function(f) => {
+                let l = self.len() - 1;
+                if let Ok(o) = Operators::try_from(*f) {
+                    if o.inputs() == 2 {
+                        let last = TokensRef(&self[..l]).get_last(&Functions::default());
+                        buffer.insert(offset, ')');
+                        buffer.insert(offset, ')');
+                        TokensRef(&self[last..l]).infix_inner(buffer, 0);
+                        buffer.insert(offset, '(');
+                        buffer.insert_str(offset, &o.to_string());
+                        buffer.insert(offset, ')');
+                        TokensRef(&self[..last]).infix_inner(buffer, 0);
+                        buffer.insert(offset, '(');
+                        buffer.insert(offset, '(');
+                    } else {
+                        todo!()
+                    }
+                } else {
+                    buffer.insert_str(offset, &f.to_string());
+                    let last = TokensRef(&self[..l]).get_last(&Functions::default());
+                    buffer.insert(offset, '(');
+                    TokensRef(&self[last..l]).infix_inner(buffer, 0);
+                    buffer.insert(offset, ')');
+                }
+            }
+        }
+    }
+    pub fn get_infix(self, buffer: &mut String) {
+        self.infix_inner(buffer, 0);
+    }
+}
 impl Tokens {
+    pub fn get_infix(&self, buffer: &mut String) {
+        TokensRef(self).get_infix(buffer);
+    }
     fn end(
         mut self,
         inputs: Option<(&str, bool)>,
@@ -187,7 +244,7 @@ impl Tokens {
                         inner_vars.push(s);
                     } else if let Some(i) = funs.position(s) {
                         tokens.last_mul(&mut operator_stack, negate, &mut last_mul, false);
-                        operator_stack.push(Function::Custom(i).into());
+                        operator_stack.push(Operators::Function(Function::Custom(i)));
                     } else if let Some(i) = inner_vars.iter().position(|v| *v == s) {
                         tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
                         tokens.push(Token::InnerVar(i));
@@ -199,7 +256,7 @@ impl Tokens {
                         tokens.push(Token::GraphVar(i));
                     } else if let Ok(fun) = Function::try_from(s) {
                         tokens.last_mul(&mut operator_stack, negate, &mut last_mul, false);
-                        operator_stack.push(fun.into());
+                        operator_stack.push(Operators::Function(fun));
                     } else if s.chars().all(|c| c.is_ascii_alphabetic()) {
                         inner_vars.push(s);
                     } else {
