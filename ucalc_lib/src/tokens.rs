@@ -165,7 +165,7 @@ impl Tokens {
         let mut abs = 0;
         while let Some((i, c)) = chars.next() {
             match c {
-                ' ' => {}
+                ' ' | '\n' => {}
                 'a'..='z' => {
                     let mut l = c.len_utf8();
                     let mut count = 1;
