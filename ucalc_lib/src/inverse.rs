@@ -1,5 +1,5 @@
 use crate::{Function, Number};
-use ucalc_numbers::{FloatTrait, PowAssign};
+use ucalc_numbers::{FloatTrait, Pow, PowAssign};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Inverse {
     Add,
@@ -97,6 +97,10 @@ impl Inverse {
             }
             _ => unreachable!(),
         }
+    }
+    pub fn rooti(a: Number, b: usize) -> Vec<Number> {
+        //TODO
+        vec![a.pow(Number::from(b).recip())]
     }
     pub fn pow_assign(a: &mut Number, b: Number) {
         //TODO

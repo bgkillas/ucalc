@@ -4,7 +4,7 @@ use crate::{Function, Functions, Number, Token, Tokens, Variables};
 use std::mem;
 #[cfg(feature = "complex")]
 use ucalc_numbers::ComplexTrait;
-use ucalc_numbers::{Float, FloatTrait, NegAssign, Pow, PowAssign};
+use ucalc_numbers::{Float, FloatTrait, NegAssign, Pow};
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct Poly(pub Vec<Number>);
 #[derive(Debug, Clone)]
@@ -61,7 +61,7 @@ impl Poly {
     pub fn is_zero(&self) -> bool {
         self.iter().all(|a| a.is_zero())
     }
-    pub fn div_buffer(&mut self, rhs: &Self, buffer: &mut Poly) {
+    pub fn div_buffer(&mut self, rhs: &Self, buffer: &mut Poly) -> bool {
         while !self.is_zero() && self.0.len() >= rhs.0.len() {
             let tmp = self.0.last().unwrap().clone() / rhs.0.last().unwrap();
             self.0.pop();
@@ -72,6 +72,7 @@ impl Poly {
                 .for_each(|(a, b)| *a -= tmp.clone() * b);
             buffer.0.insert(0, tmp);
         }
+        self.is_zero()
     }
 }
 impl PolyRef<'_> {
@@ -126,14 +127,9 @@ impl PolyRef<'_> {
             for i in 0..len {
                 poly.push(self[i * gcd].clone());
             }
-            if let Some(mut roots) = PolyRef(&poly).roots() {
-                roots
-                    .iter_mut()
-                    .for_each(|a| a.pow_assign(Float::from(gcd).recip()));
-                Some(roots)
-            } else {
-                None
-            }
+            PolyRef(&poly)
+                .roots()
+                .map(|r| r.into_iter().flat_map(|a| Inverse::rooti(a, gcd)).collect())
         } else {
             match self.len() {
                 2 => Some(vec![self.linear()]),
@@ -283,10 +279,12 @@ fn depressed_cubic(p: Number, q: Number) -> [Number; 3] {
     ]
 }
 impl Polynomial {
-    pub fn roots(mut self) -> Option<Number> {
-        let mut ret = if self.quotient.len() >= self.divisor.len() && self.divisor.len() > 1 {
-            let mut poly = Poly(Vec::with_capacity(8));
-            self.quotient.div_buffer(&self.divisor, &mut poly);
+    pub fn roots(self) -> Option<Number> {
+        let mut poly = Poly(Vec::with_capacity(8));
+        let mut ret = if self.quotient.len() >= self.divisor.len()
+            && self.divisor.len() > 1
+            && self.quotient.clone().div_buffer(&self.divisor, &mut poly)
+        {
             poly.as_ref().roots()?
         } else if let Some(mut roots) = self.quotient.as_ref().roots() {
             if self.divisor.len() > 1 {

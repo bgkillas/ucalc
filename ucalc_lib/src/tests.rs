@@ -38,8 +38,8 @@ macro_rules! assert_approx_correct_with {
 }
 macro_rules! assert_teq {
     ($a:expr, $b:expr, $c:expr) => {
-        assert_eq!($a, $b);
-        assert_eq!($a, $c);
+        assert_eq!($a, $c, "a");
+        assert_eq!($b, $c, "b");
     };
 }
 macro_rules! assert_correct {
@@ -542,6 +542,136 @@ fn test_polynomial() {
         ],
         res(2)
     );
+    assert_correct!(
+        infix("solve(x,(x-2)(x-3)/(x-3)/(x-3))"),
+        rpn("x x 2 - x 3 - * x 3 - / x 3 - / solve"),
+        vec![
+            Token::Skip(15),
+            Token::InnerVar(0),
+            num(2),
+            Operators::Sub.into(),
+            Token::InnerVar(0),
+            num(3),
+            Operators::Sub.into(),
+            Operators::Mul.into(),
+            Token::InnerVar(0),
+            num(3),
+            Operators::Sub.into(),
+            Operators::Div.into(),
+            Token::InnerVar(0),
+            num(3),
+            Operators::Sub.into(),
+            Operators::Div.into(),
+            Function::Solve.into()
+        ],
+        res(2)
+    );
+    assert_correct!(
+        infix("solve(x,x+x^2)"),
+        rpn("x x x 2 ^ + solve"),
+        vec![
+            Token::Skip(5),
+            Token::InnerVar(0),
+            Token::InnerVar(0),
+            num(2),
+            Operators::Pow.into(),
+            Operators::Add.into(),
+            Function::Solve.into()
+        ],
+        res(-1)
+    );
+    #[cfg(feature = "complex")]
+    assert_correct!(
+        infix("solve(x,(x^0.5-2)(x^0.5+2))"),
+        rpn("x x 0.5 ^ 2 - x 0.5 ^ 2 + * solve"),
+        vec![
+            Token::Skip(11),
+            Token::InnerVar(0),
+            num(0.5),
+            Operators::Pow.into(),
+            num(2),
+            Operators::Sub.into(),
+            Token::InnerVar(0),
+            num(0.5),
+            Operators::Pow.into(),
+            num(2),
+            Operators::Add.into(),
+            Operators::Mul.into(),
+            Function::Solve.into()
+        ],
+        res(4)
+    );
+    #[cfg(feature = "complex")]
+    assert_correct!(
+        infix("solve(x,(x-2)(x-1)(x+1)(x+2))"),
+        rpn("x x 2 - x 1 - * x 1 + * x 2 + * solve"),
+        vec![
+            Token::Skip(15),
+            Token::InnerVar(0),
+            num(2),
+            Operators::Sub.into(),
+            Token::InnerVar(0),
+            num(1),
+            Operators::Sub.into(),
+            Operators::Mul.into(),
+            Token::InnerVar(0),
+            num(1),
+            Operators::Add.into(),
+            Operators::Mul.into(),
+            Token::InnerVar(0),
+            num(2),
+            Operators::Add.into(),
+            Operators::Mul.into(),
+            Function::Solve.into()
+        ],
+        res(1)
+    );
+    #[cfg(feature = "complex")]
+    assert_correct!(
+        infix("solve(x,(x-2)(x-1)(x+1)(x+3))"),
+        rpn("x x 2 - x 1 - * x 1 + * x 3 + * solve"),
+        vec![
+            Token::Skip(15),
+            Token::InnerVar(0),
+            num(2),
+            Operators::Sub.into(),
+            Token::InnerVar(0),
+            num(1),
+            Operators::Sub.into(),
+            Operators::Mul.into(),
+            Token::InnerVar(0),
+            num(1),
+            Operators::Add.into(),
+            Operators::Mul.into(),
+            Token::InnerVar(0),
+            num(3),
+            Operators::Add.into(),
+            Operators::Mul.into(),
+            Function::Solve.into()
+        ],
+        res(-3)
+    );
+    #[cfg(feature = "complex")]
+    assert_approx_correct!(
+        infix("solve(x,(x-2)(x-1)(x+3))"),
+        rpn("x x 2 - x 1 - * x 3 + * solve"),
+        vec![
+            Token::Skip(11),
+            Token::InnerVar(0),
+            num(2),
+            Operators::Sub.into(),
+            Token::InnerVar(0),
+            num(1),
+            Operators::Sub.into(),
+            Operators::Mul.into(),
+            Token::InnerVar(0),
+            num(3),
+            Operators::Add.into(),
+            Operators::Mul.into(),
+            Function::Solve.into()
+        ],
+        res(-3)
+    );
 }
 #[test]
 fn parse_sin() {
@@ -964,6 +1094,21 @@ fn test_set() {
             Function::Set.into()
         ],
         res(4)
+    );
+    assert_correct!(
+        infix("set(solve(x,1+x),l,l)"),
+        rpn("x 1 x + solve l l set"),
+        vec![
+            Token::Skip(3),
+            num(1),
+            Token::InnerVar(0),
+            Operators::Add.into(),
+            Function::Solve.into(),
+            Token::Skip(1),
+            Token::InnerVar(0),
+            Function::Set.into(),
+        ],
+        res(-1)
     );
 }
 #[test]
