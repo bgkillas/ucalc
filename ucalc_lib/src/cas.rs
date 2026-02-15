@@ -94,7 +94,7 @@ impl<'a> TokensRef<'a> {
                         None,
                     );
                 }
-                Token::Operator(operator) => {
+                Token::Function(operator) => {
                     let inverse = Inverse::from(operator);
                     if inverse.is_none() {
                         return None;

@@ -134,6 +134,13 @@ impl From<Operators> for Inverse {
 impl From<Function> for Inverse {
     fn from(value: Function) -> Self {
         match value {
+            Function::Add => Self::Add,
+            Function::Sub => Self::Sub,
+            Function::Mul => Self::Mul,
+            Function::Div => Self::Div,
+            Function::Pow => Self::Pow,
+            Function::Root => Self::Root,
+            Function::Negate => Self::Negate,
             Function::Sin => Self::Sin,
             Function::Cos => Self::Cos,
             Function::Ln => Self::Ln,
@@ -155,7 +162,20 @@ impl From<Function> for Inverse {
             Function::Sq => Self::Sq,
             Function::Cbrt => Self::Cbrt,
             Function::Cb => Self::Cb,
-            Function::Max
+            Function::Tetration
+            | Function::Rem
+            | Function::Factorial
+            | Function::SubFactorial
+            | Function::Equal
+            | Function::NotEqual
+            | Function::Greater
+            | Function::Less
+            | Function::GreaterEqual
+            | Function::LessEqual
+            | Function::And
+            | Function::Or
+            | Function::Not
+            | Function::Max
             | Function::Min
             | Function::Quadratic
             | Function::Sum

@@ -1,6 +1,6 @@
 use crate::inverse::Inverse;
 use crate::tokens::TokensRef;
-use crate::{Function, Functions, Number, Operators, Token, Tokens, Variables};
+use crate::{Function, Functions, Number, Token, Tokens, Variables};
 use std::mem;
 #[cfg(feature = "complex")]
 use ucalc_numbers::ComplexTrait;
@@ -421,7 +421,7 @@ impl TokensRef<'_> {
         while i < self.len() {
             let len = stack.len();
             match &self[i] {
-                Token::Operator(operator) => {
+                Token::Function(operator) => {
                     let inputs = operator.inputs();
                     operator.compute_poly(&mut stack[len - inputs..], &mut poly)?;
                     stack.drain(len + 1 - inputs..);
@@ -468,19 +468,6 @@ impl TokensRef<'_> {
     }
 }
 impl Function {
-    pub fn compute_poly(self, a: &mut Polynomial) -> Option<()> {
-        if a.quotient.iter().filter(|a| a.is_zero()).count() == 1
-            && a.divisor.len() == 1
-            && a.divisor[0] == Number::from(1)
-        {
-            a.functions.push(Func::Function(self));
-            Some(())
-        } else {
-            None
-        }
-    }
-}
-impl Operators {
     pub fn compute_poly(self, a: &mut [Token], buffer: &mut Poly) -> Option<()> {
         let ([a], b) = a.split_first_chunk_mut().unwrap();
         self.compute_poly_on(a, b, buffer)
@@ -497,8 +484,16 @@ impl Operators {
             } else {
                 match self {
                     Self::Negate => a.neg_mut(),
-                    Self::Function(fun) => fun.compute_poly(a)?,
-                    _ => return None,
+                    _ => {
+                        if a.quotient.iter().filter(|a| a.is_zero()).count() == 1
+                            && a.divisor.len() == 1
+                            && a.divisor[0] == Number::from(1)
+                        {
+                            a.functions.push(Func::Function(self));
+                        } else {
+                            return None;
+                        }
+                    }
                 }
             }
         } else if let Token::Num(_) = b[0] {

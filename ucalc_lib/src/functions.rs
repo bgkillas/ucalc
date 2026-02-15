@@ -1,12 +1,33 @@
 use crate::polynomial::PolyRef;
 use crate::tokens::Token;
 use crate::{Functions, Number, Tokens, Variables};
+use std::fmt::{Display, Formatter};
 use std::ops::Deref;
 #[cfg(feature = "complex")]
 use ucalc_numbers::ComplexTrait;
-use ucalc_numbers::{Constant, Float, FloatTrait, RealTrait};
+use ucalc_numbers::{Constant, Float, FloatTrait, NegAssign, PowAssign, RealTrait};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Function {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Pow,
+    Tetration,
+    Root,
+    Rem,
+    Negate,
+    Factorial,
+    SubFactorial,
+    Equal,
+    NotEqual,
+    Greater,
+    Less,
+    GreaterEqual,
+    LessEqual,
+    And,
+    Or,
+    Not,
     Sin,
     Asin,
     Cos,
@@ -107,15 +128,117 @@ impl TryFrom<&str> for Function {
             "set" => Self::Set,
             "fold" => Self::Fold,
             "solve" => Self::Solve,
+            "add" => Self::Add,
+            "sub" => Self::Sub,
+            "mul" => Self::Mul,
+            "div" => Self::Div,
+            "pow" => Self::Pow,
+            "tetration" => Self::Tetration,
+            "root" => Self::Root,
+            "rem" => Self::Rem,
+            "negate" => Self::Negate,
+            "factorial" => Self::Factorial,
+            "subfactorial" => Self::SubFactorial,
+            "equal" => Self::Equal,
+            "notequal" => Self::NotEqual,
+            "greater" => Self::Greater,
+            "less" => Self::Less,
+            "greaterequal" => Self::GreaterEqual,
+            "lessequal" => Self::LessEqual,
+            "and" => Self::And,
+            "or" => Self::Or,
+            "not" => Self::Not,
             _ => return Err(()),
         })
+    }
+}
+impl Display for Function {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Exp => "exp",
+                Self::Asin => "asin",
+                Self::Acos => "acos",
+                Self::Asinh => "asinh",
+                Self::Acosh => "acosh",
+                Self::Ln => "ln",
+                Self::Min => "min",
+                Self::Max => "max",
+                Self::Sin => "sin",
+                Self::Cos => "cos",
+                Self::Sinh => "sinh",
+                Self::Cosh => "cosh",
+                Self::Atan => "arctan",
+                Self::Atan2 => "atan",
+                Self::Sqrt => "sqrt",
+                Self::Sum => "sum",
+                Self::Prod => "prod",
+                Self::Quadratic => "quadratic",
+                Self::Gamma => "gamma",
+                Self::Erf => "erf",
+                Self::Erfc => "erfc",
+                Self::Abs => "abs",
+                #[cfg(feature = "complex")]
+                Self::Arg => "arg",
+                Self::Recip => "recip",
+                #[cfg(feature = "complex")]
+                Self::Conj => "conj",
+                Self::Atanh => "atanh",
+                Self::Tanh => "tanh",
+                Self::Tan => "tan",
+                Self::Iter => "iter",
+                Self::Sq => "sq",
+                Self::Cbrt => "cbrt",
+                Self::Cb => "cb",
+                Self::Ceil => "ceil",
+                Self::Floor => "floor",
+                Self::Round => "round",
+                Self::Trunc => "trunc",
+                Self::Fract => "fract",
+                #[cfg(feature = "complex")]
+                Self::Real => "real",
+                #[cfg(feature = "complex")]
+                Self::Imag => "imag",
+                Self::If => "if",
+                Self::Set => "set",
+                Self::Fold => "fold",
+                Self::Solve => "solve",
+                Self::Add => "add",
+                Self::Sub => "sub",
+                Self::Mul => "mul",
+                Self::Div => "div",
+                Self::Pow => "pow",
+                Self::Tetration => "tetration",
+                Self::Root => "root",
+                Self::Rem => "rem",
+                Self::Negate => "negate",
+                Self::Factorial => "factorial",
+                Self::SubFactorial => "subfactorial",
+                Self::Equal => "equal",
+                Self::NotEqual => "notequal",
+                Self::Greater => "greater",
+                Self::Less => "less",
+                Self::GreaterEqual => "greaterequal",
+                Self::LessEqual => "lessequal",
+                Self::And => "and",
+                Self::Or => "or",
+                Self::Not => "not",
+                Self::Custom(_) => unreachable!(),
+            }
+        )
     }
 }
 impl Function {
     pub const MAX_INPUT: usize = 3;
     pub fn inputs(self) -> usize {
         match self {
-            Self::Cos
+            Self::Not
+            | Self::Factorial
+            | Self::SubFactorial
+            | Self::Negate
+            | Self::Cos
             | Self::Sin
             | Self::Tan
             | Self::Tanh
@@ -146,14 +269,72 @@ impl Function {
             | Self::Solve => 1,
             #[cfg(feature = "complex")]
             Self::Arg | Self::Conj | Self::Real | Self::Imag => 1,
-            Self::Atan2 | Self::Max | Self::Min | Self::Set => 2,
+            Self::Tetration
+            | Self::Add
+            | Self::Sub
+            | Self::Mul
+            | Self::Div
+            | Self::Pow
+            | Self::Root
+            | Self::Rem
+            | Self::Equal
+            | Self::NotEqual
+            | Self::Greater
+            | Self::Less
+            | Self::GreaterEqual
+            | Self::LessEqual
+            | Self::And
+            | Self::Or
+            | Self::Atan2
+            | Self::Max
+            | Self::Min
+            | Self::Set => 2,
             Self::Quadratic | Self::Sum | Self::Prod | Self::Iter | Self::If => 3,
             Self::Fold => 4,
             Self::Custom(_) => unreachable!(),
         }
     }
-    pub fn compute(self, a: &mut Number, b: &[Token]) {
+    pub fn is_chainable(self) -> bool {
+        matches!(
+            self,
+            Self::Equal
+                | Self::NotEqual
+                | Self::Greater
+                | Self::Less
+                | Self::LessEqual
+                | Self::GreaterEqual
+        )
+    }
+    pub fn compute(self, a: &mut [Token]) {
+        let ([a], b) = a.split_first_chunk_mut().unwrap();
+        let a = a.num_mut();
+        self.compute_on(a, b)
+    }
+    pub fn compute_on(self, a: &mut Number, b: &[Token]) {
         match self {
+            Self::Add => *a += b[0].num_ref(),
+            Self::Sub => *a -= b[0].num_ref(),
+            Self::Mul => *a *= b[0].num_ref(),
+            Self::Div => *a /= b[0].num_ref(),
+            Self::Rem => *a %= b[0].num_ref(),
+            Self::Factorial => {
+                *a += Float::from(1);
+                a.gamma_mut()
+            }
+            Self::Pow => a.pow_assign(b[0].num_ref()),
+            Self::Root => a.pow_assign(b[0].num_ref().clone().recip()),
+            Self::Negate => a.neg_assign(),
+            Self::Tetration => a.tetration_mut(b[0].num_ref()),
+            Self::SubFactorial => a.subfactorial_mut(),
+            Self::Equal => *a = Number::from(a == b[0].num_ref()),
+            Self::NotEqual => *a = Number::from(a != b[0].num_ref()),
+            Self::Greater => *a = Number::from(a.total_cmp(b[0].num_ref()).is_gt()),
+            Self::Less => *a = Number::from(a.total_cmp(b[0].num_ref()).is_lt()),
+            Self::GreaterEqual => *a = Number::from(a.total_cmp(b[0].num_ref()).is_ge()),
+            Self::LessEqual => *a = Number::from(a.total_cmp(b[0].num_ref()).is_le()),
+            Self::And => *a = Number::from(!a.is_zero() && !b[0].num_ref().is_zero()),
+            Self::Or => *a = Number::from(!a.is_zero() || !b[0].num_ref().is_zero()),
+            Self::Not => *a = Number::from(a.is_zero()),
             Self::Sin => a.sin_mut(),
             Self::Ln => a.ln_mut(),
             Self::Cos => a.cos_mut(),

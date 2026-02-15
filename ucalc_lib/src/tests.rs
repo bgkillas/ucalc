@@ -6,7 +6,36 @@ use crate::tokens::{Token, Tokens};
 use crate::variable::{Functions, Variables};
 use crate::{FunctionVar, Number, Variable};
 use ucalc_numbers::*;
-
+macro_rules! assert_approx_eq {
+    ($a:expr, $b:expr) => {
+        assert!(($a - $b).abs() < Float::from(2.0).pow(Float::from(-8)))
+    };
+}
+macro_rules! assert_approx_teq {
+    ($a:expr, $b:expr, $c:expr) => {
+        assert_approx_eq!($a, $b);
+        assert_approx_eq!($a, $c);
+    };
+}
+macro_rules! assert_approx_correct {
+    ($a:expr, $b:expr, $c:expr, $d:expr) => {
+        assert_approx_correct_with!(
+            $a,
+            $b,
+            Variables::default(),
+            &[],
+            Functions::default(),
+            $c,
+            $d
+        );
+    };
+}
+macro_rules! assert_approx_correct_with {
+    ($a:expr, $b:expr, $v:expr, $vf:expr, $f:expr, $c:expr, $d:expr) => {
+        assert_teq!($a, $b, Tokens($c));
+        assert_approx_teq!($a.compute($vf, &$f, &$v), $b.compute($vf, &$f, &$v), $d);
+    };
+}
 macro_rules! assert_teq {
     ($a:expr, $b:expr, $c:expr) => {
         assert_eq!($a, $b);
@@ -123,7 +152,7 @@ fn test_solve_poly() {
                     &mut buffer,
                     0,
                 );
-            assert!(res.abs() < Float::from(2.0).pow(Float::from(-4)), "{s}");
+            assert!(res.abs() < Float::from(2.0).pow(Float::from(-8)), "{s}");
         }
     }
 }
@@ -263,6 +292,93 @@ fn parse_rem() {
         ],
         res(9)
     );
+}
+#[test]
+fn test_inverses() {
+    for f in [
+        Function::Add,
+        Function::Sub,
+        Function::Mul,
+        Function::Div,
+        Function::Pow,
+        Function::Root,
+        Function::Negate,
+        Function::Sin,
+        Function::Cos,
+        Function::Ln,
+        Function::Asin,
+        Function::Acos,
+        Function::Exp,
+        Function::Recip,
+        #[cfg(feature = "complex")]
+        Function::Conj,
+        Function::Sinh,
+        Function::Cosh,
+        Function::Asinh,
+        Function::Acosh,
+        Function::Atanh,
+        Function::Tanh,
+        Function::Tan,
+        Function::Atan,
+        Function::Sqrt,
+        Function::Sq,
+        Function::Cbrt,
+        Function::Cb,
+    ] {
+        match f.inputs() {
+            1 => {
+                assert_approx_correct!(
+                    infix(&format!("{f}(solve(x,{f}(x)-0.5))")),
+                    rpn(&format!("x x {f} 0.5 - solve {f}")),
+                    vec![
+                        Token::Skip(4),
+                        Token::InnerVar(0).into(),
+                        f.into(),
+                        num(0.5),
+                        Operators::Sub.into(),
+                        Function::Solve.into(),
+                        f.into()
+                    ],
+                    res(0.5)
+                );
+            }
+            2 => {
+                assert_approx_correct!(
+                    infix(&format!("{f}(solve(x,{f}(x,0.5)-0.5),0.5)")),
+                    rpn(&format!("x x 0.5 {f} 0.5 - solve 0.5 {f}")),
+                    vec![
+                        Token::Skip(5),
+                        Token::InnerVar(0).into(),
+                        num(0.5),
+                        f.into(),
+                        num(0.5),
+                        Operators::Sub.into(),
+                        Function::Solve.into(),
+                        num(0.5),
+                        f.into(),
+                    ],
+                    res(0.5)
+                );
+                assert_approx_correct!(
+                    infix(&format!("{f}(0.5,solve(x,{f}(0.5,x)-0.5))")),
+                    rpn(&format!("0.5 x 0.5 x {f} 0.5 - solve {f}")),
+                    vec![
+                        num(0.5),
+                        Token::Skip(5),
+                        num(0.5),
+                        Token::InnerVar(0).into(),
+                        f.into(),
+                        num(0.5),
+                        Operators::Sub.into(),
+                        Function::Solve.into(),
+                        f.into(),
+                    ],
+                    res(0.5)
+                );
+            }
+            _ => unreachable!(),
+        }
+    }
 }
 #[test]
 fn parse_pow() {
@@ -1145,8 +1261,8 @@ fn test_overwrite_var() {
     let funs5 = Functions(vec![FunctionVar::null(
         1,
         Tokens(vec![
-            num(2),
             Token::InnerVar(0).into(),
+            num(2),
             Operators::Mul.into(),
         ]),
     )]);

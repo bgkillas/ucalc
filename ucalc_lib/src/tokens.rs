@@ -29,13 +29,13 @@ pub enum Token {
     Fun(usize),
     Var(usize),
     Skip(usize),
-    Operator(Operators),
+    Function(Function),
 }
 impl Display for Token {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Num(n) => write!(f, "{}", n),
-            Self::Operator(Operators::Function(fun)) => write!(f, "{:?}", fun),
+            Self::Function(fun) => write!(f, "{:?}", fun),
             _ => write!(f, "{:?}", self),
         }
     }
@@ -411,7 +411,7 @@ impl<'a> TokensRef<'a> {
             end -= 1;
             match self[end] {
                 Token::Fun(j) => inputs += funs[j].inputs,
-                Token::Operator(o) => inputs += o.inputs(),
+                Token::Function(o) => inputs += o.inputs(),
                 Token::Skip(_) => inputs += 1,
                 _ => {}
             }
@@ -431,7 +431,7 @@ impl<'a> TokensRef<'a> {
     pub fn get_lasts(&'a self, funs: &Functions) -> Vec<Self> {
         let inputs = match self.last().unwrap() {
             Token::Fun(j) => funs[*j].inputs,
-            Token::Operator(o) => o.inputs(),
+            Token::Function(o) => o.inputs(),
             _ => unreachable!(),
         };
         let mut ret = vec![TokensRef(&[]); inputs];
@@ -460,12 +460,12 @@ impl From<NumberBase> for Token {
 }
 impl From<Operators> for Token {
     fn from(value: Operators) -> Self {
-        Self::Operator(value)
+        Self::Function(value.into())
     }
 }
 impl From<Function> for Token {
     fn from(value: Function) -> Self {
-        Self::Operator(value.into())
+        Self::Function(value)
     }
 }
 impl From<Polynomial> for Token {

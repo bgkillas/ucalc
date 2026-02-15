@@ -182,10 +182,38 @@ impl Operators {
             Self::And => *a = Number::from(!a.is_zero() && !b_ref().is_zero()),
             Self::Or => *a = Number::from(!a.is_zero() || !b_ref().is_zero()),
             Self::Not => *a = Number::from(a.is_zero()),
-            Self::Function(fun) => fun.compute(a, b),
+            Self::Function(fun) => fun.compute_on(a, b),
             Self::Bracket(_) => {
                 unreachable!()
             }
+        }
+    }
+}
+impl From<Operators> for Function {
+    fn from(value: Operators) -> Self {
+        match value {
+            Operators::Add => Self::Add,
+            Operators::Sub => Self::Sub,
+            Operators::Mul => Self::Mul,
+            Operators::Div => Self::Div,
+            Operators::Pow => Self::Pow,
+            Operators::Tetration => Self::Tetration,
+            Operators::Root => Self::Root,
+            Operators::Rem => Self::Rem,
+            Operators::Negate => Self::Negate,
+            Operators::Factorial => Self::Factorial,
+            Operators::SubFactorial => Self::SubFactorial,
+            Operators::Equal => Self::Equal,
+            Operators::NotEqual => Self::NotEqual,
+            Operators::Greater => Self::Greater,
+            Operators::Less => Self::Less,
+            Operators::GreaterEqual => Self::GreaterEqual,
+            Operators::LessEqual => Self::LessEqual,
+            Operators::And => Self::And,
+            Operators::Or => Self::Or,
+            Operators::Not => Self::Not,
+            Operators::Function(function) => function,
+            Operators::Bracket(_) => unreachable!(),
         }
     }
 }

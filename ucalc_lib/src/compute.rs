@@ -1,4 +1,3 @@
-use crate::operators::Operators;
 use crate::tokens::{Token, Tokens, TokensRef};
 use crate::{Functions, Number, Variables};
 use std::array;
@@ -113,39 +112,35 @@ impl TokensRef<'_> {
         while i < self.len() {
             let len = stack.len();
             match &self[i] {
-                Token::Operator(operator) => {
+                Token::Function(operator) => {
                     let inputs = operator.inputs();
-                    match operator {
-                        Operators::Function(fun) if fun.has_var() => {
-                            fun.compute_var(stack, fun_vars, vars, funs, custom_vars, offset)
-                        }
-                        _ if operator.is_chainable() => {
-                            let chain = if self.get(i + 1).is_some_and(|o| {
-                                if let Token::Operator(o) = o {
-                                    o.is_chainable()
-                                } else {
-                                    false
-                                }
-                            }) {
-                                Some(self[len - inputs].num_ref())
+                    if operator.has_var() {
+                        operator.compute_var(stack, fun_vars, vars, funs, custom_vars, offset)
+                    } else if operator.is_chainable() {
+                        let chain = if self.get(i + 1).is_some_and(|o| {
+                            if let Token::Function(o) = o {
+                                o.is_chainable()
                             } else {
-                                None
-                            };
-                            operator.compute(&mut stack[len - inputs..]);
-                            if let Some(b) = chain {
-                                let a = stack[len - inputs].num_mut();
-                                *a = if a.is_zero() {
-                                    Number::from(Constant::Nan)
-                                } else {
-                                    b.clone()
-                                };
+                                false
                             }
-                            stack.drain(len + 1 - inputs..);
+                        }) {
+                            Some(self[len - inputs].num_ref())
+                        } else {
+                            None
+                        };
+                        operator.compute(&mut stack[len - inputs..]);
+                        if let Some(b) = chain {
+                            let a = stack[len - inputs].num_mut();
+                            *a = if a.is_zero() {
+                                Number::from(Constant::Nan)
+                            } else {
+                                b.clone()
+                            };
                         }
-                        _ => {
-                            operator.compute(&mut stack[len - inputs..]);
-                            stack.drain(len + 1 - inputs..);
-                        }
+                        stack.drain(len + 1 - inputs..);
+                    } else {
+                        operator.compute(&mut stack[len - inputs..]);
+                        stack.drain(len + 1 - inputs..);
                     }
                 }
                 Token::Var(index) => stack.push(Token::Num(custom_vars[*index].value.clone())),
