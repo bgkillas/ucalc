@@ -1,4 +1,4 @@
-use crate::{Function, Number, Operators};
+use crate::{Function, Number};
 use ucalc_numbers::{FloatTrait, PowAssign};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Inverse {
@@ -36,30 +36,30 @@ impl Inverse {
     pub fn is_none(self) -> bool {
         matches!(self, Self::None)
     }
-    pub fn get_inverse(self) -> Option<Operators> {
+    pub fn get_inverse(self) -> Option<Function> {
         Some(match self {
-            Self::Sin => Function::Asin.into(),
-            Self::Cos => Function::Acos.into(),
-            Self::Ln => Function::Exp.into(),
-            Self::Asin => Function::Sin.into(),
-            Self::Acos => Function::Cos.into(),
-            Self::Exp => Function::Ln.into(),
-            Self::Recip => Function::Recip.into(),
+            Self::Sin => Function::Asin,
+            Self::Cos => Function::Acos,
+            Self::Ln => Function::Exp,
+            Self::Asin => Function::Sin,
+            Self::Acos => Function::Cos,
+            Self::Exp => Function::Ln,
+            Self::Recip => Function::Recip,
             #[cfg(feature = "complex")]
-            Self::Conj => Function::Conj.into(),
-            Self::Sinh => Function::Asinh.into(),
-            Self::Cosh => Function::Acosh.into(),
-            Self::Asinh => Function::Sinh.into(),
-            Self::Acosh => Function::Cosh.into(),
-            Self::Tanh => Function::Atanh.into(),
-            Self::Atanh => Function::Tanh.into(),
-            Self::Tan => Function::Atan.into(),
-            Self::Atan => Function::Tan.into(),
-            Self::Sqrt => Function::Sq.into(),
-            Self::Sq => Function::Sqrt.into(),
-            Self::Cbrt => Function::Cb.into(),
-            Self::Cb => Function::Cbrt.into(),
-            Self::Negate => Operators::Negate,
+            Self::Conj => Function::Conj,
+            Self::Sinh => Function::Asinh,
+            Self::Cosh => Function::Acosh,
+            Self::Asinh => Function::Sinh,
+            Self::Acosh => Function::Cosh,
+            Self::Tanh => Function::Atanh,
+            Self::Atanh => Function::Tanh,
+            Self::Tan => Function::Atan,
+            Self::Atan => Function::Tan,
+            Self::Sqrt => Function::Sq,
+            Self::Sq => Function::Sqrt,
+            Self::Cbrt => Function::Cb,
+            Self::Cb => Function::Cbrt,
+            Self::Negate => Function::Negate,
             _ => return None,
         })
     }
@@ -101,34 +101,6 @@ impl Inverse {
     pub fn pow_assign(a: &mut Number, b: Number) {
         //TODO
         a.pow_assign(b)
-    }
-}
-impl From<Operators> for Inverse {
-    fn from(value: Operators) -> Self {
-        match value {
-            Operators::Add => Self::Add,
-            Operators::Sub => Self::Sub,
-            Operators::Mul => Self::Mul,
-            Operators::Div => Self::Div,
-            Operators::Pow => Self::Pow,
-            Operators::Root => Self::Root,
-            Operators::Negate => Self::Negate,
-            Operators::Function(fun) => fun.into(),
-            Operators::Bracket(_)
-            | Operators::Rem
-            | Operators::Factorial
-            | Operators::SubFactorial
-            | Operators::Equal
-            | Operators::NotEqual
-            | Operators::Greater
-            | Operators::Less
-            | Operators::LessEqual
-            | Operators::GreaterEqual
-            | Operators::And
-            | Operators::Or
-            | Operators::Not
-            | Operators::Tetration => Self::None,
-        }
     }
 }
 impl From<Function> for Inverse {
