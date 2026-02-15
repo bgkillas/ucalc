@@ -21,6 +21,13 @@ impl FunctionVar {
             tokens,
         }
     }
+    pub fn null(inputs: usize, tokens: Tokens) -> Self {
+        Self {
+            name: None,
+            inputs,
+            tokens,
+        }
+    }
 }
 impl Variable {
     pub fn new(name: impl Into<Box<str>>, value: Number) -> Self {
@@ -28,6 +35,9 @@ impl Variable {
             name: Some(name.into()),
             value,
         }
+    }
+    pub fn null(value: Number) -> Self {
+        Self { name: None, value }
     }
 }
 #[derive(Debug, Clone, PartialEq)]

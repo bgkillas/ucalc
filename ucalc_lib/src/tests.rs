@@ -1116,18 +1116,128 @@ fn test_if() {
     );
 }
 #[test]
+fn test_overwrite_var() {
+    let vars1 = Variables(vec![Variable::new("n", res(2))]);
+    let funs1 = Functions(Vec::new());
+    let vars2 = Variables(vec![Variable::new("n", res(4))]);
+    let funs2 = Functions(Vec::new());
+    let vars3 = Variables(vec![Variable::null(res(4))]);
+    let funs3 = Functions(vec![FunctionVar::new(
+        "n",
+        1,
+        Tokens(vec![
+            num(2),
+            Token::InnerVar(0).into(),
+            Operators::Mul.into(),
+        ]),
+    )]);
+    let vars4 = Variables(vec![Variable::null(res(4))]);
+    let funs4 = Functions(vec![FunctionVar::new(
+        "n",
+        1,
+        Tokens(vec![
+            Token::InnerVar(0).into(),
+            num(2),
+            Operators::Mul.into(),
+        ]),
+    )]);
+    let vars5 = Variables(vec![Variable::null(res(4)), Variable::new("n", res(8))]);
+    let funs5 = Functions(vec![FunctionVar::null(
+        1,
+        Tokens(vec![
+            num(2),
+            Token::InnerVar(0).into(),
+            Operators::Mul.into(),
+        ]),
+    )]);
+    let mut v = Variables(Vec::new());
+    let mut f = Functions(Vec::new());
+    assert!(
+        Tokens::infix("let n=2", &mut v, &mut f, &[], false)
+            .unwrap()
+            .is_none()
+    );
+    assert_eq!(v, vars1);
+    assert_eq!(f, funs1);
+    assert!(
+        Tokens::infix("let n=n2", &mut v, &mut f, &[], false)
+            .unwrap()
+            .is_none()
+    );
+    assert_eq!(v, vars2);
+    assert_eq!(f, funs2);
+    assert!(
+        Tokens::infix("let n(k)=2k", &mut v, &mut f, &[], false)
+            .unwrap()
+            .is_none()
+    );
+    assert_eq!(v, vars3);
+    assert_eq!(f, funs3);
+    assert!(
+        Tokens::infix("let n(k)=k2", &mut v, &mut f, &[], false)
+            .unwrap()
+            .is_none()
+    );
+    assert_eq!(v, vars4);
+    assert_eq!(f, funs4);
+    assert!(
+        Tokens::infix("let n=2n(2)", &mut v, &mut f, &[], false)
+            .unwrap()
+            .is_none()
+    );
+    assert_eq!(v, vars5);
+    assert_eq!(f, funs5);
+    let mut v = Variables(Vec::new());
+    let mut f = Functions(Vec::new());
+    assert!(
+        Tokens::rpn("let n = 2", &mut v, &mut f, &[], false)
+            .unwrap()
+            .is_none()
+    );
+    assert_eq!(v, vars1);
+    assert_eq!(f, funs1);
+    assert!(
+        Tokens::rpn("let n = n 2 *", &mut v, &mut f, &[], false)
+            .unwrap()
+            .is_none()
+    );
+    assert_eq!(v, vars2);
+    assert_eq!(f, funs2);
+    assert!(
+        Tokens::rpn("let k n = 2 k *", &mut v, &mut f, &[], false)
+            .unwrap()
+            .is_none()
+    );
+    assert_eq!(v, vars3);
+    assert_eq!(f, funs3);
+    assert!(
+        Tokens::rpn("let k n = k 2 *", &mut v, &mut f, &[], false)
+            .unwrap()
+            .is_none()
+    );
+    assert_eq!(v, vars4);
+    assert_eq!(f, funs4);
+    assert!(
+        Tokens::rpn("let n = 2 2 n *", &mut v, &mut f, &[], false)
+            .unwrap()
+            .is_none()
+    );
+    assert_eq!(v, vars5);
+    assert_eq!(f, funs5);
+}
+#[test]
 fn test_custom_var() {
     let mut vars = Variables(vec![Variable::new("n", res(2))]);
     let mut v = Variables(Vec::new());
     assert!(
-        Tokens::infix("n=2", &mut v, &mut Functions::default(), &[], true)
+        Tokens::infix("let n=2", &mut v, &mut Functions::default(), &[], false)
             .unwrap()
             .is_none()
     );
     assert_eq!(v, vars);
     let mut v = Variables(Vec::new());
     assert!(
-        Tokens::rpn("n = 2", &mut v, &mut Functions::default(), &[], true)
+        Tokens::rpn("let n = 2", &mut v, &mut Functions::default(), &[], false)
             .unwrap()
             .is_none()
     );
@@ -1881,6 +1991,26 @@ fn test_err() {
             true,
         ),
         Err(ParseError::VarExpectedName)
+    );
+    assert_eq!(
+        Tokens::rpn(
+            "=-=",
+            &mut Variables::default(),
+            &mut Functions::default(),
+            &[],
+            true,
+        ),
+        Err(ParseError::UnknownToken("=-=".to_string()))
+    );
+    assert_eq!(
+        Tokens::infix(
+            "\\",
+            &mut Variables::default(),
+            &mut Functions::default(),
+            &[],
+            true,
+        ),
+        Err(ParseError::UnknownToken('\\'.to_string()))
     );
     /*assert_teq!(
         Tokens::infix("abc(2)", Variables::default(), Functions::default()),

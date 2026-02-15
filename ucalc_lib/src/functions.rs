@@ -320,6 +320,7 @@ impl Function {
                 *stack[len - (l + 2)].num_mut() = fun_vars.pop().unwrap();
             }
             Self::If => {
+                //TODO remove recursion
                 let ([ifelse, ifthen], l) = stack.get_skip_tokens();
                 let [condition] = stack.get_skip_var(l);
                 let condition = condition.num_ref();

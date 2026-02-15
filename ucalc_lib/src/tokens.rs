@@ -200,7 +200,7 @@ impl Tokens {
                     } else if s.chars().all(|c| c.is_ascii_alphabetic()) {
                         inner_vars.push(s);
                     } else {
-                        return Err(ParseError::UnknownToken(s.to_string()));
+                        unreachable!()
                     }
                     let _ = chars.advance_by(count - 1);
                     negate = false;
