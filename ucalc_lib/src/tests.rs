@@ -233,6 +233,12 @@ fn parse_mul() {
         res(2)
     );
     assert_correct!(
+        infix("(2)(3)"),
+        rpn("2 3 *"),
+        vec![num(2), num(3), Operators::Mul.into(),],
+        res(6)
+    );
+    assert_correct!(
         infix("sqrt(4)sqrt(4)"),
         rpn("4 sqrt 4 sqrt *"),
         vec![
@@ -512,6 +518,29 @@ fn parse_acos() {
             Function::Acos.into()
         ],
         (res(3).sqrt() / Float::from(2)).acos()
+    );
+}
+#[test]
+fn test_polynomial() {
+    assert_correct!(
+        infix("solve(x,(x-2)(x-3)/(x-3))"),
+        rpn("x x 2 - x 3 - * x 3 - / solve"),
+        vec![
+            Token::Skip(11),
+            Token::InnerVar(0),
+            num(2),
+            Operators::Sub.into(),
+            Token::InnerVar(0),
+            num(3),
+            Operators::Sub.into(),
+            Operators::Mul.into(),
+            Token::InnerVar(0),
+            num(3),
+            Operators::Sub.into(),
+            Operators::Div.into(),
+            Function::Solve.into()
+        ],
+        res(2)
     );
 }
 #[test]

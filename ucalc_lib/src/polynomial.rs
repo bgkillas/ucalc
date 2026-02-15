@@ -51,7 +51,7 @@ impl Poly {
             if !a.is_zero() {
                 for (j, b) in rhs.iter().enumerate() {
                     if !b.is_zero() {
-                        self[i + j] = a.clone() * b;
+                        self[i + j] += a.clone() * b;
                     }
                 }
                 *a = Number::default()

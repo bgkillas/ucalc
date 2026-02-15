@@ -258,6 +258,7 @@ impl Tokens {
                     last_abs = false;
                 }
                 '(' => {
+                    tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
                     operator_stack.push(Bracket::Parenthesis.into());
                     negate = true;
                     last_abs = false;
