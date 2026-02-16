@@ -14,6 +14,7 @@ jobs:
       run: rustup override set nightly
     - name: Install nightly components
       run: |
+        rustup component add rust-src
         rustup component add rustfmt
         rustup component add clippy
     - name: Format
