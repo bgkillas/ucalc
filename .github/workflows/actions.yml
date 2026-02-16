@@ -1,0 +1,64 @@
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+env:
+  CARGO_TERM_COLOR: always
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Temporarily modify the rust toolchain version
+      run: rustup override set nightly
+    - name: Format
+      run: cargo fmt --check
+    - name: Clippy
+      run: cargo clippy --verbose
+    - name: Run tests
+      run: cargo test --verbose
+    - name: Run tests
+      run: cargo test --verbose -- --ignored
+    - name: Clippy
+      run: cargo clippy --verbose --no-default-features --features "f64"
+    - name: Run tests
+      run: cargo test --verbose --no-default-features --features "f64"
+    - name: Run tests
+      run: cargo test --verbose --no-default-features --features "f64" -- --ignored
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Temporarily modify the rust toolchain version
+      run: rustup override set nightly
+    - name: Build
+      run: cargo build --release
+    - uses: actions/upload-artifact@v4
+      with:
+        name: kalc
+        path: target/release/kalc
+  build-windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Temporarily modify the rust toolchain version
+      run: rustup override set nightly
+    - name: Build
+      run: cargo build --release
+    - uses: actions/upload-artifact@v4
+      with:
+        name: kalc.exe
+        path: target/release/kalc.exe
+  build-macos:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Temporarily modify the rust toolchain version
+      run: rustup override set nightly
+    - name: Build
+      run: cargo build --release
+    - uses: actions/upload-artifact@v4
+      with:
+        name: kalc-macos
+        path: target/release/kalc
