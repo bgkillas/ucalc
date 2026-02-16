@@ -235,7 +235,7 @@ fn parse_mul() {
     assert_correct!(
         infix("(2)(3)"),
         rpn("2 3 *"),
-        vec![num(2), num(3), Operators::Mul.into(),],
+        vec![num(2), num(3), Operators::Mul.into()],
         res(6)
     );
     assert_correct!(
@@ -885,7 +885,7 @@ fn parse_abs() {
 }
 #[test]
 fn test_empty() {
-    assert_correct!(infix(""), rpn(""), vec![num(0),], res(0));
+    assert_correct!(infix(""), rpn(""), vec![num(0)], res(0));
 }
 #[test]
 #[cfg(feature = "complex")]

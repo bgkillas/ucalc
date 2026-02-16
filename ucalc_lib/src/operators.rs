@@ -150,6 +150,30 @@ impl Operators {
             Self::Bracket(_) => unreachable!(),
         }
     }
+    pub fn unary_left(self) -> bool {
+        match self {
+            Self::Negate | Self::Not | Self::SubFactorial => true,
+            Self::Factorial => false,
+            Self::Mul
+            | Self::Div
+            | Self::Add
+            | Self::Sub
+            | Self::Pow
+            | Self::Root
+            | Self::Rem
+            | Self::Equal
+            | Self::NotEqual
+            | Self::Greater
+            | Self::Less
+            | Self::LessEqual
+            | Self::GreaterEqual
+            | Self::And
+            | Self::Or
+            | Self::Tetration
+            | Self::Function(_)
+            | Self::Bracket(_) => unreachable!(),
+        }
+    }
     pub fn precedence(self) -> u8 {
         match self {
             Self::Or => 0,

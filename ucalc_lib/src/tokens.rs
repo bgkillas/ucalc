@@ -3,6 +3,7 @@ use crate::operators::{Bracket, Operators};
 use crate::polynomial::Polynomial;
 use crate::variable::{Functions, Variables};
 use crate::{Number, NumberBase, Variable};
+use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::ops::{Deref, DerefMut};
 use ucalc_numbers::FloatTrait;
@@ -32,11 +33,17 @@ pub enum Token {
     Function(Function),
 }
 impl Display for Token {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Num(n) => write!(f, "{}", n),
-            Self::Function(fun) => write!(f, "{:?}", fun),
-            _ => write!(f, "{:?}", self),
+            Self::Num(n) => write!(f, "{}", n.real),
+            Self::Function(fun) => {
+                if let Ok(o) = Operators::try_from(*fun) {
+                    write!(f, "{o}")
+                } else {
+                    write!(f, "{fun}")
+                }
+            }
+            _ => write!(f, "{self:?}"),
         }
     }
 }
@@ -50,12 +57,12 @@ pub enum ParseError {
     VarExpectedName,
 }
 impl Display for Tokens {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{}", TokensRef(self))
     }
 }
 impl<'a> Display for TokensRef<'a> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let mut first = true;
         for token in self.iter() {
             if !first {
@@ -67,63 +74,126 @@ impl<'a> Display for TokensRef<'a> {
         Ok(())
     }
 }
-impl TokensRef<'_> {
-    fn infix_inner(self, buffer: &mut String, offset: usize) {
-        println!("{self:?}");
-        match self.0.last().unwrap() {
-            Token::Num(n) => {
-                buffer.insert_str(offset, &n.to_string());
-            }
+impl Token {
+    fn greater_precedence(&self, o: Operators) -> bool {
+        match self {
+            Token::Num(_) => true,
             Token::Polynomial(_) => {
                 unreachable!()
             }
-            Token::InnerVar(i) => {
-                buffer.insert(offset, (b'n' + *i as u8) as char);
+            Token::InnerVar(_) => true,
+            Token::GraphVar(_) => true,
+            Token::Fun(_) => true,
+            Token::Var(_) => true,
+            Token::Skip(_) => {
+                unreachable!()
             }
-            Token::GraphVar(_) => {
-                todo!()
-            }
-            Token::Fun(j) => {
-                buffer.insert(offset, (b'f' + *j as u8) as char);
-            }
-            Token::Var(_) => {
-                todo!()
-            }
-            Token::Skip(_) => {}
             Token::Function(f) => {
-                let l = self.len() - 1;
-                if let Ok(o) = Operators::try_from(*f) {
-                    if o.inputs() == 2 {
-                        let last = TokensRef(&self[..l]).get_last(&Functions::default());
-                        buffer.insert(offset, ')');
-                        buffer.insert(offset, ')');
-                        TokensRef(&self[last..l]).infix_inner(buffer, 0);
-                        buffer.insert(offset, '(');
-                        buffer.insert_str(offset, &o.to_string());
-                        buffer.insert(offset, ')');
-                        TokensRef(&self[..last]).infix_inner(buffer, 0);
-                        buffer.insert(offset, '(');
-                        buffer.insert(offset, '(');
-                    } else {
-                        todo!()
-                    }
+                if let Ok(f) = Operators::try_from(*f) {
+                    (f == o && f.left_associative()) || f.precedence() > o.precedence()
                 } else {
-                    buffer.insert_str(offset, &f.to_string());
-                    let last = TokensRef(&self[..l]).get_last(&Functions::default());
-                    buffer.insert(offset, '(');
-                    TokensRef(&self[last..l]).infix_inner(buffer, 0);
-                    buffer.insert(offset, ')');
+                    true
                 }
             }
         }
     }
-    pub fn get_infix(self, buffer: &mut String) {
-        self.infix_inner(buffer, 0);
+}
+impl<'a> TokensRef<'a> {
+    pub fn get_infix(
+        self,
+        vars: &Variables,
+        funs: &Functions,
+        graph_vars: &[&str],
+    ) -> impl Display {
+        fmt::from_fn(move |fmt| match self.last().unwrap() {
+            Token::Num(n) => write!(fmt, "{}", n.real),
+            Token::Polynomial(_) => unreachable!(),
+            Token::InnerVar(i) => write!(fmt, "{}", (b'n' + *i as u8) as char),
+            Token::GraphVar(i) => write!(fmt, "{}", graph_vars[*i]),
+            Token::Fun(i) => write!(fmt, "{}", funs[*i].name.as_ref().unwrap()),
+            Token::Var(i) => write!(fmt, "{}", vars[*i].name.as_ref().unwrap()),
+            Token::Skip(_) => Ok(()),
+            Token::Function(f) => {
+                let l = self.len() - 1;
+                let last = TokensRef(&self[..l]).get_last(funs);
+                if let Ok(o) = Operators::try_from(*f) {
+                    let arg = TokensRef(&self[last..l]).get_infix(vars, funs, graph_vars);
+                    let arg = if self[l - 1].greater_precedence(o) {
+                        format_args!("{arg}")
+                    } else {
+                        format_args!("({arg})")
+                    };
+                    if o.inputs() == 2 {
+                        let arg1 = TokensRef(&self[..last]).get_infix(vars, funs, graph_vars);
+                        let arg1 = if self[last - 1].greater_precedence(o) {
+                            format_args!("{arg1}")
+                        } else {
+                            format_args!("({arg1})")
+                        };
+                        write!(fmt, "{arg1}{o}{arg}")
+                    } else if o.unary_left() {
+                        write!(fmt, "{o}{arg}")
+                    } else {
+                        write!(fmt, "{arg}{o}")
+                    }
+                } else {
+                    let lasts = self.get_lasts(funs);
+                    let mut first = true;
+                    write!(fmt, "{f}(")?;
+                    for arg in lasts {
+                        let arg = arg.get_infix(vars, funs, graph_vars);
+                        if first {
+                            first = false;
+                            write!(fmt, "{arg}")?;
+                        } else {
+                            write!(fmt, ",{arg}")?;
+                        }
+                    }
+                    write!(fmt, ")")
+                }
+            }
+        })
+    }
+    pub fn get_rpn(self, vars: &Variables, funs: &Functions, graph_vars: &[&str]) -> impl Display {
+        fmt::from_fn(move |fmt| {
+            let mut first = true;
+            for token in self.iter() {
+                if !first {
+                    write!(fmt, " ")?;
+                }
+                first = false;
+                match token {
+                    Token::Num(n) => write!(fmt, "{}", n.real)?,
+                    Token::Polynomial(_) => unreachable!(),
+                    Token::InnerVar(i) => write!(fmt, "{}", (b'n' + *i as u8) as char)?,
+                    Token::GraphVar(i) => write!(fmt, "{}", graph_vars[*i])?,
+                    Token::Fun(i) => write!(fmt, "{}", funs[*i].name.as_ref().unwrap())?,
+                    Token::Var(i) => write!(fmt, "{}", vars[*i].name.as_ref().unwrap())?,
+                    Token::Function(fun) => {
+                        if let Ok(o) = Operators::try_from(*fun) {
+                            write!(fmt, "{o}")?
+                        } else {
+                            write!(fmt, "{fun}")?
+                        }
+                    }
+                    Token::Skip(_) => first = true,
+                }
+            }
+            Ok(())
+        })
     }
 }
 impl Tokens {
-    pub fn get_infix(&self, buffer: &mut String) {
-        TokensRef(self).get_infix(buffer);
+    pub fn get_infix(
+        &self,
+        vars: &Variables,
+        funs: &Functions,
+        graph_vars: &[&str],
+    ) -> impl Display {
+        TokensRef(self).get_infix(vars, funs, graph_vars)
+    }
+    pub fn get_rpn(&self, vars: &Variables, funs: &Functions, graph_vars: &[&str]) -> impl Display {
+        TokensRef(self).get_rpn(vars, funs, graph_vars)
     }
     fn end(
         mut self,
@@ -484,7 +554,11 @@ impl<'a> TokensRef<'a> {
     }
     pub fn get_from_last_with_end(&'a self, funs: &Functions, end: usize) -> (Self, usize) {
         let last = self.get_last_with_end(funs, end);
-        (Self(&self[last..end]), last)
+        if matches!(self[end - 1], Token::Skip(_)) {
+            (Self(&self[last..end - 1]), last)
+        } else {
+            (Self(&self[last..end]), last)
+        }
     }
     pub fn get_from_last(&'a self, funs: &Functions) -> (Self, usize) {
         self.get_from_last_with_end(funs, self.len())
