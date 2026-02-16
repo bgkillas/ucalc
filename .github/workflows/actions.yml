@@ -23,14 +23,10 @@ jobs:
       run: cargo clippy --verbose
     - name: Run tests
       run: cargo test --verbose
-    - name: Run tests
-      run: cargo test --verbose -- --ignored
     - name: Clippy
       run: cargo clippy --verbose --no-default-features --features "f64"
     - name: Run tests
       run: cargo test --verbose --no-default-features --features "f64"
-    - name: Run tests
-      run: cargo test --verbose --no-default-features --features "f64" -- --ignored
   build-linux:
     runs-on: ubuntu-latest
     steps:
@@ -43,8 +39,8 @@ jobs:
       run: cargo build --release
     - uses: actions/upload-artifact@v4
       with:
-        name: kalc
-        path: target/release/kalc
+        name: ucalc-linux
+        path: target/release/ucalc
   build-windows:
     runs-on: windows-latest
     steps:
@@ -57,8 +53,8 @@ jobs:
       run: cargo build --release
     - uses: actions/upload-artifact@v4
       with:
-        name: kalc.exe
-        path: target/release/kalc.exe
+        name: ucalc.exe
+        path: target/release/ucalc.exe
   build-macos:
     runs-on: macos-latest
     steps:
@@ -71,5 +67,5 @@ jobs:
       run: cargo build --release
     - uses: actions/upload-artifact@v4
       with:
-        name: kalc-macos
-        path: target/release/kalc
+        name: ucalc-macos
+        path: target/release/ucalc

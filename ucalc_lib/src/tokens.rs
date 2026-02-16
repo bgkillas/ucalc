@@ -35,7 +35,7 @@ pub enum Token {
 impl Display for Token {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Num(n) => write!(f, "{}", n.real),
+            Self::Num(n) => write!(f, "{}", n.real()),
             Self::Function(fun) => {
                 if let Ok(o) = Operators::try_from(*fun) {
                     write!(f, "{o}")
@@ -106,7 +106,7 @@ impl<'a> TokensRef<'a> {
         graph_vars: &[&str],
     ) -> impl Display {
         fmt::from_fn(move |fmt| match self.last().unwrap() {
-            Token::Num(n) => write!(fmt, "{}", n.real),
+            Token::Num(n) => write!(fmt, "{}", n.real()),
             Token::Polynomial(_) => unreachable!(),
             Token::InnerVar(i) => write!(fmt, "{}", (b'n' + *i as u8) as char),
             Token::GraphVar(i) => write!(fmt, "{}", graph_vars[*i]),
@@ -163,7 +163,7 @@ impl<'a> TokensRef<'a> {
                 }
                 first = false;
                 match token {
-                    Token::Num(n) => write!(fmt, "{}", n.real)?,
+                    Token::Num(n) => write!(fmt, "{}", n.real())?,
                     Token::Polynomial(_) => unreachable!(),
                     Token::InnerVar(i) => write!(fmt, "{}", (b'n' + *i as u8) as char)?,
                     Token::GraphVar(i) => write!(fmt, "{}", graph_vars[*i])?,
