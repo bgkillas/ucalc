@@ -1,5 +1,10 @@
 use std::env::args;
-use std::io::{BufRead, IsTerminal, stdin};
+use std::io::Write;
+use std::io::{BufRead, IsTerminal, stdin, stdout};
+use termion::cursor::Left;
+use termion::event::Key;
+use termion::input::TermRead;
+use termion::raw::IntoRawMode;
 use ucalc_lib::{Functions, Tokens, Variables};
 fn main() {
     let mut vars = Variables::default();
@@ -10,20 +15,38 @@ fn main() {
         quit = true;
         run_line(arg.as_str(), &mut infix, &mut vars, &mut funs)
     }
-    let mut stdin = stdin().lock();
+    let stdin = stdin().lock();
     if !stdin.is_terminal() {
         stdin
             .lines()
             .for_each(|l| run_line(l.unwrap().as_str(), &mut infix, &mut vars, &mut funs));
-    } else {
+    } else if !quit {
+        let mut stdout = stdout().into_raw_mode().unwrap();
         let mut line = String::new();
-        while !quit {
-            stdin.read_line(&mut line).unwrap();
-            match line.as_str() {
-                "quit\n" => quit = true,
-                s => run_line(s, &mut infix, &mut vars, &mut funs),
+        for k in stdin.keys() {
+            let Ok(k) = k else {
+                return;
+            };
+            match k {
+                Key::Char('\n') => {
+                    write!(stdout, "\n{}", Left(u16::MAX)).unwrap();
+                    if line != "exit" {
+                        run_line(&line, &mut infix, &mut vars, &mut funs);
+                        write!(stdout, "\n{}", Left(u16::MAX)).unwrap();
+                    }
+                    stdout.flush().unwrap();
+                    if line == "exit" {
+                        return;
+                    }
+                    line.clear();
+                }
+                Key::Char(c) => {
+                    line.push(c);
+                    write!(stdout, "{}", c).unwrap();
+                    stdout.flush().unwrap();
+                }
+                _ => {}
             }
-            line.clear();
         }
     }
 }

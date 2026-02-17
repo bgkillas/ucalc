@@ -8,7 +8,7 @@ homepage.workspace = true
 description.workspace = true
 
 [features]
-default = ["f64", "complex"]
+default = ["f64", "complex", "raw"]
 f16 = ["ucalc_lib/f16"]
 f32 = ["ucalc_lib/f32"]
 f64 = ["ucalc_lib/f64"]
@@ -20,6 +20,8 @@ vector = ["ucalc_lib/vector"]
 matrix = ["ucalc_lib/matrix"]
 list = ["ucalc_lib/list"]
 complex = ["ucalc_lib/complex"]
+raw = ["dep:termion"]
 
 [dependencies]
 ucalc_lib = {workspace = true}
+termion = {version = "4.0.6", optional=true}
