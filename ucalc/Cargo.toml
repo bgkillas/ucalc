@@ -23,4 +23,4 @@ complex = ["ucalc_lib/complex"]
 
 [dependencies]
 ucalc_lib = {workspace = true}
-crossterm = {version = "0.29.0", default-features=false, features=["events", "windows"]}
+concurrent_stdin = {workspace = true}

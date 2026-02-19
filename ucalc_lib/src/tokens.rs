@@ -301,12 +301,14 @@ impl Tokens {
                 'a'..='z' | '@' => {
                     let mut l = c.len_utf8();
                     let mut count = 1;
-                    for t in value[i + l..].chars() {
-                        if t.is_ascii_alphabetic() {
-                            l += t.len_utf8();
-                            count += 1;
-                        } else {
-                            break;
+                    if c != '@' {
+                        for t in value[i + l..].chars() {
+                            if t.is_ascii_alphabetic() {
+                                l += t.len_utf8();
+                                count += 1;
+                            } else {
+                                break;
+                            }
                         }
                     }
                     let s = &value[i..i + l];

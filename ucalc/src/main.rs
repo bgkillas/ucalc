@@ -1,9 +1,5 @@
-use crossterm::cursor::{MoveLeft, MoveToColumn, MoveToPreviousLine};
-use crossterm::event::{Event, KeyCode, KeyEvent};
-use crossterm::terminal::{Clear, ClearType};
-use crossterm::{ExecutableCommand, event, terminal};
+use concurrent_stdin::Out;
 use std::env::args;
-use std::io::Write;
 use std::io::{BufRead, IsTerminal, stdin, stdout};
 use ucalc_lib::{Functions, Number, Tokens, Variable, Variables};
 fn main() {
@@ -21,116 +17,33 @@ fn main() {
             .lines()
             .for_each(|l| run_line(l.unwrap().as_str(), &mut infix, &mut vars, &mut funs));
     } else if !quit {
-        terminal::enable_raw_mode().unwrap();
-        #[cfg(debug_assertions)]
-        let hook = std::panic::take_hook();
-        #[cfg(debug_assertions)]
-        std::panic::set_hook(Box::new(move |info| {
-            _ = terminal::disable_raw_mode();
-            println!();
-            hook(info);
-        }));
+        let mut out = Out::default();
         let mut stdout = stdout().lock();
-        let mut line = String::new();
-        let mut cursor = 0;
         vars.push(Variable::new("@", Number::default()));
-        let mut last = None;
-        let mut last_failed = false;
         loop {
-            let Ok(k) = event::read() else {
-                return;
-            };
-            match k {
-                Event::Key(KeyEvent {
-                    code: KeyCode::Enter,
-                    ..
-                }) => {
-                    cursor = 0;
-                    if last_failed {
-                        println!("\n");
-                    } else if let Some(n) = last.take() {
-                        vars.get_mut("@").value = n;
-                        println!("\n");
-                    } else {
-                        println!();
+            let mut n = None;
+            out.read(
+                &mut stdout,
+                |line| match if infix {
+                    Tokens::infix(line, &mut vars, &mut funs, &[], false)
+                } else {
+                    Tokens::rpn(line, &mut vars, &mut funs, &[], false)
+                } {
+                    Ok(Some(tokens)) => {
+                        let compute = tokens.compute(&[], &funs, &vars);
+                        print!("{}", compute);
+                        Some(Some(compute))
                     }
-                    stdout.execute(MoveToColumn(0)).unwrap();
-                    stdout.flush().unwrap();
-                    if line == "exit" {
-                        terminal::disable_raw_mode().unwrap();
-                        return;
+                    Ok(None) => Some(None),
+                    Err(e) => {
+                        print!("{e:?}");
+                        None
                     }
-                    line.clear();
-                }
-                Event::Key(KeyEvent {
-                    code: KeyCode::Backspace,
-                    ..
-                }) => {
-                    line.pop();
-                    cursor -= 1;
-                    stdout.execute(MoveLeft(1)).unwrap();
-                    stdout.execute(Clear(ClearType::FromCursorDown)).unwrap();
-                    println!();
-                    stdout.execute(MoveToColumn(0)).unwrap();
-                    stdout.execute(Clear(ClearType::CurrentLine)).unwrap();
-                    match if infix {
-                        Tokens::infix(&line, &mut vars, &mut funs, &[], false)
-                    } else {
-                        Tokens::rpn(&line, &mut vars, &mut funs, &[], false)
-                    } {
-                        Ok(Some(tokens)) => {
-                            let compute = tokens.compute(&[], &funs, &vars);
-                            print!("{}", compute);
-                            last = Some(compute);
-                            last_failed = false;
-                        }
-                        Ok(None) => {
-                            last = None;
-                            last_failed = false;
-                        }
-                        Err(e) => {
-                            last_failed = true;
-                            print!("{e:?}")
-                        }
-                    }
-                    stdout.execute(MoveToPreviousLine(1)).unwrap();
-                    stdout.execute(MoveToColumn(cursor)).unwrap();
-                    stdout.flush().unwrap();
-                }
-                Event::Key(KeyEvent {
-                    code: KeyCode::Char(c),
-                    ..
-                }) => {
-                    line.push(c);
-                    cursor += 1;
-                    println!("{c}");
-                    stdout.execute(MoveToColumn(0)).unwrap();
-                    stdout.execute(Clear(ClearType::CurrentLine)).unwrap();
-                    match if infix {
-                        Tokens::infix(&line, &mut vars, &mut funs, &[], false)
-                    } else {
-                        Tokens::rpn(&line, &mut vars, &mut funs, &[], false)
-                    } {
-                        Ok(Some(tokens)) => {
-                            let compute = tokens.compute(&[], &funs, &vars);
-                            print!("{}", compute);
-                            last = Some(compute);
-                            last_failed = false;
-                        }
-                        Ok(None) => {
-                            last = None;
-                            last_failed = false;
-                        }
-                        Err(e) => {
-                            last_failed = true;
-                            print!("{e:?}")
-                        }
-                    }
-                    stdout.execute(MoveToPreviousLine(1)).unwrap();
-                    stdout.execute(MoveToColumn(cursor)).unwrap();
-                    stdout.flush().unwrap();
-                }
-                _ => {}
+                },
+                |num| n = Some(num),
+            );
+            if let Some(num) = n {
+                vars.get_mut("@").value = num;
             }
         }
     }
