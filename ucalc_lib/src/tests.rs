@@ -2265,7 +2265,7 @@ fn test_err() {
             &[],
             false
         ),
-        Err(ParseError::LeftParenthesisNotFound)
+        Err(ParseError::MissingInput)
     );
     assert_eq!(
         Tokens::infix(

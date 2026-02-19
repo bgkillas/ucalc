@@ -291,12 +291,14 @@ impl Tokens {
         let mut negate = true;
         let mut last_abs = false;
         let mut req_input = false;
+        let mut open_input = false;
         let mut last_mul = false;
+        let mut expect_expr = false;
         let mut abs = 0;
         while let Some((i, c)) = chars.next() {
             match c {
                 ' ' | '\n' => {}
-                'a'..='z' => {
+                'a'..='z' | '@' => {
                     let mut l = c.len_utf8();
                     let mut count = 1;
                     for t in value[i + l..].chars() {
@@ -312,21 +314,27 @@ impl Tokens {
                         expect_let = true;
                     } else if expect_let && s.chars().all(|c| c.is_ascii_alphabetic()) {
                         inner_vars.push(s);
+                        open_input = true;
                     } else if let Some(i) = funs.position(s) {
                         tokens.last_mul(&mut operator_stack, negate, &mut last_mul, false);
                         operator_stack.push(Operators::Function(Function::Custom(i)));
+                        open_input = false;
                     } else if let Some(i) = inner_vars.iter().position(|v| *v == s) {
                         tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
                         tokens.push(Token::InnerVar(i));
+                        open_input = true;
                     } else if let Some(i) = vars.position(s) {
                         tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
                         tokens.push(Token::Var(i));
+                        open_input = true;
                     } else if let Some(i) = graph_vars.iter().position(|v| v == &s) {
                         tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
                         tokens.push(Token::GraphVar(i));
+                        open_input = true;
                     } else if let Ok(fun) = Function::try_from(s) {
                         tokens.last_mul(&mut operator_stack, negate, &mut last_mul, false);
                         operator_stack.push(Operators::Function(fun));
+                        open_input = false;
                     } else if s.chars().all(|c| c.is_ascii_alphabetic()) {
                         inner_vars.push(s);
                     } else {
@@ -336,6 +344,7 @@ impl Tokens {
                     negate = false;
                     last_abs = false;
                     req_input = false;
+                    expect_expr = !open_input;
                 }
                 '0'..='9' if c.is_ascii_digit() => {
                     let mut l = 1;
@@ -356,6 +365,8 @@ impl Tokens {
                     negate = false;
                     last_abs = false;
                     req_input = false;
+                    open_input = true;
+                    expect_expr = false;
                 }
                 ',' => {
                     while let Some(top) = operator_stack.last()
@@ -366,9 +377,10 @@ impl Tokens {
                     negate = true;
                     last_abs = false;
                     last_mul = false;
+                    open_input = false;
                 }
                 ')' => {
-                    if req_input {
+                    if req_input || expect_expr {
                         return Err(ParseError::MissingInput);
                     }
                     while let Some(top) = operator_stack.last()
@@ -386,6 +398,8 @@ impl Tokens {
                     last_mul = true;
                     negate = false;
                     last_abs = false;
+                    open_input = true;
+                    expect_expr = false;
                 }
                 '(' => {
                     tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
@@ -394,6 +408,8 @@ impl Tokens {
                     last_abs = false;
                     req_input = false;
                     last_mul = false;
+                    open_input = false;
+                    expect_expr = true;
                 }
                 '|' => {
                     if abs == 0 || last_abs || req_input {
@@ -403,6 +419,7 @@ impl Tokens {
                         last_abs = true;
                         req_input = false;
                         last_mul = false;
+                        open_input = false;
                     } else {
                         while let Some(top) = operator_stack.last()
                             && !matches!(top, Operators::Bracket(_))
@@ -421,6 +438,7 @@ impl Tokens {
                         last_mul = true;
                         negate = false;
                         last_abs = false;
+                        open_input = true;
                     }
                 }
                 _ => {
@@ -433,6 +451,7 @@ impl Tokens {
                     }
                     let s = &value[i..i + l];
                     if expect_let && s == "=" {
+                        open_input = false;
                         expect_let = false;
                         let Some(name) = inner_vars.try_remove(0) else {
                             return Err(ParseError::VarExpectedName);
@@ -451,10 +470,13 @@ impl Tokens {
                                 _ => {}
                             }
                         }
-                        tokens.pop_stack(&mut operator_stack, operator, negate);
                         if operator.inputs() == 2 {
                             req_input = true;
+                            if !open_input {
+                                return Err(ParseError::MissingInput);
+                            }
                         }
+                        tokens.pop_stack(&mut operator_stack, operator, negate);
                         negate = operator != Operators::Factorial;
                         last_abs = false;
                     } else {
@@ -463,6 +485,9 @@ impl Tokens {
                     last_mul = false;
                 }
             }
+        }
+        if req_input || expect_expr {
+            return Err(ParseError::MissingInput);
         }
         while let Some(operator) = operator_stack.pop() {
             if let Operators::Bracket(bracket) = operator {

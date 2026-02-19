@@ -47,6 +47,11 @@ impl Variables {
         self.iter()
             .position(|v| v.name.as_ref().is_some_and(|n| n.as_ref() == name))
     }
+    pub fn get_mut(&mut self, name: &str) -> &mut Variable {
+        self.iter_mut()
+            .find(|v| v.name.as_ref().is_some_and(|n| n.as_ref() == name))
+            .unwrap()
+    }
 }
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct Functions(pub Vec<FunctionVar>);

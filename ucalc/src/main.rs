@@ -1,11 +1,11 @@
-use crossterm::cursor::{MoveToColumn, MoveToNextLine, MoveToPreviousLine};
+use crossterm::cursor::{MoveLeft, MoveToColumn, MoveToPreviousLine};
 use crossterm::event::{Event, KeyCode, KeyEvent};
 use crossterm::terminal::{Clear, ClearType};
 use crossterm::{ExecutableCommand, event, terminal};
 use std::env::args;
 use std::io::Write;
 use std::io::{BufRead, IsTerminal, stdin, stdout};
-use ucalc_lib::{Functions, Tokens, Variables};
+use ucalc_lib::{Functions, Number, Tokens, Variable, Variables};
 fn main() {
     let mut vars = Variables::default();
     let mut funs = Functions::default();
@@ -33,6 +33,9 @@ fn main() {
         let mut stdout = stdout().lock();
         let mut line = String::new();
         let mut cursor = 0;
+        vars.push(Variable::new("@", Number::default()));
+        let mut last = None;
+        let mut last_failed = false;
         loop {
             let Ok(k) = event::read() else {
                 return;
@@ -43,7 +46,14 @@ fn main() {
                     ..
                 }) => {
                     cursor = 0;
-                    stdout.execute(MoveToNextLine(2)).unwrap();
+                    if last_failed {
+                        println!("\n");
+                    } else if let Some(n) = last.take() {
+                        vars.get_mut("@").value = n;
+                        println!("\n");
+                    } else {
+                        println!();
+                    }
                     stdout.execute(MoveToColumn(0)).unwrap();
                     stdout.flush().unwrap();
                     if line == "exit" {
@@ -53,12 +63,16 @@ fn main() {
                     line.clear();
                 }
                 Event::Key(KeyEvent {
-                    code: KeyCode::Char(c),
+                    code: KeyCode::Backspace,
                     ..
                 }) => {
-                    line.push(c);
-                    cursor += 1;
-                    print!("{}", c);
+                    line.pop();
+                    cursor -= 1;
+                    stdout.execute(MoveLeft(1)).unwrap();
+                    stdout.execute(Clear(ClearType::FromCursorDown)).unwrap();
+                    println!();
+                    stdout.execute(MoveToColumn(0)).unwrap();
+                    stdout.execute(Clear(ClearType::CurrentLine)).unwrap();
                     match if infix {
                         Tokens::infix(&line, &mut vars, &mut funs, &[], false)
                     } else {
@@ -66,16 +80,54 @@ fn main() {
                     } {
                         Ok(Some(tokens)) => {
                             let compute = tokens.compute(&[], &funs, &vars);
-                            stdout.execute(MoveToNextLine(1)).unwrap();
-                            stdout.execute(MoveToColumn(0)).unwrap();
-                            stdout.execute(Clear(ClearType::CurrentLine)).unwrap();
                             print!("{}", compute);
-                            stdout.execute(MoveToPreviousLine(1)).unwrap();
-                            stdout.execute(MoveToColumn(cursor)).unwrap();
+                            last = Some(compute);
+                            last_failed = false;
                         }
-                        Ok(None) => {}
-                        Err(e) => print!("{e:?}"),
+                        Ok(None) => {
+                            last = None;
+                            last_failed = false;
+                        }
+                        Err(e) => {
+                            last_failed = true;
+                            print!("{e:?}")
+                        }
                     }
+                    stdout.execute(MoveToPreviousLine(1)).unwrap();
+                    stdout.execute(MoveToColumn(cursor)).unwrap();
+                    stdout.flush().unwrap();
+                }
+                Event::Key(KeyEvent {
+                    code: KeyCode::Char(c),
+                    ..
+                }) => {
+                    line.push(c);
+                    cursor += 1;
+                    println!("{c}");
+                    stdout.execute(MoveToColumn(0)).unwrap();
+                    stdout.execute(Clear(ClearType::CurrentLine)).unwrap();
+                    match if infix {
+                        Tokens::infix(&line, &mut vars, &mut funs, &[], false)
+                    } else {
+                        Tokens::rpn(&line, &mut vars, &mut funs, &[], false)
+                    } {
+                        Ok(Some(tokens)) => {
+                            let compute = tokens.compute(&[], &funs, &vars);
+                            print!("{}", compute);
+                            last = Some(compute);
+                            last_failed = false;
+                        }
+                        Ok(None) => {
+                            last = None;
+                            last_failed = false;
+                        }
+                        Err(e) => {
+                            last_failed = true;
+                            print!("{e:?}")
+                        }
+                    }
+                    stdout.execute(MoveToPreviousLine(1)).unwrap();
+                    stdout.execute(MoveToColumn(cursor)).unwrap();
                     stdout.flush().unwrap();
                 }
                 _ => {}
