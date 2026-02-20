@@ -4,15 +4,16 @@ use crossterm::terminal::{Clear, ClearType};
 use crossterm::{ExecutableCommand, event, terminal};
 use std::io::{StdoutLock, Write};
 use std::process::exit;
-pub struct Out<T: Clone> {
+pub struct Out<T> {
     line: String,
     cursor: u16,
     new_lines: u16,
     last_failed: bool,
     last_succeed: Option<T>,
     last: Option<T>,
+    carrot: &'static str,
 }
-impl<T: Clone> Default for Out<T> {
+impl<T> Default for Out<T> {
     fn default() -> Self {
         terminal::enable_raw_mode().unwrap();
         #[cfg(debug_assertions)]
@@ -30,16 +31,17 @@ impl<T: Clone> Default for Out<T> {
             last: None,
             last_failed: false,
             last_succeed: None,
+            carrot: "> ",
         }
     }
 }
-impl<T: Clone> Drop for Out<T> {
+impl<T> Drop for Out<T> {
     fn drop(&mut self) {
         terminal::disable_raw_mode().unwrap();
     }
 }
-impl<T: Clone> Out<T> {
-    fn print_result(
+impl<T> Out<T> {
+    pub fn print_result(
         &mut self,
         stdout: &mut StdoutLock,
         run: impl FnOnce(&str) -> (Option<Option<T>>, u16),
@@ -52,25 +54,22 @@ impl<T: Clone> Out<T> {
         if let Some(o) = n {
             self.last = o;
         }
-        if self.new_lines > 1 {
-            stdout
-                .execute(MoveToPreviousLine(self.new_lines - 1))
-                .unwrap();
-        }
-        stdout.execute(MoveToColumn(self.cursor)).unwrap();
+        stdout
+            .execute(MoveToPreviousLine(self.new_lines - 1))
+            .unwrap();
+        stdout
+            .execute(MoveToColumn(self.cursor + self.carrot.len() as u16))
+            .unwrap();
     }
-    pub fn init(
-        &mut self,
-        stdout: &mut StdoutLock,
-        run: impl FnOnce(&str) -> (Option<Option<T>>, u16),
-    ) {
-        self.print_result(stdout, run);
+    pub fn init(&mut self, stdout: &mut StdoutLock) {
+        print!("{}", self.carrot);
+        stdout.flush().unwrap();
     }
     pub fn read(
         &mut self,
         stdout: &mut StdoutLock,
         run: impl FnOnce(&str) -> (Option<Option<T>>, u16),
-        finish: impl FnOnce(T),
+        finish: impl FnOnce(&T),
     ) {
         let Ok(k) = event::read() else {
             return;
@@ -84,8 +83,8 @@ impl<T: Clone> Out<T> {
                 if self.last_failed {
                     self.last = self.last_succeed.take();
                 } else if let Some(n) = self.last.take() {
-                    self.last_succeed = Some(n.clone());
-                    finish(n);
+                    finish(&n);
+                    self.last_succeed = Some(n);
                 }
                 for _ in 0..self.new_lines {
                     println!()
@@ -103,9 +102,10 @@ impl<T: Clone> Out<T> {
                     }
                     _ => {}
                 }
+                self.init(stdout);
                 stdout.flush().unwrap();
                 self.line.clear();
-                self.print_result(stdout, run);
+                self.new_lines = 1;
             }
             Event::Key(KeyEvent {
                 code: KeyCode::Backspace,

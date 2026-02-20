@@ -20,15 +20,13 @@ fn main() {
         let mut out = Out::default();
         let mut stdout = stdout().lock();
         vars.push(Variable::new("@", Number::default()));
-        out.init(&mut stdout, |line| {
-            process_line(line, &mut vars, &mut funs, infix)
-        });
+        out.init(&mut stdout);
         loop {
             let mut n = None;
             out.read(
                 &mut stdout,
                 |line| process_line(line, &mut vars, &mut funs, infix),
-                |num| n = Some(num),
+                |num| n = Some(num.clone()),
             );
             if let Some(num) = n {
                 vars.get_mut("@").value = num;
