@@ -1,4 +1,4 @@
-use crossterm::cursor::{MoveLeft, MoveToColumn, MoveToPreviousLine};
+use crossterm::cursor::{MoveLeft, MoveTo, MoveToColumn, MoveToPreviousLine};
 use crossterm::event::{Event, KeyCode, KeyEvent};
 use crossterm::terminal::{Clear, ClearType};
 use crossterm::{ExecutableCommand, event, terminal};
@@ -7,6 +7,7 @@ use std::process::exit;
 pub struct Out<T: Clone> {
     line: String,
     cursor: u16,
+    new_lines: u16,
     last_failed: bool,
     last_succeed: Option<T>,
     last: Option<T>,
@@ -25,6 +26,7 @@ impl<T: Clone> Default for Out<T> {
         Self {
             line: String::with_capacity(64),
             cursor: 0,
+            new_lines: 1,
             last: None,
             last_failed: false,
             last_succeed: None,
@@ -37,10 +39,37 @@ impl<T: Clone> Drop for Out<T> {
     }
 }
 impl<T: Clone> Out<T> {
+    fn print_result(
+        &mut self,
+        stdout: &mut StdoutLock,
+        run: impl FnOnce(&str) -> (Option<Option<T>>, u16),
+    ) {
+        stdout.execute(MoveToColumn(0)).unwrap();
+        stdout.execute(Clear(ClearType::FromCursorDown)).unwrap();
+        let n;
+        (n, self.new_lines) = run(&self.line);
+        self.last_failed = n.is_none();
+        if let Some(o) = n {
+            self.last = o;
+        }
+        if self.new_lines > 1 {
+            stdout
+                .execute(MoveToPreviousLine(self.new_lines - 1))
+                .unwrap();
+        }
+        stdout.execute(MoveToColumn(self.cursor)).unwrap();
+    }
+    pub fn init(
+        &mut self,
+        stdout: &mut StdoutLock,
+        run: impl FnOnce(&str) -> (Option<Option<T>>, u16),
+    ) {
+        self.print_result(stdout, run);
+    }
     pub fn read(
         &mut self,
         stdout: &mut StdoutLock,
-        run: impl FnOnce(&str) -> Option<Option<T>>,
+        run: impl FnOnce(&str) -> (Option<Option<T>>, u16),
         finish: impl FnOnce(T),
     ) {
         let Ok(k) = event::read() else {
@@ -54,21 +83,29 @@ impl<T: Clone> Out<T> {
                 self.cursor = 0;
                 if self.last_failed {
                     self.last = self.last_succeed.take();
-                    println!("\n");
                 } else if let Some(n) = self.last.take() {
                     self.last_succeed = Some(n.clone());
                     finish(n);
-                    println!("\n");
-                } else {
-                    println!();
+                }
+                for _ in 0..self.new_lines {
+                    println!()
                 }
                 stdout.execute(MoveToColumn(0)).unwrap();
-                stdout.flush().unwrap();
-                if self.line == "exit" {
-                    terminal::disable_raw_mode().unwrap();
-                    exit(0);
+                match self.line.as_str() {
+                    "exit" => {
+                        stdout.flush().unwrap();
+                        terminal::disable_raw_mode().unwrap();
+                        exit(0);
+                    }
+                    "clear" => {
+                        stdout.execute(Clear(ClearType::All)).unwrap();
+                        stdout.execute(MoveTo(0, 0)).unwrap();
+                    }
+                    _ => {}
                 }
+                stdout.flush().unwrap();
                 self.line.clear();
+                self.print_result(stdout, run);
             }
             Event::Key(KeyEvent {
                 code: KeyCode::Backspace,
@@ -77,17 +114,10 @@ impl<T: Clone> Out<T> {
                 self.line.pop();
                 self.cursor -= 1;
                 stdout.execute(MoveLeft(1)).unwrap();
-                stdout.execute(Clear(ClearType::FromCursorDown)).unwrap();
+                print!(" ");
+                stdout.execute(MoveLeft(1)).unwrap();
                 println!();
-                stdout.execute(MoveToColumn(0)).unwrap();
-                stdout.execute(Clear(ClearType::CurrentLine)).unwrap();
-                let n = run(&self.line);
-                self.last_failed = n.is_none();
-                if let Some(o) = n {
-                    self.last = o;
-                }
-                stdout.execute(MoveToPreviousLine(1)).unwrap();
-                stdout.execute(MoveToColumn(self.cursor)).unwrap();
+                self.print_result(stdout, run);
                 stdout.flush().unwrap();
             }
             Event::Key(KeyEvent {
@@ -97,15 +127,7 @@ impl<T: Clone> Out<T> {
                 self.line.push(c);
                 self.cursor += 1;
                 println!("{c}");
-                stdout.execute(MoveToColumn(0)).unwrap();
-                stdout.execute(Clear(ClearType::CurrentLine)).unwrap();
-                let n = run(&self.line);
-                self.last_failed = n.is_none();
-                if let Some(o) = n {
-                    self.last = o;
-                }
-                stdout.execute(MoveToPreviousLine(1)).unwrap();
-                stdout.execute(MoveToColumn(self.cursor)).unwrap();
+                self.print_result(stdout, run);
                 stdout.flush().unwrap();
             }
             _ => {}

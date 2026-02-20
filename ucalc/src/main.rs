@@ -20,30 +20,45 @@ fn main() {
         let mut out = Out::default();
         let mut stdout = stdout().lock();
         vars.push(Variable::new("@", Number::default()));
+        out.init(&mut stdout, |line| {
+            process_line(line, &mut vars, &mut funs, infix)
+        });
         loop {
             let mut n = None;
             out.read(
                 &mut stdout,
-                |line| match if infix {
-                    Tokens::infix(line, &mut vars, &mut funs, &[], false)
-                } else {
-                    Tokens::rpn(line, &mut vars, &mut funs, &[], false)
-                } {
-                    Ok(Some(tokens)) => {
-                        let compute = tokens.compute(&[], &funs, &vars);
-                        print!("{}", compute);
-                        Some(Some(compute))
-                    }
-                    Ok(None) => Some(None),
-                    Err(e) => {
-                        print!("{e:?}");
-                        None
-                    }
-                },
+                |line| process_line(line, &mut vars, &mut funs, infix),
                 |num| n = Some(num),
             );
             if let Some(num) = n {
                 vars.get_mut("@").value = num;
+            }
+        }
+    }
+}
+fn process_line(
+    line: &str,
+    vars: &mut Variables,
+    funs: &mut Functions,
+    infix: bool,
+) -> (Option<Option<Number>>, u16) {
+    if line.is_empty() {
+        (Some(None), 1)
+    } else {
+        match if infix {
+            Tokens::infix(line, vars, funs, &[], false)
+        } else {
+            Tokens::rpn(line, vars, funs, &[], false)
+        } {
+            Ok(Some(tokens)) => {
+                let compute = tokens.compute(&[], funs, vars);
+                print!("{}", compute);
+                (Some(Some(compute)), 2)
+            }
+            Ok(None) => (Some(None), 1),
+            Err(e) => {
+                print!("{e:?}");
+                (None, 2)
             }
         }
     }
