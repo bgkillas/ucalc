@@ -60,17 +60,17 @@ impl Debug for Integer {
 }
 impl Display for Complex {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}{}{}i",
-            self.real,
-            if self.imag.is_sign_positive() {
-                "+"
-            } else {
-                ""
-            },
-            self.imag
-        )
+        match (
+            self.real.is_zero(),
+            self.imag.is_zero(),
+            self.imag.is_sign_positive(),
+        ) {
+            (false, false, true) => write!(f, "{}+{}i", self.real, self.imag),
+            (false, false, false) => write!(f, "{}{}i", self.real, self.imag),
+            (false, true, _) => write!(f, "{}", self.real),
+            (true, false, _) => write!(f, "{}i", self.imag),
+            (true, true, _) => write!(f, "0"),
+        }
     }
 }
 impl Display for Float {
