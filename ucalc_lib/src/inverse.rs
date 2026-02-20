@@ -154,6 +154,8 @@ impl From<Function> for Inverse {
             | Function::Max
             | Function::Min
             | Function::Quadratic
+            | Function::Cubic
+            | Function::Quartic
             | Function::Sum
             | Function::Prod
             | Function::Gamma

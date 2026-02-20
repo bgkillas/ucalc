@@ -46,6 +46,8 @@ pub enum Function {
     Max,
     Min,
     Quadratic,
+    Cubic,
+    Quartic,
     Sqrt,
     Cbrt,
     Sq,
@@ -99,6 +101,8 @@ impl TryFrom<&str> for Function {
             "sum" => Self::Sum,
             "prod" => Self::Prod,
             "quadratic" => Self::Quadratic,
+            "cubic" => Self::Cubic,
+            "quartic" => Self::Quartic,
             "gamma" => Self::Gamma,
             "erf" => Self::Erf,
             "erfc" => Self::Erfc,
@@ -176,6 +180,8 @@ impl Display for Function {
                 Self::Sum => "sum",
                 Self::Prod => "prod",
                 Self::Quadratic => "quadratic",
+                Self::Cubic => "cubic",
+                Self::Quartic => "quartic",
                 Self::Gamma => "gamma",
                 Self::Erf => "erf",
                 Self::Erfc => "erfc",
@@ -290,7 +296,8 @@ impl Function {
             | Self::Min
             | Self::Set => 2,
             Self::Quadratic | Self::Sum | Self::Prod | Self::Iter | Self::If => 3,
-            Self::Fold => 4,
+            Self::Fold | Self::Cubic => 4,
+            Self::Quartic => 5,
             Self::Custom(_) => unreachable!(),
         }
     }
@@ -379,6 +386,29 @@ impl Function {
                     PolyRef(&[a.clone(), b[0].num_ref().clone(), b[1].num_ref().clone()])
                         .quadratic()
                         .into_iter();
+                *a = poly.next().unwrap()
+            }
+            Self::Cubic => {
+                let mut poly = PolyRef(&[
+                    a.clone(),
+                    b[0].num_ref().clone(),
+                    b[1].num_ref().clone(),
+                    b[2].num_ref().clone(),
+                ])
+                .cubic()
+                .into_iter();
+                *a = poly.next().unwrap()
+            }
+            Self::Quartic => {
+                let mut poly = PolyRef(&[
+                    a.clone(),
+                    b[0].num_ref().clone(),
+                    b[1].num_ref().clone(),
+                    b[2].num_ref().clone(),
+                    b[3].num_ref().clone(),
+                ])
+                .quartic()
+                .into_iter();
                 *a = poly.next().unwrap()
             }
             Self::Custom(_)
