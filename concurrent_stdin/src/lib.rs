@@ -1,3 +1,4 @@
+pub use crossterm;
 use crossterm::cursor::{MoveTo, MoveToColumn, MoveToPreviousLine};
 use crossterm::event::{DisableBracketedPaste, EnableBracketedPaste, Event, KeyCode, KeyEvent};
 use crossterm::terminal::{BeginSynchronizedUpdate, Clear, ClearType, EndSynchronizedUpdate};
@@ -16,7 +17,8 @@ pub struct Out<T> {
     last_failed: bool,
     last_succeed: Option<T>,
     last: Option<T>,
-    carrot: &'static str,
+    carrot: Box<str>,
+    carrot_len: u16,
 }
 impl<T> Default for Out<T> {
     fn default() -> Self {
@@ -44,7 +46,8 @@ impl<T> Default for Out<T> {
             last: None,
             last_failed: false,
             last_succeed: None,
-            carrot: "> ",
+            carrot: "> ".into(),
+            carrot_len: 2,
         }
     }
 }
@@ -54,6 +57,21 @@ impl<T> Drop for Out<T> {
         stdout().execute(EndSynchronizedUpdate).unwrap();
         stdout().execute(DisableBracketedPaste).unwrap();
     }
+}
+fn str_len(s: impl AsRef<str>) -> u16 {
+    let mut i = 0;
+    let mut csi = false;
+    for c in s.as_ref().chars() {
+        if c == '\x1b' {
+            csi = true;
+        } else if csi && c == 'm' {
+            csi = false;
+        }
+        if !csi {
+            i += 1;
+        }
+    }
+    i
 }
 impl<T> Out<T> {
     pub fn print_result(
@@ -68,7 +86,7 @@ impl<T> Out<T> {
         let n = run(&self.line, string);
         let count = string
             .lines()
-            .map(|l| (l.len() as u16).div_ceil(self.col))
+            .map(|l| str_len(l).div_ceil(self.col))
             .sum::<u16>()
             + 1;
         print!("{string}");
@@ -85,7 +103,7 @@ impl<T> Out<T> {
     fn col(&self) -> u16 {
         self.cursor_col
             + if self.cursor_row == 0 {
-                self.carrot.len() as u16
+                self.carrot_len
             } else {
                 0
             }
@@ -95,7 +113,7 @@ impl<T> Out<T> {
             self.cursor_col = self.col
                 - (n - self.col())
                 - if self.cursor_row == 1 {
-                    self.carrot.len() as u16
+                    self.carrot_len
                 } else {
                     0
                 };
@@ -218,7 +236,7 @@ impl<T> Out<T> {
                 stdout.queue(BeginSynchronizedUpdate).unwrap();
                 string.clear();
                 self.line.insert(self.insert, c);
-                self.insert += 1;
+                self.insert += c.len_utf8();
                 print!("{c}");
                 self.right(1, stdout);
                 self.print_result(string, stdout, run);
