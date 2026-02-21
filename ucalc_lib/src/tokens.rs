@@ -477,6 +477,8 @@ impl Tokens {
                             if !open_input {
                                 return Err(ParseError::MissingInput);
                             }
+                        } else if operator.unary_left() {
+                            req_input = true;
                         }
                         tokens.pop_stack(&mut operator_stack, operator, negate);
                         negate = operator != Operators::Factorial;

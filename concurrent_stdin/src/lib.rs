@@ -220,7 +220,7 @@ impl<T> Out<T> {
             }) if self.cursor_col != 0 || self.cursor_row != 0 => {
                 stdout.queue(BeginSynchronizedUpdate).unwrap();
                 string.clear();
-                self.line.pop();
+                self.insert -= self.line.pop().unwrap().len_utf8();
                 self.left(1, stdout);
                 stdout.queue(MoveToColumn(self.col())).unwrap();
                 print!(" ");
