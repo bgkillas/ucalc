@@ -8,4 +8,4 @@ homepage.workspace = true
 description.workspace = true
 
 [dependencies]
-crossterm = {version = "0.29.0", default-features=false, features=["events", "windows"]}
+crossterm = {version = "0.29.0", default-features=false, features=["events", "windows", "bracketed-paste"]}
