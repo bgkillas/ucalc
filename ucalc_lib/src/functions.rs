@@ -46,7 +46,9 @@ pub enum Function {
     Max,
     Min,
     Quadratic,
+    #[cfg(feature = "complex")]
     Cubic,
+    #[cfg(feature = "complex")]
     Quartic,
     Sqrt,
     Cbrt,
@@ -101,7 +103,9 @@ impl TryFrom<&str> for Function {
             "sum" => Self::Sum,
             "prod" => Self::Prod,
             "quadratic" => Self::Quadratic,
+            #[cfg(feature = "complex")]
             "cubic" => Self::Cubic,
+            #[cfg(feature = "complex")]
             "quartic" => Self::Quartic,
             "gamma" => Self::Gamma,
             "erf" => Self::Erf,
@@ -180,7 +184,9 @@ impl Display for Function {
                 Self::Sum => "sum",
                 Self::Prod => "prod",
                 Self::Quadratic => "quadratic",
+                #[cfg(feature = "complex")]
                 Self::Cubic => "cubic",
+                #[cfg(feature = "complex")]
                 Self::Quartic => "quartic",
                 Self::Gamma => "gamma",
                 Self::Erf => "erf",
@@ -296,7 +302,10 @@ impl Function {
             | Self::Min
             | Self::Set => 2,
             Self::Quadratic | Self::Sum | Self::Prod | Self::Iter | Self::If => 3,
-            Self::Fold | Self::Cubic => 4,
+            Self::Fold => 4,
+            #[cfg(feature = "complex")]
+            Self::Cubic => 4,
+            #[cfg(feature = "complex")]
             Self::Quartic => 5,
             Self::Custom(_) => unreachable!(),
         }
@@ -388,6 +397,7 @@ impl Function {
                         .into_iter();
                 *a = poly.next().unwrap()
             }
+            #[cfg(feature = "complex")]
             Self::Cubic => {
                 let mut poly = PolyRef(&[
                     a.clone(),
@@ -399,6 +409,7 @@ impl Function {
                 .into_iter();
                 *a = poly.next().unwrap()
             }
+            #[cfg(feature = "complex")]
             Self::Quartic => {
                 let mut poly = PolyRef(&[
                     a.clone(),

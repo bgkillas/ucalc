@@ -154,8 +154,6 @@ impl From<Function> for Inverse {
             | Function::Max
             | Function::Min
             | Function::Quadratic
-            | Function::Cubic
-            | Function::Quartic
             | Function::Sum
             | Function::Prod
             | Function::Gamma
@@ -175,7 +173,11 @@ impl From<Function> for Inverse {
             | Function::Solve
             | Function::Custom(_) => Self::None,
             #[cfg(feature = "complex")]
-            Function::Arg | Function::Real | Function::Imag => Self::None,
+            Function::Arg
+            | Function::Real
+            | Function::Imag
+            | Function::Cubic
+            | Function::Quartic => Self::None,
         }
     }
 }
