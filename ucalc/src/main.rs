@@ -1,5 +1,6 @@
 use concurrent_stdin::Out;
 use std::env::args;
+use std::fmt::Write;
 use std::io::{BufRead, IsTerminal, stdin, stdout};
 use ucalc_lib::{Functions, Number, Tokens, Variable, Variables};
 fn main() {
@@ -21,13 +22,16 @@ fn main() {
         let mut stdout = stdout().lock();
         vars.push(Variable::new("@", Number::default()));
         out.init(&mut stdout);
+        let mut string = String::with_capacity(64);
         loop {
             let mut n = None;
             out.read(
                 &mut stdout,
-                |line| process_line(line, &mut vars, &mut funs, infix),
+                &mut string,
+                |line, string| process_line(line, &mut vars, &mut funs, infix, string),
                 |num| n = Some(num.clone()),
             );
+            string.clear();
             if let Some(num) = n {
                 vars.get_mut("@").value = num;
             }
@@ -39,9 +43,10 @@ fn process_line(
     vars: &mut Variables,
     funs: &mut Functions,
     infix: bool,
-) -> (Option<Option<Number>>, u16) {
+    str: &mut String,
+) -> Option<Option<Number>> {
     if line.is_empty() {
-        (Some(None), 1)
+        Some(None)
     } else {
         match if infix {
             Tokens::infix(line, vars, funs, &[], false)
@@ -50,13 +55,13 @@ fn process_line(
         } {
             Ok(Some(tokens)) => {
                 let compute = tokens.compute(&[], funs, vars);
-                print!("{}", compute);
-                (Some(Some(compute)), 2)
+                write!(str, "{}", compute).unwrap();
+                Some(Some(compute))
             }
-            Ok(None) => (Some(None), 1),
+            Ok(None) => Some(None),
             Err(e) => {
-                print!("{e:?}");
-                (None, 2)
+                write!(str, "{e:?}").unwrap();
+                None
             }
         }
     }
