@@ -1,6 +1,7 @@
 pub use crossterm;
 use crossterm::cursor::{MoveTo, MoveToColumn, MoveToPreviousLine};
 use crossterm::event::{DisableBracketedPaste, EnableBracketedPaste, Event, KeyCode, KeyEvent};
+use crossterm::style::{Color, ResetColor, SetForegroundColor};
 use crossterm::terminal::{BeginSynchronizedUpdate, Clear, ClearType, EndSynchronizedUpdate};
 use crossterm::{ExecutableCommand, QueueableCommand, event, terminal};
 use std::io::{StdoutLock, Write, stdout};
@@ -18,7 +19,7 @@ pub struct Out<T> {
     last_succeed: Option<T>,
     last: Option<T>,
     carrot: Box<str>,
-    carrot_len: u16,
+    carrot_color: Option<Color>,
 }
 impl<T> Default for Out<T> {
     fn default() -> Self {
@@ -47,7 +48,7 @@ impl<T> Default for Out<T> {
             last_failed: false,
             last_succeed: None,
             carrot: "> ".into(),
-            carrot_len: 2,
+            carrot_color: Some(Color::DarkBlue),
         }
     }
 }
@@ -103,7 +104,7 @@ impl<T> Out<T> {
     fn col(&self) -> u16 {
         self.cursor_col
             + if self.cursor_row == 0 {
-                self.carrot_len
+                self.carrot.len() as u16
             } else {
                 0
             }
@@ -113,7 +114,7 @@ impl<T> Out<T> {
             self.cursor_col = self.col
                 - (n - self.col())
                 - if self.cursor_row == 1 {
-                    self.carrot_len
+                    self.carrot.len() as u16
                 } else {
                     0
                 };
@@ -142,8 +143,15 @@ impl<T> Out<T> {
     }
     pub fn init(&mut self, stdout: &mut StdoutLock) {
         stdout.queue(EnableBracketedPaste).unwrap();
-        print!("{}", self.carrot);
+        self.carrot();
         stdout.flush().unwrap();
+    }
+    pub fn carrot(&mut self) {
+        if let Some(color) = self.carrot_color {
+            print!("{}{}{}", SetForegroundColor(color), self.carrot, ResetColor);
+        } else {
+            print!("{}", self.carrot);
+        }
     }
     pub fn read(
         &mut self,
@@ -208,7 +216,7 @@ impl<T> Out<T> {
                     }
                     _ => {}
                 }
-                self.init(stdout);
+                self.carrot();
                 stdout.queue(EndSynchronizedUpdate).unwrap();
                 stdout.flush().unwrap();
                 self.line.clear();
