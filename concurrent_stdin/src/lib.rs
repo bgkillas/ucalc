@@ -67,7 +67,6 @@ impl<T> Out<T> {
             .sum::<u16>()
             + 1;
         print!("{string}");
-        string.clear();
         self.new_lines = count;
         self.last_failed = n.is_none();
         if let Some(o) = n {
@@ -162,6 +161,7 @@ impl<T> Out<T> {
                         exit(0);
                     }
                     "clear" => {
+                        stdout.execute(Clear(ClearType::Purge)).unwrap();
                         stdout.execute(Clear(ClearType::All)).unwrap();
                         stdout.execute(MoveTo(0, 0)).unwrap();
                     }
@@ -176,6 +176,7 @@ impl<T> Out<T> {
                 code: KeyCode::Backspace,
                 ..
             }) if self.cursor_col != 0 || self.cursor_row != 0 => {
+                string.clear();
                 self.line.pop();
                 self.left(1, stdout);
                 stdout.execute(MoveToColumn(self.col())).unwrap();
@@ -188,6 +189,7 @@ impl<T> Out<T> {
                 code: KeyCode::Char(c),
                 ..
             }) => {
+                string.clear();
                 self.line.push(c);
                 print!("{c}");
                 self.right(1, stdout);
