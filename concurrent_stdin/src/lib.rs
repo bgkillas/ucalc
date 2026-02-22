@@ -4,7 +4,7 @@ use crossterm::event::{
     DisableBracketedPaste, EnableBracketedPaste, Event, KeyCode, KeyEvent, KeyModifiers,
 };
 use crossterm::style::{Color, ResetColor, SetForegroundColor};
-use crossterm::terminal::{BeginSynchronizedUpdate, Clear, ClearType, EndSynchronizedUpdate};
+use crossterm::terminal::{Clear, ClearType};
 use crossterm::{ExecutableCommand, QueueableCommand, event, terminal};
 use std::io::{StdoutLock, Write, stdout};
 use std::process::exit;
@@ -31,7 +31,6 @@ impl<T> Default for Out<T> {
         let hook = std::panic::take_hook();
         #[cfg(debug_assertions)]
         std::panic::set_hook(Box::new(move |info| {
-            stdout().execute(EndSynchronizedUpdate).unwrap();
             stdout().execute(DisableBracketedPaste).unwrap();
             _ = terminal::disable_raw_mode();
             println!();
@@ -59,7 +58,6 @@ impl<T> Default for Out<T> {
 impl<T> Drop for Out<T> {
     fn drop(&mut self) {
         terminal::disable_raw_mode().unwrap();
-        stdout().execute(EndSynchronizedUpdate).unwrap();
         stdout().execute(DisableBracketedPaste).unwrap();
     }
 }
@@ -79,6 +77,12 @@ fn str_len(s: impl AsRef<str>) -> u16 {
     i
 }
 impl<T> Out<T> {
+    pub fn out_lines(&self, string: &str) -> u16 {
+        string
+            .lines()
+            .map(|l| str_len(l).div_ceil(self.col))
+            .sum::<u16>()
+    }
     pub fn print_result(
         &mut self,
         string: &mut String,
@@ -89,20 +93,13 @@ impl<T> Out<T> {
         stdout.queue(MoveToColumn(0)).unwrap();
         stdout.queue(Clear(ClearType::FromCursorDown)).unwrap();
         let n = run(&self.line, string);
-        let count = string
-            .lines()
-            .map(|l| str_len(l).div_ceil(self.col))
-            .sum::<u16>()
-            + 1;
+        self.new_lines = self.out_lines(string);
         print!("{string}");
-        self.new_lines = count;
         self.last_failed = n.is_none();
         if let Some(o) = n {
             self.last = o;
         }
-        stdout
-            .queue(MoveToPreviousLine(self.new_lines - 1))
-            .unwrap();
+        stdout.queue(MoveToPreviousLine(self.new_lines)).unwrap();
         stdout.queue(MoveToColumn(self.col())).unwrap();
     }
     fn col(&self) -> u16 {
@@ -169,28 +166,43 @@ impl<T> Out<T> {
         };
         match k {
             Event::Paste(s) => {
-                stdout.queue(BeginSynchronizedUpdate).unwrap();
-                string.clear();
                 self.line.insert_str(self.insert, &s);
                 self.insert += s.len();
                 print!("{s}{}", &self.line[self.insert..]);
                 self.right(s.len() as u16, stdout);
                 self.print_result(string, stdout, run);
-                stdout.queue(EndSynchronizedUpdate).unwrap();
                 stdout.flush().unwrap();
             }
             Event::Resize(col, row) => {
+                if self.col > col {
+                    let mut wrap = self.cursor_row * self.col.div_ceil(col);
+                    if self.cursor_row == self.cursor_row_max {
+                        wrap +=
+                            ((self.line_len + self.carrot.len()) as u16 % self.col).div_ceil(col);
+                    }
+                    if wrap != 0 {
+                        stdout.queue(MoveToPreviousLine(wrap - 1)).unwrap();
+                    }
+                    stdout.queue(MoveToColumn(0)).unwrap();
+                    stdout.queue(Clear(ClearType::FromCursorDown)).unwrap();
+                    self.carrot();
+                    println!("{}", self.line);
+                    stdout.queue(MoveToColumn(0)).unwrap();
+                    print!("{string}");
+                    stdout.flush().unwrap();
+                } else if self.col < col {
+                    stdout.flush().unwrap();
+                } else if self.cursor_row_max + self.new_lines > self.row
+                    && self.cursor_row_max + self.new_lines <= row
+                {
+                    //stdout.flush().unwrap();
+                }
                 (self.row, self.col) = (row, col);
-                stdout.queue(BeginSynchronizedUpdate).unwrap();
-                //TODO refresh
-                stdout.queue(EndSynchronizedUpdate).unwrap();
-                stdout.flush().unwrap();
             }
             Event::Key(KeyEvent {
                 code: KeyCode::Enter,
                 ..
             }) => {
-                stdout.queue(BeginSynchronizedUpdate).unwrap();
                 self.cursor_col = 0;
                 self.cursor_row = 0;
                 self.cursor_row_max = 0;
@@ -201,13 +213,12 @@ impl<T> Out<T> {
                     finish(&n);
                     self.last_succeed = Some(n);
                 }
-                for _ in 0..self.new_lines {
+                for _ in 0..=self.new_lines {
                     println!()
                 }
                 stdout.queue(MoveToColumn(0)).unwrap();
                 match self.line.as_str() {
                     "exit" => {
-                        stdout.queue(EndSynchronizedUpdate).unwrap();
                         stdout.queue(DisableBracketedPaste).unwrap();
                         terminal::disable_raw_mode().unwrap();
                         stdout.flush().unwrap();
@@ -221,16 +232,14 @@ impl<T> Out<T> {
                     _ => {}
                 }
                 self.carrot();
-                stdout.queue(EndSynchronizedUpdate).unwrap();
                 stdout.flush().unwrap();
                 self.line.clear();
-                self.new_lines = 1;
+                self.new_lines = 0;
             }
             Event::Key(KeyEvent {
                 code: KeyCode::Left,
                 ..
             }) if self.insert != 0 => {
-                stdout.queue(BeginSynchronizedUpdate).unwrap();
                 self.insert -= self.line
                     [self.line.floor_char_boundary(self.insert - 1)..self.insert]
                     .chars()
@@ -239,14 +248,12 @@ impl<T> Out<T> {
                     .len_utf8();
                 self.left(1, stdout);
                 stdout.queue(MoveToColumn(self.col())).unwrap();
-                stdout.queue(EndSynchronizedUpdate).unwrap();
                 stdout.flush().unwrap();
             }
             Event::Key(KeyEvent {
                 code: KeyCode::Right,
                 ..
             }) if self.insert != self.line_len => {
-                stdout.queue(BeginSynchronizedUpdate).unwrap();
                 self.insert += self.line
                     [self.insert..self.line.ceil_char_boundary(self.insert + 1)]
                     .chars()
@@ -255,15 +262,12 @@ impl<T> Out<T> {
                     .len_utf8();
                 self.right(1, stdout);
                 stdout.queue(MoveToColumn(self.col())).unwrap();
-                stdout.queue(EndSynchronizedUpdate).unwrap();
                 stdout.flush().unwrap();
             }
             Event::Key(KeyEvent {
                 code: KeyCode::Backspace,
                 ..
             }) if self.insert != 0 => {
-                stdout.queue(BeginSynchronizedUpdate).unwrap();
-                string.clear();
                 self.insert -= self
                     .line
                     .remove(self.line.floor_char_boundary(self.insert - 1))
@@ -274,7 +278,6 @@ impl<T> Out<T> {
                 print!("{} ", &self.line[self.insert..]);
                 stdout.queue(MoveToColumn(self.col())).unwrap();
                 self.print_result(string, stdout, run);
-                stdout.queue(EndSynchronizedUpdate).unwrap();
                 stdout.flush().unwrap();
             }
             Event::Key(KeyEvent {
@@ -287,15 +290,12 @@ impl<T> Out<T> {
                 modifiers: KeyModifiers::SHIFT,
                 ..
             }) => {
-                stdout.queue(BeginSynchronizedUpdate).unwrap();
-                string.clear();
                 self.line.insert(self.insert, c);
                 self.insert += c.len_utf8();
                 self.line_len += 1;
                 print!("{c}{}", &self.line[self.insert..]);
                 self.right(1, stdout);
                 self.print_result(string, stdout, run);
-                stdout.queue(EndSynchronizedUpdate).unwrap();
                 stdout.flush().unwrap();
             }
             _ => {}

@@ -31,7 +31,6 @@ fn main() {
                 |line, string| process_line(line, &mut vars, &mut funs, infix, string),
                 |num| n = Some(num.clone()),
             );
-            string.clear();
             if let Some(num) = n {
                 vars.get_mut("@").value = num;
             }
@@ -45,6 +44,7 @@ fn process_line(
     infix: bool,
     str: &mut String,
 ) -> Option<Option<Number>> {
+    str.clear();
     if line.is_empty() {
         Some(None)
     } else {
