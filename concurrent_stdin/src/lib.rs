@@ -6,6 +6,7 @@ use crossterm::event::{
 use crossterm::style::{Color, ResetColor, SetForegroundColor};
 use crossterm::terminal::{Clear, ClearType};
 use crossterm::{ExecutableCommand, QueueableCommand, event, terminal};
+use std::io;
 use std::io::{StdoutLock, Write, stdout};
 use std::process::exit;
 pub struct Out<T> {
@@ -88,19 +89,20 @@ impl<T> Out<T> {
         string: &mut String,
         stdout: &mut StdoutLock,
         run: impl FnOnce(&str, &mut String) -> Option<Option<T>>,
-    ) {
-        println!();
-        stdout.queue(MoveToColumn(0)).unwrap();
-        stdout.queue(Clear(ClearType::FromCursorDown)).unwrap();
+    ) -> Result<(), io::Error> {
+        writeln!(stdout)?;
+        stdout.queue(MoveToColumn(0))?;
+        stdout.queue(Clear(ClearType::FromCursorDown))?;
         let n = run(&self.line, string);
         self.new_lines = self.out_lines(string);
-        print!("{string}");
+        write!(stdout, "{string}")?;
         self.last_failed = n.is_none();
         if let Some(o) = n {
             self.last = o;
         }
-        stdout.queue(MoveToPreviousLine(self.new_lines)).unwrap();
-        stdout.queue(MoveToColumn(self.col())).unwrap();
+        stdout.queue(MoveToPreviousLine(self.new_lines))?;
+        stdout.queue(MoveToColumn(self.col()))?;
+        Ok(())
     }
     fn col(&self) -> u16 {
         self.cursor_col
@@ -110,7 +112,7 @@ impl<T> Out<T> {
                 0
             }
     }
-    fn left(&mut self, n: u16, stdout: &mut StdoutLock) -> bool {
+    fn left(&mut self, n: u16, stdout: &mut StdoutLock) -> Result<bool, io::Error> {
         if self.col() < n {
             self.cursor_col = self.col
                 - (n - self.col())
@@ -120,38 +122,45 @@ impl<T> Out<T> {
                     0
                 };
             self.cursor_row -= 1;
-            stdout.queue(MoveToPreviousLine(1)).unwrap();
-            true
+            stdout.queue(MoveToPreviousLine(1))?;
+            Ok(true)
         } else {
             self.cursor_col -= n;
-            false
+            Ok(false)
         }
     }
-    fn right(&mut self, n: u16, stdout: &mut StdoutLock) -> bool {
+    fn right(&mut self, n: u16, stdout: &mut StdoutLock) -> Result<bool, io::Error> {
         if self.col() + n >= self.col {
             self.cursor_col = self.col() + n - self.col;
             self.cursor_row += 1;
-            println!();
+            writeln!(stdout)?;
             if self.cursor_row > self.cursor_row_max {
                 self.cursor_row_max = self.cursor_row;
-                stdout.queue(Clear(ClearType::CurrentLine)).unwrap();
+                stdout.queue(Clear(ClearType::CurrentLine))?;
             }
-            true
+            Ok(true)
         } else {
             self.cursor_col += n;
-            false
+            Ok(false)
         }
     }
-    pub fn init(&mut self, stdout: &mut StdoutLock) {
-        stdout.queue(EnableBracketedPaste).unwrap();
-        self.carrot();
-        stdout.flush().unwrap();
+    pub fn init(&mut self, stdout: &mut StdoutLock) -> Result<(), io::Error> {
+        stdout.queue(EnableBracketedPaste)?;
+        self.carrot(stdout)?;
+        stdout.flush()?;
+        Ok(())
     }
-    pub fn carrot(&mut self) {
+    pub fn carrot(&mut self, stdout: &mut StdoutLock) -> Result<(), io::Error> {
         if let Some(color) = self.carrot_color {
-            print!("{}{}{}", SetForegroundColor(color), self.carrot, ResetColor);
+            write!(
+                stdout,
+                "{}{}{}",
+                SetForegroundColor(color),
+                self.carrot,
+                ResetColor
+            )
         } else {
-            print!("{}", self.carrot);
+            write!(stdout, "{}", self.carrot)
         }
     }
     pub fn read(
@@ -160,18 +169,18 @@ impl<T> Out<T> {
         string: &mut String,
         run: impl FnOnce(&str, &mut String) -> Option<Option<T>>,
         finish: impl FnOnce(&T),
-    ) {
+    ) -> Result<(), io::Error> {
         let Ok(k) = event::read() else {
-            return;
+            return Ok(());
         };
         match k {
             Event::Paste(s) => {
                 self.line.insert_str(self.insert, &s);
                 self.insert += s.len();
-                print!("{s}{}", &self.line[self.insert..]);
-                self.right(s.len() as u16, stdout);
-                self.print_result(string, stdout, run);
-                stdout.flush().unwrap();
+                write!(stdout, "{s}{}", &self.line[self.insert..])?;
+                self.right(s.len() as u16, stdout)?;
+                self.print_result(string, stdout, run)?;
+                stdout.flush()?;
             }
             Event::Resize(col, row) => {
                 if self.col > col {
@@ -181,21 +190,28 @@ impl<T> Out<T> {
                             ((self.line_len + self.carrot.len()) as u16 % self.col).div_ceil(col);
                     }
                     if wrap != 0 {
-                        stdout.queue(MoveToPreviousLine(wrap - 1)).unwrap();
+                        stdout.queue(MoveToPreviousLine(wrap - 1))?;
                     }
-                    stdout.queue(MoveToColumn(0)).unwrap();
-                    stdout.queue(Clear(ClearType::FromCursorDown)).unwrap();
-                    self.carrot();
-                    println!("{}", self.line);
-                    stdout.queue(MoveToColumn(0)).unwrap();
-                    print!("{string}");
-                    stdout.flush().unwrap();
+                    stdout.queue(MoveToColumn(self.carrot.len() as u16))?;
+                    stdout.queue(Clear(ClearType::FromCursorDown))?;
+                    writeln!(stdout, "{}", self.line)?;
+                    stdout.queue(MoveToColumn(0))?;
+                    write!(stdout, "{string}")?;
+                    stdout.flush()?;
                 } else if self.col < col {
-                    stdout.flush().unwrap();
+                    if self.cursor_row != 0 {
+                        stdout.queue(MoveToPreviousLine(self.cursor_row))?;
+                    }
+                    stdout.queue(MoveToColumn(self.carrot.len() as u16))?;
+                    stdout.queue(Clear(ClearType::FromCursorDown))?;
+                    writeln!(stdout, "{}", self.line)?;
+                    stdout.queue(MoveToColumn(0))?;
+                    write!(stdout, "{string}")?;
+                    stdout.flush()?;
                 } else if self.cursor_row_max + self.new_lines > self.row
                     && self.cursor_row_max + self.new_lines <= row
                 {
-                    //stdout.flush().unwrap();
+                    //stdout.flush()?;
                 }
                 (self.row, self.col) = (row, col);
             }
@@ -214,25 +230,25 @@ impl<T> Out<T> {
                     self.last_succeed = Some(n);
                 }
                 for _ in 0..=self.new_lines {
-                    println!()
+                    writeln!(stdout)?;
                 }
-                stdout.queue(MoveToColumn(0)).unwrap();
+                stdout.queue(MoveToColumn(0))?;
                 match self.line.as_str() {
                     "exit" => {
-                        stdout.queue(DisableBracketedPaste).unwrap();
-                        terminal::disable_raw_mode().unwrap();
-                        stdout.flush().unwrap();
+                        stdout.queue(DisableBracketedPaste)?;
+                        terminal::disable_raw_mode()?;
+                        stdout.flush()?;
                         exit(0);
                     }
                     "clear" => {
-                        stdout.queue(Clear(ClearType::Purge)).unwrap();
-                        stdout.queue(Clear(ClearType::All)).unwrap();
-                        stdout.queue(MoveTo(0, 0)).unwrap();
+                        stdout.queue(Clear(ClearType::Purge))?;
+                        stdout.queue(Clear(ClearType::All))?;
+                        stdout.queue(MoveTo(0, 0))?;
                     }
                     _ => {}
                 }
-                self.carrot();
-                stdout.flush().unwrap();
+                self.carrot(stdout)?;
+                stdout.flush()?;
                 self.line.clear();
                 self.new_lines = 0;
             }
@@ -246,9 +262,9 @@ impl<T> Out<T> {
                     .next()
                     .unwrap()
                     .len_utf8();
-                self.left(1, stdout);
-                stdout.queue(MoveToColumn(self.col())).unwrap();
-                stdout.flush().unwrap();
+                self.left(1, stdout)?;
+                stdout.queue(MoveToColumn(self.col()))?;
+                stdout.flush()?;
             }
             Event::Key(KeyEvent {
                 code: KeyCode::Right,
@@ -260,9 +276,9 @@ impl<T> Out<T> {
                     .next()
                     .unwrap()
                     .len_utf8();
-                self.right(1, stdout);
-                stdout.queue(MoveToColumn(self.col())).unwrap();
-                stdout.flush().unwrap();
+                self.right(1, stdout)?;
+                stdout.queue(MoveToColumn(self.col()))?;
+                stdout.flush()?;
             }
             Event::Key(KeyEvent {
                 code: KeyCode::Backspace,
@@ -273,12 +289,12 @@ impl<T> Out<T> {
                     .remove(self.line.floor_char_boundary(self.insert - 1))
                     .len_utf8();
                 self.line_len -= 1;
-                self.left(1, stdout);
-                stdout.queue(MoveToColumn(self.col())).unwrap();
-                print!("{} ", &self.line[self.insert..]);
-                stdout.queue(MoveToColumn(self.col())).unwrap();
-                self.print_result(string, stdout, run);
-                stdout.flush().unwrap();
+                self.left(1, stdout)?;
+                stdout.queue(MoveToColumn(self.col()))?;
+                write!(stdout, "{} ", &self.line[self.insert..])?;
+                stdout.queue(MoveToColumn(self.col()))?;
+                self.print_result(string, stdout, run)?;
+                stdout.flush()?;
             }
             Event::Key(KeyEvent {
                 code: KeyCode::Char(c),
@@ -293,12 +309,13 @@ impl<T> Out<T> {
                 self.line.insert(self.insert, c);
                 self.insert += c.len_utf8();
                 self.line_len += 1;
-                print!("{c}{}", &self.line[self.insert..]);
-                self.right(1, stdout);
-                self.print_result(string, stdout, run);
-                stdout.flush().unwrap();
+                write!(stdout, "{c}{}", &self.line[self.insert..])?;
+                self.right(1, stdout)?;
+                self.print_result(string, stdout, run)?;
+                stdout.flush()?;
             }
             _ => {}
         }
+        Ok(())
     }
 }

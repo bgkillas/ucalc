@@ -21,7 +21,7 @@ fn main() {
         let mut out = Out::default();
         let mut stdout = stdout().lock();
         vars.push(Variable::new("@", Number::default()));
-        out.init(&mut stdout);
+        out.init(&mut stdout).unwrap();
         let mut string = String::with_capacity(64);
         loop {
             let mut n = None;
@@ -30,7 +30,8 @@ fn main() {
                 &mut string,
                 |line, string| process_line(line, &mut vars, &mut funs, infix, string),
                 |num| n = Some(num.clone()),
-            );
+            )
+            .unwrap();
             if let Some(num) = n {
                 vars.get_mut("@").value = num;
             }
