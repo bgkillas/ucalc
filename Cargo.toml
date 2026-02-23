@@ -18,10 +18,10 @@ opt-level = 3
 
 [workspace]
 resolver = "3"
-members = ["ucalc_lib", "ucalc", "ucalc_numbers", "concurrent_stdin"]
-default-members = ["ucalc", "ucalc_lib", "ucalc_numbers", "concurrent_stdin"]
+members = ["ucalc_lib", "ucalc", "ucalc_numbers", "readline"]
+default-members = ["ucalc", "ucalc_lib", "ucalc_numbers", "readline"]
 
 [workspace.dependencies]
 ucalc_numbers = {path = "ucalc_numbers", version="0.0.1", default-features=false}
 ucalc_lib = {path = "ucalc_lib", version="0.0.1", default-features=false}
-concurrent_stdin = {path = "concurrent_stdin", version = "0.1.0"}
+readline = {path = "readline", version = "1.0.0"}

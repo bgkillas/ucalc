@@ -23,4 +23,4 @@ complex = ["ucalc_lib/complex"]
 
 [dependencies]
 ucalc_lib = {workspace = true}
-concurrent_stdin = {workspace = true}
+readline = {workspace = true}

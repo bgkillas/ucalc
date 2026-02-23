@@ -7,9 +7,9 @@ use crossterm::style::{Color, ResetColor, SetForegroundColor};
 use crossterm::terminal::{Clear, ClearType};
 use crossterm::{ExecutableCommand, QueueableCommand, event, terminal};
 use std::io;
-use std::io::{StdoutLock, Write, stdout};
+use std::io::{Write, stdout};
 use std::process::exit;
-pub struct Out<T> {
+pub struct ReadLine<T> {
     line: String,
     line_len: usize,
     row: u16,
@@ -25,7 +25,7 @@ pub struct Out<T> {
     carrot: Box<str>,
     carrot_color: Option<Color>,
 }
-impl<T> Default for Out<T> {
+impl<T> Default for ReadLine<T> {
     fn default() -> Self {
         terminal::enable_raw_mode().unwrap();
         #[cfg(debug_assertions)]
@@ -56,7 +56,7 @@ impl<T> Default for Out<T> {
         }
     }
 }
-impl<T> Drop for Out<T> {
+impl<T> Drop for ReadLine<T> {
     fn drop(&mut self) {
         terminal::disable_raw_mode().unwrap();
         stdout().execute(DisableBracketedPaste).unwrap();
@@ -77,7 +77,7 @@ fn str_len(s: impl AsRef<str>) -> u16 {
     }
     i
 }
-impl<T> Out<T> {
+impl<T> ReadLine<T> {
     pub fn out_lines(&self, string: &str) -> u16 {
         string
             .lines()
@@ -87,7 +87,7 @@ impl<T> Out<T> {
     pub fn print_result(
         &mut self,
         string: &mut String,
-        stdout: &mut StdoutLock,
+        stdout: &mut impl Write,
         run: impl FnOnce(&str, &mut String) -> Option<Option<T>>,
     ) -> Result<(), io::Error> {
         writeln!(stdout)?;
@@ -100,7 +100,9 @@ impl<T> Out<T> {
         if let Some(o) = n {
             self.last = o;
         }
-        stdout.queue(MoveToPreviousLine(self.new_lines + self.cursor_row_max - self.cursor_row))?;
+        stdout.queue(MoveToPreviousLine(
+            self.new_lines + self.cursor_row_max - self.cursor_row,
+        ))?;
         stdout.queue(MoveToColumn(self.col()))?;
         Ok(())
     }
@@ -112,7 +114,7 @@ impl<T> Out<T> {
                 0
             }
     }
-    fn left(&mut self, n: u16, stdout: &mut StdoutLock) -> Result<bool, io::Error> {
+    fn left(&mut self, n: u16, stdout: &mut impl Write) -> Result<bool, io::Error> {
         if self.col() < n {
             self.cursor_col = self.col
                 - (n - self.col())
@@ -129,7 +131,7 @@ impl<T> Out<T> {
             Ok(false)
         }
     }
-    fn right(&mut self, n: u16, stdout: &mut StdoutLock) -> Result<bool, io::Error> {
+    fn right(&mut self, n: u16, stdout: &mut impl Write) -> Result<bool, io::Error> {
         if self.col() + n >= self.col {
             self.cursor_col = self.col() + n - self.col;
             stdout.queue(MoveToNextLine(1))?;
@@ -140,13 +142,13 @@ impl<T> Out<T> {
             Ok(false)
         }
     }
-    pub fn init(&mut self, stdout: &mut StdoutLock) -> Result<(), io::Error> {
+    pub fn init(&mut self, stdout: &mut impl Write) -> Result<(), io::Error> {
         stdout.queue(EnableBracketedPaste)?;
         self.carrot(stdout)?;
         stdout.flush()?;
         Ok(())
     }
-    pub fn carrot(&mut self, stdout: &mut StdoutLock) -> Result<(), io::Error> {
+    pub fn carrot(&mut self, stdout: &mut impl Write) -> Result<(), io::Error> {
         if let Some(color) = self.carrot_color {
             write!(
                 stdout,
@@ -161,7 +163,7 @@ impl<T> Out<T> {
     }
     pub fn read(
         &mut self,
-        stdout: &mut StdoutLock,
+        stdout: &mut impl Write,
         string: &mut String,
         run: impl FnOnce(&str, &mut String) -> Option<Option<T>>,
         finish: impl FnOnce(&T),
