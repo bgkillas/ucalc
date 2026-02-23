@@ -1,5 +1,5 @@
 pub use crossterm;
-use crossterm::cursor::{MoveTo, MoveToColumn, MoveToPreviousLine};
+use crossterm::cursor::{MoveTo, MoveToColumn, MoveToNextLine, MoveToPreviousLine};
 use crossterm::event::{
     DisableBracketedPaste, EnableBracketedPaste, Event, KeyCode, KeyEvent, KeyModifiers,
 };
@@ -100,7 +100,7 @@ impl<T> Out<T> {
         if let Some(o) = n {
             self.last = o;
         }
-        stdout.queue(MoveToPreviousLine(self.new_lines))?;
+        stdout.queue(MoveToPreviousLine(self.new_lines + self.cursor_row_max - self.cursor_row))?;
         stdout.queue(MoveToColumn(self.col()))?;
         Ok(())
     }
@@ -112,7 +112,7 @@ impl<T> Out<T> {
                 0
             }
     }
-    fn left(&mut self, n: u16, _stdout: &mut StdoutLock) -> Result<bool, io::Error> {
+    fn left(&mut self, n: u16, stdout: &mut StdoutLock) -> Result<bool, io::Error> {
         if self.col() < n {
             self.cursor_col = self.col
                 - (n - self.col())
@@ -121,6 +121,7 @@ impl<T> Out<T> {
                 } else {
                     0
                 };
+            stdout.queue(MoveToPreviousLine(1))?;
             self.cursor_row -= 1;
             Ok(true)
         } else {
@@ -128,20 +129,15 @@ impl<T> Out<T> {
             Ok(false)
         }
     }
-    fn right(&mut self, n: u16, stdout: &mut StdoutLock) -> Result<Option<bool>, io::Error> {
+    fn right(&mut self, n: u16, stdout: &mut StdoutLock) -> Result<bool, io::Error> {
         if self.col() + n >= self.col {
             self.cursor_col = self.col() + n - self.col;
+            stdout.queue(MoveToNextLine(1))?;
             self.cursor_row += 1;
-            if self.cursor_row > self.cursor_row_max {
-                self.cursor_row_max = self.cursor_row;
-                stdout.queue(Clear(ClearType::FromCursorDown))?;
-                Ok(Some(true))
-            } else {
-                Ok(Some(false))
-            }
+            Ok(true)
         } else {
             self.cursor_col += n;
-            Ok(None)
+            Ok(false)
         }
     }
     pub fn init(&mut self, stdout: &mut StdoutLock) -> Result<(), io::Error> {
@@ -223,6 +219,7 @@ impl<T> Out<T> {
                 self.cursor_row = 0;
                 self.cursor_row_max = 0;
                 self.insert = 0;
+                self.line_len = 0;
                 if self.last_failed {
                     self.last = self.last_succeed.take();
                 } else if let Some(n) = self.last.take() {
@@ -310,17 +307,17 @@ impl<T> Out<T> {
                 self.insert += c.len_utf8();
                 self.line_len += 1;
                 if self.cursor_row != 0 {
-                    stdout.execute(MoveToPreviousLine(self.cursor_row))?;
+                    stdout.queue(MoveToPreviousLine(self.cursor_row))?;
                 }
-                stdout.flush()?;
-                stdout.execute(MoveToColumn(self.carrot.len() as u16))?;
-                stdout.flush()?;
-                if self.right(1, stdout)? == Some(true) {
+                stdout.queue(MoveToColumn(self.carrot.len() as u16))?;
+                self.right(1, stdout)?;
+                if (self.line_len + self.carrot.len()).is_multiple_of(self.col as usize) {
+                    self.cursor_row_max += 1;
+                    stdout.queue(Clear(ClearType::FromCursorDown))?;
                     writeln!(stdout, "{}", self.line)?;
                 } else {
                     write!(stdout, "{}", self.line)?;
                 }
-                stdout.flush()?;
                 self.print_result(string, stdout, run)?;
                 stdout.flush()?;
             }
