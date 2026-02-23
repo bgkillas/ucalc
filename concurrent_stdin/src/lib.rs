@@ -112,7 +112,7 @@ impl<T> Out<T> {
                 0
             }
     }
-    fn left(&mut self, n: u16, stdout: &mut StdoutLock) -> Result<bool, io::Error> {
+    fn left(&mut self, n: u16, _stdout: &mut StdoutLock) -> Result<bool, io::Error> {
         if self.col() < n {
             self.cursor_col = self.col
                 - (n - self.col())
@@ -122,26 +122,26 @@ impl<T> Out<T> {
                     0
                 };
             self.cursor_row -= 1;
-            stdout.queue(MoveToPreviousLine(1))?;
             Ok(true)
         } else {
             self.cursor_col -= n;
             Ok(false)
         }
     }
-    fn right(&mut self, n: u16, stdout: &mut StdoutLock) -> Result<bool, io::Error> {
+    fn right(&mut self, n: u16, stdout: &mut StdoutLock) -> Result<Option<bool>, io::Error> {
         if self.col() + n >= self.col {
             self.cursor_col = self.col() + n - self.col;
             self.cursor_row += 1;
-            writeln!(stdout)?;
             if self.cursor_row > self.cursor_row_max {
                 self.cursor_row_max = self.cursor_row;
-                stdout.queue(Clear(ClearType::CurrentLine))?;
+                stdout.queue(Clear(ClearType::FromCursorDown))?;
+                Ok(Some(true))
+            } else {
+                Ok(Some(false))
             }
-            Ok(true)
         } else {
             self.cursor_col += n;
-            Ok(false)
+            Ok(None)
         }
     }
     pub fn init(&mut self, stdout: &mut StdoutLock) -> Result<(), io::Error> {
@@ -309,8 +309,18 @@ impl<T> Out<T> {
                 self.line.insert(self.insert, c);
                 self.insert += c.len_utf8();
                 self.line_len += 1;
-                write!(stdout, "{c}{}", &self.line[self.insert..])?;
-                self.right(1, stdout)?;
+                if self.cursor_row != 0 {
+                    stdout.execute(MoveToPreviousLine(self.cursor_row))?;
+                }
+                stdout.flush()?;
+                stdout.execute(MoveToColumn(self.carrot.len() as u16))?;
+                stdout.flush()?;
+                if self.right(1, stdout)? == Some(true) {
+                    writeln!(stdout, "{}", self.line)?;
+                } else {
+                    write!(stdout, "{}", self.line)?;
+                }
+                stdout.flush()?;
                 self.print_result(string, stdout, run)?;
                 stdout.flush()?;
             }
