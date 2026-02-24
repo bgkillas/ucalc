@@ -23,3 +23,4 @@ complex = []
 
 [dependencies]
 ucalc_numbers={workspace = true}
+stacker="0.1.23"

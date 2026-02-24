@@ -548,14 +548,17 @@ impl Function {
                 let condition = condition.num_ref();
                 let tokens = if condition.is_zero() { ifelse } else { ifthen };
                 let mut stck = Tokens(Vec::with_capacity(tokens.len()));
-                *stack[len - (l + 1)].num_mut() = tokens.compute_buffer_with(
-                    fun_vars,
-                    vars,
-                    funs,
-                    custom_vars,
-                    &mut stck,
-                    offset,
-                );
+                *stack[len - (l + 1)].num_mut() =
+                    stacker::maybe_grow(2usize.pow(16), 2usize.pow(20), || {
+                        tokens.compute_buffer_with(
+                            fun_vars,
+                            vars,
+                            funs,
+                            custom_vars,
+                            &mut stck,
+                            offset,
+                        )
+                    });
                 stack.drain(len - l..);
             }
             _ => {}
