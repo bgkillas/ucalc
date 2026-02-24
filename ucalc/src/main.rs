@@ -18,20 +18,21 @@ fn main() {
             .lines()
             .for_each(|l| run_line(l.unwrap().as_str(), &mut infix, &mut vars, &mut funs));
     } else if !quit {
-        let mut out = ReadChar::default();
+        let mut readchar = ReadChar::default();
         let mut stdout = stdout().lock();
         vars.push(Variable::new("@", Number::default()));
-        out.init(&mut stdout).unwrap();
+        readchar.init(&mut stdout).unwrap();
         let mut string = String::with_capacity(64);
         loop {
             let mut n = None;
-            out.read(
-                &mut stdout,
-                &mut string,
-                |line, string| process_line(line, &mut vars, &mut funs, infix, string),
-                |num| n = Some(num.clone()),
-            )
-            .unwrap();
+            readchar
+                .read(
+                    &mut stdout,
+                    &mut string,
+                    |line, string| process_line(line, &mut vars, &mut funs, infix, string),
+                    |num| n = Some(num.clone()),
+                )
+                .unwrap();
             if let Some(num) = n {
                 vars.get_mut("@").value = num;
             }

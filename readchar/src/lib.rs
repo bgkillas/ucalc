@@ -92,11 +92,11 @@ impl<T> ReadChar<T> {
         stdout: &mut impl Write,
         run: impl FnOnce(&str, &mut String) -> Option<Option<T>>,
     ) -> Result<(), io::Error> {
+        let n = run(&self.line, string);
+        self.new_lines = self.out_lines(string);
         writeln!(stdout)?;
         stdout.queue(MoveToColumn(0))?;
         stdout.queue(Clear(ClearType::FromCursorDown))?;
-        let n = run(&self.line, string);
-        self.new_lines = self.out_lines(string);
         write!(stdout, "{string}")?;
         self.last_failed = n.is_none();
         if let Some(o) = n {
