@@ -14,6 +14,7 @@ pub struct ReadChar<T> {
     line_len: usize,
     row: u16,
     col: u16,
+    cursor: u16,
     cursor_row: u16,
     cursor_row_max: u16,
     cursor_col: u16,
@@ -44,6 +45,7 @@ impl<T> Default for ReadChar<T> {
             row,
             col,
             insert: 0,
+            cursor: 0,
             cursor_row: 0,
             cursor_row_max: 0,
             cursor_col: 0,
@@ -114,7 +116,45 @@ impl<T> ReadChar<T> {
                 0
             }
     }
+    fn up(&mut self, n: u16, stdout: &mut impl Write) -> Result<bool, io::Error> {
+        if self.cursor >= n * self.col {
+            self.cursor -= n * self.col;
+            self.cursor_row -= 1;
+            if self.cursor_row == 0 {
+                self.cursor_col -= self.carrot.len() as u16;
+            }
+            stdout.queue(MoveToPreviousLine(1))?;
+        } else {
+            if self.cursor_row != 0 {
+                self.cursor_row = 0;
+                stdout.queue(MoveToPreviousLine(1))?;
+                self.cursor_col = self.carrot.len() as u16;
+            }
+            self.cursor = 0;
+            self.cursor_col = 0;
+        }
+        Ok(false)
+    }
+    fn down(&mut self, n: u16, stdout: &mut impl Write) -> Result<bool, io::Error> {
+        if self.line_len as u16 > self.cursor + n * self.col {
+            self.cursor = (self.line_len as u16).min(self.cursor + n * self.col);
+            if self.cursor_row == 0 {
+                self.cursor_col += self.carrot.len() as u16;
+            }
+            self.cursor_row += 1;
+            stdout.queue(MoveToNextLine(1))?;
+        } else {
+            if self.cursor_row_max > self.cursor_row {
+                self.cursor_row = self.cursor_row_max;
+                stdout.queue(MoveToNextLine(1))?;
+            }
+            self.cursor = self.line_len as u16;
+            self.cursor_col = (self.line_len + self.carrot.len()) as u16 % self.col;
+        }
+        Ok(false)
+    }
     fn left(&mut self, n: u16, _stdout: &mut impl Write) -> Result<bool, io::Error> {
+        self.cursor -= n;
         if self.col() < n {
             self.cursor_col = self.col
                 - (n - self.col())
@@ -131,6 +171,7 @@ impl<T> ReadChar<T> {
         }
     }
     fn right(&mut self, n: u16, _stdout: &mut impl Write) -> Result<bool, io::Error> {
+        self.cursor += n;
         if self.col() + n >= self.col {
             self.cursor_col = self.col() + n - self.col;
             self.cursor_row += 1;
@@ -195,9 +236,8 @@ impl<T> ReadChar<T> {
                 stdout.flush()?;
             }
             Event::Resize(col, row) => {
-                let l = self.cursor_col + self.cursor_row * self.col;
-                self.cursor_row = l / col;
-                self.cursor_col = l % col;
+                self.cursor_row = self.cursor / col;
+                self.cursor_col = self.cursor % col;
                 self.cursor_row_max = (self.line_len + self.carrot.len()) as u16 / col;
                 (self.row, self.col) = (row, col);
             }
@@ -205,21 +245,25 @@ impl<T> ReadChar<T> {
                 code: KeyCode::Enter,
                 ..
             }) => {
-                self.cursor_col = 0;
-                self.cursor_row = 0;
-                self.cursor_row_max = 0;
-                self.insert = 0;
-                self.line_len = 0;
                 if self.last_failed {
                     self.last = self.last_succeed.take();
                 } else if let Some(n) = self.last.take() {
                     finish(&n);
                     self.last_succeed = Some(n);
                 }
+                if self.cursor_row_max != self.cursor_row {
+                    stdout.execute(MoveToNextLine(self.cursor_row_max - self.cursor_row))?;
+                }
                 for _ in 0..=self.new_lines {
                     writeln!(stdout)?;
                 }
                 stdout.queue(MoveToColumn(0))?;
+                self.cursor = 0;
+                self.cursor_col = 0;
+                self.cursor_row = 0;
+                self.cursor_row_max = 0;
+                self.insert = 0;
+                self.line_len = 0;
                 match self.line.as_str() {
                     "exit" => {
                         stdout.queue(DisableBracketedPaste)?;
@@ -242,7 +286,7 @@ impl<T> ReadChar<T> {
             Event::Key(KeyEvent {
                 code: KeyCode::Left,
                 ..
-            }) if self.insert != 0 => {
+            }) if self.cursor != 0 => {
                 self.insert -= self.line
                     [self.line.floor_char_boundary(self.insert - 1)..self.insert]
                     .chars()
@@ -258,7 +302,7 @@ impl<T> ReadChar<T> {
             Event::Key(KeyEvent {
                 code: KeyCode::Right,
                 ..
-            }) if self.insert != self.line_len => {
+            }) if self.cursor as usize != self.line_len => {
                 self.insert += self.line
                     [self.insert..self.line.ceil_char_boundary(self.insert + 1)]
                     .chars()
@@ -272,9 +316,36 @@ impl<T> ReadChar<T> {
                 stdout.flush()?;
             }
             Event::Key(KeyEvent {
+                code: KeyCode::Up, ..
+            }) if self.cursor != 0 => {
+                self.up(1, stdout)?;
+                self.insert = self
+                    .line
+                    .char_indices()
+                    .nth(self.cursor as usize)
+                    .map(|(i, _)| i)
+                    .unwrap();
+                stdout.queue(MoveToColumn(self.col()))?;
+                stdout.flush()?;
+            }
+            Event::Key(KeyEvent {
+                code: KeyCode::Down,
+                ..
+            }) if self.cursor as usize != self.line_len => {
+                self.down(1, stdout)?;
+                self.insert = self
+                    .line
+                    .char_indices()
+                    .nth(self.cursor as usize)
+                    .map(|(i, _)| i)
+                    .unwrap_or(self.line_len);
+                stdout.queue(MoveToColumn(self.col()))?;
+                stdout.flush()?;
+            }
+            Event::Key(KeyEvent {
                 code: KeyCode::Backspace,
                 ..
-            }) if self.insert != 0 => {
+            }) if self.cursor != 0 => {
                 self.insert -= self
                     .line
                     .remove(self.line.floor_char_boundary(self.insert - 1))
