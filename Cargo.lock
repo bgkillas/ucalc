@@ -241,7 +241,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "readline"
+name = "readchar"
 version = "1.0.0"
 dependencies = [
  "crossterm",
@@ -347,7 +347,7 @@ dependencies = [
 name = "ucalc"
 version = "0.0.1"
 dependencies = [
- "readline",
+ "readchar",
  "ucalc_lib",
 ]
 

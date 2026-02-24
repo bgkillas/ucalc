@@ -9,7 +9,7 @@ use crossterm::{ExecutableCommand, QueueableCommand, event, terminal};
 use std::io;
 use std::io::{Write, stdout};
 use std::process::exit;
-pub struct ReadLine<T> {
+pub struct ReadChar<T> {
     line: String,
     line_len: usize,
     row: u16,
@@ -25,7 +25,7 @@ pub struct ReadLine<T> {
     carrot: Box<str>,
     carrot_color: Option<Color>,
 }
-impl<T> Default for ReadLine<T> {
+impl<T> Default for ReadChar<T> {
     fn default() -> Self {
         terminal::enable_raw_mode().unwrap();
         #[cfg(debug_assertions)]
@@ -56,7 +56,7 @@ impl<T> Default for ReadLine<T> {
         }
     }
 }
-impl<T> Drop for ReadLine<T> {
+impl<T> Drop for ReadChar<T> {
     fn drop(&mut self) {
         terminal::disable_raw_mode().unwrap();
         stdout().execute(DisableBracketedPaste).unwrap();
@@ -77,7 +77,7 @@ fn str_len(s: impl AsRef<str>) -> u16 {
     }
     i
 }
-impl<T> ReadLine<T> {
+impl<T> ReadChar<T> {
     pub fn out_lines(&self, string: &str) -> u16 {
         string
             .lines()
@@ -131,10 +131,9 @@ impl<T> ReadLine<T> {
             Ok(false)
         }
     }
-    fn right(&mut self, n: u16, stdout: &mut impl Write) -> Result<bool, io::Error> {
+    fn right(&mut self, n: u16, _stdout: &mut impl Write) -> Result<bool, io::Error> {
         if self.col() + n >= self.col {
             self.cursor_col = self.col() + n - self.col;
-            stdout.queue(MoveToNextLine(1))?;
             self.cursor_row += 1;
             Ok(true)
         } else {
@@ -176,7 +175,9 @@ impl<T> ReadLine<T> {
                 self.line.insert_str(self.insert, &s);
                 self.insert += s.len();
                 write!(stdout, "{s}{}", &self.line[self.insert..])?;
-                self.right(s.len() as u16, stdout)?;
+                if self.right(s.len() as u16, stdout)? {
+                    stdout.queue(MoveToNextLine(1))?;
+                }
                 self.print_result(string, stdout, run)?;
                 stdout.flush()?;
             }
@@ -275,7 +276,9 @@ impl<T> ReadLine<T> {
                     .next()
                     .unwrap()
                     .len_utf8();
-                self.right(1, stdout)?;
+                if self.right(1, stdout)? {
+                    stdout.queue(MoveToNextLine(1))?;
+                }
                 stdout.queue(MoveToColumn(self.col()))?;
                 stdout.flush()?;
             }

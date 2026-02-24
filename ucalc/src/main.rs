@@ -1,4 +1,4 @@
-use readline::ReadLine;
+use readchar::ReadChar;
 use std::env::args;
 use std::fmt::Write;
 use std::io::{BufRead, IsTerminal, stdin, stdout};
@@ -18,7 +18,7 @@ fn main() {
             .lines()
             .for_each(|l| run_line(l.unwrap().as_str(), &mut infix, &mut vars, &mut funs));
     } else if !quit {
-        let mut out = ReadLine::default();
+        let mut out = ReadChar::default();
         let mut stdout = stdout().lock();
         vars.push(Variable::new("@", Number::default()));
         out.init(&mut stdout).unwrap();
