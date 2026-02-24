@@ -195,36 +195,10 @@ impl<T> ReadChar<T> {
                 stdout.flush()?;
             }
             Event::Resize(col, row) => {
-                if self.col > col {
-                    let mut wrap = self.cursor_row * self.col.div_ceil(col);
-                    if self.cursor_row == self.cursor_row_max {
-                        wrap +=
-                            ((self.line_len + self.carrot.len()) as u16 % self.col).div_ceil(col);
-                    }
-                    if wrap != 0 {
-                        stdout.queue(MoveToPreviousLine(wrap - 1))?;
-                    }
-                    stdout.queue(MoveToColumn(self.carrot.len() as u16))?;
-                    stdout.queue(Clear(ClearType::FromCursorDown))?;
-                    writeln!(stdout, "{}", self.line)?;
-                    stdout.queue(MoveToColumn(0))?;
-                    write!(stdout, "{string}")?;
-                    stdout.flush()?;
-                } else if self.col < col {
-                    if self.cursor_row != 0 {
-                        stdout.queue(MoveToPreviousLine(self.cursor_row))?;
-                    }
-                    stdout.queue(MoveToColumn(self.carrot.len() as u16))?;
-                    stdout.queue(Clear(ClearType::FromCursorDown))?;
-                    writeln!(stdout, "{}", self.line)?;
-                    stdout.queue(MoveToColumn(0))?;
-                    write!(stdout, "{string}")?;
-                    stdout.flush()?;
-                } else if self.cursor_row_max + self.new_lines > self.row
-                    && self.cursor_row_max + self.new_lines <= row
-                {
-                    //stdout.flush()?;
-                }
+                let l = self.cursor_col + self.cursor_row * self.col;
+                self.cursor_row = l / col;
+                self.cursor_col = l % col;
+                self.cursor_row_max = (self.line_len + self.carrot.len()) as u16 / col;
                 (self.row, self.col) = (row, col);
             }
             Event::Key(KeyEvent {
