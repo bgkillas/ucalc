@@ -6,18 +6,12 @@ use crossterm::event::{
 use crossterm::style::{Color, ResetColor, SetForegroundColor};
 use crossterm::terminal::{Clear, ClearType};
 use crossterm::{ExecutableCommand, QueueableCommand, event, terminal};
+use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io;
-use std::io::{BufRead, BufReader, Write, stdout};
+use std::io::{Read, Write, stdout};
 use std::path::Path;
 use std::process::exit;
-#[derive(Default)]
-pub enum History {
-    Local(Vec<String>, usize),
-    File(Vec<String>, File, usize),
-    #[default]
-    None,
-}
 pub struct ReadChar<T> {
     line: String,
     line_len: u16,
@@ -83,7 +77,7 @@ impl<T> ReadChar<T> {
             cursor_row: 0,
             cursor_row_max: 0,
             cursor_col: 0,
-            new_lines: 1,
+            new_lines: 0,
             history,
             last: None,
             carrot: "> ",
@@ -213,11 +207,7 @@ impl<T> ReadChar<T> {
         run: impl FnOnce(&str, &mut String) -> Option<T>,
         up: bool,
     ) -> Result<(), io::Error> {
-        let s = if up {
-            self.history.up()
-        } else {
-            self.history.down()
-        };
+        let s = self.history.mv(&self.line, up);
         self.line.clear();
         self.line.push_str(s);
         self.cursor = self.line.chars().count() as u16;
@@ -281,7 +271,9 @@ impl<T> ReadChar<T> {
                 code: KeyCode::Enter,
                 ..
             }) => {
-                self.history.push(&self.line)?;
+                if !self.line.is_empty() {
+                    self.history.push(&self.line)?;
+                }
                 if let Some(n) = self.last.take() {
                     finish(&n);
                 }
@@ -450,75 +442,138 @@ impl<T> ReadChar<T> {
         Ok(())
     }
 }
+pub struct LocalHistory {
+    history: String,
+    history_modified: HashMap<usize, String>,
+    char_index: usize,
+    index: usize,
+    lines: usize,
+}
+impl LocalHistory {
+    pub fn history_modified(&self, cur: &str) -> bool {
+        self.history_modified
+            .get(&self.index)
+            .map(|s| s != cur)
+            .unwrap_or(
+                self.index == self.lines
+                    || self
+                        .history
+                        .get(self.char_index + 1..self.char_index + 1 + cur.len())
+                        .map(|s| s != cur)
+                        .unwrap_or(true)
+                    || self
+                        .history
+                        .as_bytes()
+                        .get(self.char_index + 1 + cur.len())
+                        .map(|c| *c != b'\n')
+                        .unwrap_or(false),
+            )
+    }
+    pub fn mv(&mut self, cur: &str, up: bool) -> &str {
+        if up {
+            if self.history_modified(cur) {
+                self.history_modified.insert(self.index, cur.to_string());
+            }
+            self.index -= 1;
+            let last = self.history[..self.char_index].rfind('\n').unwrap();
+            let s = &self.history[last + 1..self.char_index];
+            self.char_index = last;
+            self.history_modified
+                .get(&self.index)
+                .map(|s| s.as_str())
+                .unwrap_or(s)
+        } else if self.index + 1 == self.lines {
+            self.index += 1;
+            self.char_index = self.history.len();
+            &self.history_modified[&self.index]
+        } else {
+            if self.history_modified(cur) {
+                self.history_modified.insert(self.index, cur.to_string());
+            }
+            self.index += 1;
+            let next = self.history[self.char_index + 1..]
+                .find('\n')
+                .map(|i| self.char_index + 1 + i)
+                .unwrap();
+            let f = self.history[next + 1..]
+                .find('\n')
+                .map(|i| next + 1 + i)
+                .unwrap_or(self.history.len());
+            let s = &self.history[next + 1..f];
+            self.char_index = next;
+            self.history_modified
+                .get(&self.index)
+                .map(|s| s.as_str())
+                .unwrap_or(s)
+        }
+    }
+    pub fn push(&mut self, s: &str) {
+        use std::fmt::Write;
+        write!(&mut self.history, "\n{s}").unwrap();
+        self.history_modified.clear();
+        self.char_index = self.history.len();
+        self.lines += 1;
+        self.index = self.lines;
+    }
+}
+#[derive(Default)]
+pub enum History {
+    Local(LocalHistory),
+    File(LocalHistory, File),
+    #[default]
+    None,
+}
 impl History {
     pub fn new(path: Option<&Path>) -> io::Result<Self> {
         if let Some(path) = path {
-            let file = OpenOptions::new().read(true).open(path)?;
-            //TODO unwrap
-            let vec: Vec<String> = BufReader::new(file).lines().map(|l| l.unwrap()).collect();
-            let file = OpenOptions::new().append(true).open(path)?;
-            let idx = vec.len();
-            Ok(Self::File(vec, file, idx))
+            let mut file = OpenOptions::new().read(true).append(true).open(path)?;
+            let mut history = String::with_capacity(file.metadata()?.len() as usize);
+            file.read_to_string(&mut history)?;
+            let char_index = history.len();
+            let lines = history.lines().count();
+            Ok(Self::File(
+                LocalHistory {
+                    history,
+                    history_modified: HashMap::with_capacity(8),
+                    char_index,
+                    index: lines,
+                    lines,
+                },
+                file,
+            ))
         } else {
-            Ok(Self::Local(Vec::with_capacity(64), 0))
+            Ok(Self::Local(LocalHistory {
+                history: String::with_capacity(256),
+                history_modified: HashMap::with_capacity(8),
+                char_index: 0,
+                index: 0,
+                lines: 0,
+            }))
         }
     }
-    pub fn up(&mut self) -> &str {
+    pub fn mv(&mut self, cur: &str, up: bool) -> &str {
         match self {
-            History::Local(v, i) => {
-                *i -= 1;
-                v.get(*i).unwrap().as_str()
-            }
-            History::File(v, _, i) => {
-                *i -= 1;
-                v.get(*i).unwrap().as_str()
-            }
+            History::Local(v) | History::File(v, _) => v.mv(cur, up),
             History::None => unreachable!(),
-        }
-    }
-    pub fn down(&mut self) -> &str {
-        match self {
-            History::Local(v, i) => {
-                *i += 1;
-                v.get(*i).unwrap().as_str()
-            }
-            History::File(v, _, i) => {
-                *i += 1;
-                v.get(*i).unwrap().as_str()
-            }
-            History::None => unreachable!(),
-        }
-    }
-    pub fn index(&self) -> usize {
-        match self {
-            History::Local(_, i) => *i,
-            History::File(_, _, i) => *i,
-            History::None => 0,
         }
     }
     pub fn at_start(&self) -> bool {
         match self {
-            History::Local(_, i) => *i == 0,
-            History::File(_, _, i) => *i == 0,
+            History::Local(h) | History::File(h, _) => h.index == 0,
             History::None => true,
         }
     }
     pub fn at_end(&self) -> bool {
         match self {
-            History::Local(v, i) => *i == v.len(),
-            History::File(v, _, i) => *i == v.len(),
+            History::Local(h) | History::File(h, _) => h.index == h.lines,
             History::None => true,
         }
     }
     pub fn push(&mut self, s: &str) -> io::Result<()> {
         match self {
-            History::Local(v, i) => {
-                *i += 1;
-                v.push(s.to_string())
-            }
-            History::File(v, f, i) => {
-                *i += 1;
-                v.push(s.to_string());
+            History::Local(h) => h.push(s),
+            History::File(h, f) => {
+                h.push(s);
                 writeln!(f, "{s}")?;
             }
             History::None => {}
