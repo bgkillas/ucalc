@@ -6,9 +6,18 @@ use crossterm::event::{
 use crossterm::style::{Color, ResetColor, SetForegroundColor};
 use crossterm::terminal::{Clear, ClearType};
 use crossterm::{ExecutableCommand, QueueableCommand, event, terminal};
+use std::fs::{File, OpenOptions};
 use std::io;
-use std::io::{Write, stdout};
+use std::io::{BufRead, BufReader, Write, stdout};
+use std::path::Path;
 use std::process::exit;
+#[derive(Default)]
+pub enum History {
+    Local(Vec<String>, usize),
+    File(Vec<String>, File, usize),
+    #[default]
+    None,
+}
 pub struct ReadChar<T> {
     line: String,
     line_len: u16,
@@ -20,38 +29,14 @@ pub struct ReadChar<T> {
     cursor_col: u16,
     insert: u16,
     new_lines: u16,
+    history: History,
     last: Option<T>,
     carrot: &'static str,
     carrot_color: Option<Color>,
 }
 impl<T> Default for ReadChar<T> {
     fn default() -> Self {
-        terminal::enable_raw_mode().unwrap();
-        #[cfg(debug_assertions)]
-        let hook = std::panic::take_hook();
-        #[cfg(debug_assertions)]
-        std::panic::set_hook(Box::new(move |info| {
-            stdout().execute(DisableBracketedPaste).unwrap();
-            _ = terminal::disable_raw_mode();
-            println!();
-            hook(info);
-        }));
-        let (col, row) = terminal::size().unwrap();
-        Self {
-            line: String::with_capacity(64),
-            line_len: 0,
-            row,
-            col,
-            insert: 0,
-            cursor: 0,
-            cursor_row: 0,
-            cursor_row_max: 0,
-            cursor_col: 0,
-            new_lines: 1,
-            last: None,
-            carrot: "> ",
-            carrot_color: Some(Color::DarkBlue),
-        }
+        Self::new(History::new(None).unwrap())
     }
 }
 impl<T> Drop for ReadChar<T> {
@@ -76,6 +61,35 @@ fn str_len(s: impl AsRef<str>) -> u16 {
     i
 }
 impl<T> ReadChar<T> {
+    pub fn new(history: History) -> Self {
+        terminal::enable_raw_mode().unwrap();
+        #[cfg(debug_assertions)]
+        let hook = std::panic::take_hook();
+        #[cfg(debug_assertions)]
+        std::panic::set_hook(Box::new(move |info| {
+            stdout().execute(DisableBracketedPaste).unwrap();
+            _ = terminal::disable_raw_mode();
+            println!();
+            hook(info);
+        }));
+        let (col, row) = terminal::size().unwrap();
+        Self {
+            line: String::with_capacity(64),
+            line_len: 0,
+            row,
+            col,
+            insert: 0,
+            cursor: 0,
+            cursor_row: 0,
+            cursor_row_max: 0,
+            cursor_col: 0,
+            new_lines: 1,
+            history,
+            last: None,
+            carrot: "> ",
+            carrot_color: Some(Color::DarkBlue),
+        }
+    }
     pub fn out_lines(&self, string: &str) -> u16 {
         string
             .lines()
@@ -129,7 +143,7 @@ impl<T> ReadChar<T> {
     }
     fn down(&mut self, n: u16, stdout: &mut impl Write) -> Result<bool, io::Error> {
         if self.line_len > self.cursor + n * self.col {
-            self.cursor = (self.line_len).min(self.cursor + n * self.col);
+            self.cursor = self.line_len.min(self.cursor + n * self.col);
             if self.cursor_row == 0 {
                 self.cursor_col += self.carrot.len() as u16;
             }
@@ -192,6 +206,36 @@ impl<T> ReadChar<T> {
             write!(stdout, "{}", self.carrot)
         }
     }
+    pub fn move_history(
+        &mut self,
+        stdout: &mut impl Write,
+        string: &mut String,
+        run: impl FnOnce(&str, &mut String) -> Option<T>,
+        up: bool,
+    ) -> Result<(), io::Error> {
+        let s = if up {
+            self.history.up()
+        } else {
+            self.history.down()
+        };
+        self.line.clear();
+        self.line.push_str(s);
+        self.cursor = self.line.chars().count() as u16;
+        self.insert = self.line.len() as u16;
+        self.line_len = self.insert;
+        self.cursor_row = self.cursor / self.col;
+        self.cursor_col = self.cursor % self.col;
+        self.cursor_row_max = (self.line_len + self.carrot.len() as u16) / self.col;
+        if self.cursor_row != 0 {
+            stdout.queue(MoveToPreviousLine(self.cursor_row))?;
+        }
+        stdout.queue(MoveToColumn(self.carrot.len() as u16))?;
+        stdout.queue(Clear(ClearType::FromCursorDown))?;
+        write!(stdout, "{}", self.line)?;
+        self.print_result(string, stdout, run)?;
+        stdout.flush()?;
+        Ok(())
+    }
     pub fn read(
         &mut self,
         stdout: &mut impl Write,
@@ -237,6 +281,7 @@ impl<T> ReadChar<T> {
                 code: KeyCode::Enter,
                 ..
             }) => {
+                self.history.push(&self.line)?;
                 if let Some(n) = self.last.take() {
                     finish(&n);
                 }
@@ -305,7 +350,23 @@ impl<T> ReadChar<T> {
                 stdout.flush()?;
             }
             Event::Key(KeyEvent {
-                code: KeyCode::Up, ..
+                code: KeyCode::Up,
+                modifiers: KeyModifiers::NONE,
+                ..
+            }) if !self.history.at_start() => {
+                self.move_history(stdout, string, run, true)?;
+            }
+            Event::Key(KeyEvent {
+                code: KeyCode::Down,
+                modifiers: KeyModifiers::NONE,
+                ..
+            }) if !self.history.at_end() => {
+                self.move_history(stdout, string, run, false)?;
+            }
+            Event::Key(KeyEvent {
+                code: KeyCode::Up,
+                modifiers: KeyModifiers::CONTROL,
+                ..
             }) if self.cursor != 0 => {
                 self.up(1, stdout)?;
                 self.insert = self
@@ -319,6 +380,7 @@ impl<T> ReadChar<T> {
             }
             Event::Key(KeyEvent {
                 code: KeyCode::Down,
+                modifiers: KeyModifiers::CONTROL,
                 ..
             }) if self.cursor != self.line_len => {
                 self.down(1, stdout)?;
@@ -384,6 +446,82 @@ impl<T> ReadChar<T> {
                 stdout.flush()?;
             }
             _ => {}
+        }
+        Ok(())
+    }
+}
+impl History {
+    pub fn new(path: Option<&Path>) -> io::Result<Self> {
+        if let Some(path) = path {
+            let file = OpenOptions::new().read(true).open(path)?;
+            //TODO unwrap
+            let vec: Vec<String> = BufReader::new(file).lines().map(|l| l.unwrap()).collect();
+            let file = OpenOptions::new().append(true).open(path)?;
+            let idx = vec.len();
+            Ok(Self::File(vec, file, idx))
+        } else {
+            Ok(Self::Local(Vec::with_capacity(64), 0))
+        }
+    }
+    pub fn up(&mut self) -> &str {
+        match self {
+            History::Local(v, i) => {
+                *i -= 1;
+                v.get(*i).unwrap().as_str()
+            }
+            History::File(v, _, i) => {
+                *i -= 1;
+                v.get(*i).unwrap().as_str()
+            }
+            History::None => unreachable!(),
+        }
+    }
+    pub fn down(&mut self) -> &str {
+        match self {
+            History::Local(v, i) => {
+                *i += 1;
+                v.get(*i).unwrap().as_str()
+            }
+            History::File(v, _, i) => {
+                *i += 1;
+                v.get(*i).unwrap().as_str()
+            }
+            History::None => unreachable!(),
+        }
+    }
+    pub fn index(&self) -> usize {
+        match self {
+            History::Local(_, i) => *i,
+            History::File(_, _, i) => *i,
+            History::None => 0,
+        }
+    }
+    pub fn at_start(&self) -> bool {
+        match self {
+            History::Local(_, i) => *i == 0,
+            History::File(_, _, i) => *i == 0,
+            History::None => true,
+        }
+    }
+    pub fn at_end(&self) -> bool {
+        match self {
+            History::Local(v, i) => *i == v.len(),
+            History::File(v, _, i) => *i == v.len(),
+            History::None => true,
+        }
+    }
+    pub fn push(&mut self, s: &str) -> io::Result<()> {
+        match self {
+            History::Local(v, i) => {
+                *i += 1;
+                v.push(s.to_string())
+            }
+            History::File(v, f, i) => {
+                *i += 1;
+                v.push(s.to_string());
+                writeln!(f, "{s}")?;
+            }
+            History::None => {}
         }
         Ok(())
     }
