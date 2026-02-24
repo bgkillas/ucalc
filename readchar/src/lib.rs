@@ -475,16 +475,19 @@ impl LocalHistory {
                 self.history_modified.insert(self.index, cur.to_string());
             }
             self.index -= 1;
-            let last = self.history[..self.char_index].rfind('\n').unwrap();
-            let s = &self.history[last + 1..self.char_index];
-            self.char_index = last;
+            let last = self.history[..self.char_index]
+                .rfind('\n')
+                .map(|i| i + 1)
+                .unwrap_or(0);
+            let s = &self.history[last..self.char_index];
+            self.char_index = last.saturating_sub(1);
             self.history_modified
                 .get(&self.index)
                 .map(|s| s.as_str())
                 .unwrap_or(s)
         } else if self.index + 1 == self.lines {
             self.index += 1;
-            self.char_index = self.history.len();
+            self.char_index = self.history.len() - 1;
             &self.history_modified[&self.index]
         } else {
             if self.history_modified(cur) {
@@ -509,9 +512,9 @@ impl LocalHistory {
     }
     pub fn push(&mut self, s: &str) {
         use std::fmt::Write;
-        write!(&mut self.history, "\n{s}").unwrap();
+        writeln!(&mut self.history, "{s}").unwrap();
         self.history_modified.clear();
-        self.char_index = self.history.len();
+        self.char_index = self.history.len() - 1;
         self.lines += 1;
         self.index = self.lines;
     }
