@@ -186,7 +186,7 @@ impl<T> ReadChar<T> {
                     stdout.queue(Clear(ClearType::FromCursorDown))?;
                     write!(stdout, "{}", self.line)?;
                     if rem == 0 {
-                        writeln!(stdout)?;
+                        write!(stdout, " ")?;
                     }
                 } else {
                     write!(stdout, "{}", self.line)?;
@@ -342,7 +342,7 @@ impl<T> ReadChar<T> {
                 if (self.line_len + self.carrot.len()).is_multiple_of(self.col as usize) {
                     self.cursor_row_max += 1;
                     stdout.queue(Clear(ClearType::FromCursorDown))?;
-                    writeln!(stdout, "{}", self.line)?;
+                    write!(stdout, "{} ", self.line)?;
                 } else {
                     write!(stdout, "{}", self.line)?;
                 }
