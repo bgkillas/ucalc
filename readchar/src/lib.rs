@@ -114,7 +114,7 @@ impl<T> ReadChar<T> {
                 0
             }
     }
-    fn left(&mut self, n: u16, stdout: &mut impl Write) -> Result<bool, io::Error> {
+    fn left(&mut self, n: u16, _stdout: &mut impl Write) -> Result<bool, io::Error> {
         if self.col() < n {
             self.cursor_col = self.col
                 - (n - self.col())
@@ -123,7 +123,6 @@ impl<T> ReadChar<T> {
                 } else {
                     0
                 };
-            stdout.queue(MoveToPreviousLine(1))?;
             self.cursor_row -= 1;
             Ok(true)
         } else {
@@ -174,9 +173,23 @@ impl<T> ReadChar<T> {
             Event::Paste(s) => {
                 self.line.insert_str(self.insert, &s);
                 self.insert += s.len();
-                write!(stdout, "{s}{}", &self.line[self.insert..])?;
-                if self.right(s.len() as u16, stdout)? {
-                    stdout.queue(MoveToNextLine(1))?;
+                let count = s.chars().count();
+                self.line_len += count;
+                if self.cursor_row != 0 {
+                    stdout.queue(MoveToPreviousLine(self.cursor_row))?;
+                }
+                stdout.queue(MoveToColumn(self.carrot.len() as u16))?;
+                self.right(count as u16, stdout)?;
+                let rem = (self.line_len + self.carrot.len()) % self.col as usize;
+                if rem <= s.len() {
+                    self.cursor_row_max += 1;
+                    stdout.queue(Clear(ClearType::FromCursorDown))?;
+                    write!(stdout, "{}", self.line)?;
+                    if rem == 0 {
+                        writeln!(stdout)?;
+                    }
+                } else {
+                    write!(stdout, "{}", self.line)?;
                 }
                 self.print_result(string, stdout, run)?;
                 stdout.flush()?;
@@ -262,7 +275,9 @@ impl<T> ReadChar<T> {
                     .next()
                     .unwrap()
                     .len_utf8();
-                self.left(1, stdout)?;
+                if self.left(1, stdout)? {
+                    stdout.queue(MoveToPreviousLine(1))?;
+                }
                 stdout.queue(MoveToColumn(self.col()))?;
                 stdout.flush()?;
             }
@@ -291,10 +306,18 @@ impl<T> ReadChar<T> {
                     .remove(self.line.floor_char_boundary(self.insert - 1))
                     .len_utf8();
                 self.line_len -= 1;
+                if self.cursor_row != 0 {
+                    stdout.queue(MoveToPreviousLine(self.cursor_row))?;
+                }
+                stdout.queue(MoveToColumn(self.carrot.len() as u16))?;
                 self.left(1, stdout)?;
-                stdout.queue(MoveToColumn(self.col()))?;
-                write!(stdout, "{} ", &self.line[self.insert..])?;
-                stdout.queue(MoveToColumn(self.col()))?;
+                if (self.line_len + self.carrot.len() + 1).is_multiple_of(self.col as usize) {
+                    self.cursor_row_max -= 1;
+                    stdout.queue(Clear(ClearType::FromCursorDown))?;
+                    write!(stdout, "{}", self.line)?;
+                } else {
+                    write!(stdout, "{} ", self.line)?;
+                }
                 self.print_result(string, stdout, run)?;
                 stdout.flush()?;
             }
