@@ -45,10 +45,10 @@ fn process_line(
     funs: &mut Functions,
     infix: bool,
     str: &mut String,
-) -> Option<Option<Number>> {
+) -> Option<Number> {
     str.clear();
     if line.is_empty() {
-        Some(None)
+        None
     } else {
         match if infix {
             Tokens::infix(line, vars, funs, &[], false)
@@ -58,9 +58,9 @@ fn process_line(
             Ok(Some(tokens)) => {
                 let compute = tokens.compute(&[], funs, vars);
                 write!(str, "{}", compute).unwrap();
-                Some(Some(compute))
+                Some(compute)
             }
-            Ok(None) => Some(None),
+            Ok(None) => None,
             Err(e) => {
                 write!(str, "{e:?}").unwrap();
                 None

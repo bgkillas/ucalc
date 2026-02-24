@@ -18,13 +18,13 @@ fn main() {
                 |line, string| {
                     string.clear();
                     if line.is_empty() {
-                        Some(None)
+                        None
                     } else {
                         let out = Command::new(&cmd).args(&args).arg(line).output().unwrap();
                         string
                             .push_str(str::from_utf8(&out.stdout).unwrap().trim_end_matches("\n"));
                         if out.status.code() == Some(0) {
-                            Some(None)
+                            Some(())
                         } else {
                             None
                         }
