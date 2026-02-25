@@ -1,4 +1,6 @@
 pub mod history;
+#[cfg(test)]
+mod test;
 use crate::history::History;
 pub use crossterm;
 use crossterm::cursor::{MoveTo, MoveToColumn, MoveToNextLine, MoveToPreviousLine};
@@ -11,6 +13,7 @@ use crossterm::{ExecutableCommand, QueueableCommand, event, terminal};
 use std::io;
 use std::io::{Write, stdout};
 use std::process::exit;
+#[derive(Debug)]
 pub struct ReadChar<T> {
     line: String,
     line_len: u16,
@@ -46,8 +49,7 @@ fn str_len(s: impl AsRef<str>) -> u16 {
             csi = true;
         } else if csi && c == 'm' {
             csi = false;
-        }
-        if !csi {
+        } else if !csi {
             i += 1;
         }
     }
@@ -155,29 +157,31 @@ impl<T> ReadChar<T> {
     fn left(&mut self, n: u16, _stdout: &mut impl Write) -> io::Result<bool> {
         self.cursor -= n;
         if self.col() < n {
-            self.cursor_col = self.col
-                - (n - self.col())
+            let rows = n.div_ceil(self.col);
+            self.cursor_col = rows * self.col + self.col()
+                - n
                 - if self.cursor_row == 1 {
                     self.carrot.len() as u16
                 } else {
                     0
                 };
-            self.cursor_row -= 1;
+            self.cursor_row -= rows;
             Ok(true)
         } else {
             self.cursor_col -= n;
             Ok(false)
         }
     }
-    fn right(&mut self, n: u16, _stdout: &mut impl Write) -> io::Result<bool> {
+    fn right(&mut self, n: u16, _stdout: &mut impl Write) -> io::Result<u16> {
         self.cursor += n;
         if self.col() + n >= self.col {
-            self.cursor_col = self.col() + n - self.col;
-            self.cursor_row += 1;
-            Ok(true)
+            let rows = (self.col() + n) / self.col;
+            self.cursor_col = self.col() + n - self.col * rows;
+            self.cursor_row += rows;
+            Ok(rows)
         } else {
             self.cursor_col += n;
-            Ok(false)
+            Ok(0)
         }
     }
     pub fn init(&mut self, stdout: &mut impl Write) -> io::Result<()> {
@@ -280,12 +284,12 @@ impl<T> ReadChar<T> {
             stdout.queue(MoveToPreviousLine(self.cursor_row))?;
         }
         stdout.queue(MoveToColumn(self.carrot.len() as u16))?;
-        self.right(count, stdout)?;
-        let rem = (self.line_len + self.carrot.len() as u16) % self.col;
-        if rem <= s.len() as u16 {
-            self.cursor_row_max += 1;
+        let rows = self.right(count, stdout)?;
+        if rows != 0 {
+            self.cursor_row_max += rows;
             stdout.queue(Clear(ClearType::FromCursorDown))?;
             write!(stdout, "{}", self.line)?;
+            let rem = (self.line_len + self.carrot.len() as u16) % self.col;
             if rem == 0 {
                 write!(stdout, " ")?;
             }
@@ -322,7 +326,7 @@ impl<T> ReadChar<T> {
             .next()
             .unwrap()
             .len_utf8() as u16;
-        if self.right(1, stdout)? {
+        if self.right(1, stdout)? != 0 {
             stdout.queue(MoveToNextLine(1))?;
         }
         stdout.queue(MoveToColumn(self.col()))?;
@@ -386,7 +390,7 @@ impl<T> ReadChar<T> {
         string: &mut String,
         run: impl FnOnce(&str, &mut String) -> Option<T>,
     ) -> io::Result<()> {
-        self.line.remove(self.insert as usize).len_utf8() as u16;
+        self.line.remove(self.insert as usize);
         self.line_len -= 1;
         if self.cursor_row != 0 {
             stdout.queue(MoveToPreviousLine(self.cursor_row))?;

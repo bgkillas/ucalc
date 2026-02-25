@@ -4,7 +4,7 @@ use std::io;
 use std::io::Read;
 use std::io::Write;
 use std::path::Path;
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub enum History {
     Local(LocalHistory),
     File(LocalHistory, File),
@@ -69,6 +69,7 @@ impl History {
         Ok(())
     }
 }
+#[derive(Debug)]
 pub struct LocalHistory {
     history: String,
     history_modified: HashMap<usize, String>,
