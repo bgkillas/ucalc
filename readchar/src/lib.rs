@@ -380,6 +380,29 @@ impl<T> ReadChar<T> {
         stdout.flush()?;
         Ok(())
     }
+    pub fn delete(
+        &mut self,
+        stdout: &mut impl Write,
+        string: &mut String,
+        run: impl FnOnce(&str, &mut String) -> Option<T>,
+    ) -> io::Result<()> {
+        self.line.remove(self.insert as usize).len_utf8() as u16;
+        self.line_len -= 1;
+        if self.cursor_row != 0 {
+            stdout.queue(MoveToPreviousLine(self.cursor_row))?;
+        }
+        stdout.queue(MoveToColumn(self.carrot.len() as u16))?;
+        if (self.line_len + self.carrot.len() as u16 + 1).is_multiple_of(self.col) {
+            self.cursor_row_max -= 1;
+            stdout.queue(Clear(ClearType::FromCursorDown))?;
+            write!(stdout, "{}", self.line)?;
+        } else {
+            write!(stdout, "{} ", self.line)?;
+        }
+        self.print_result(string, stdout, run)?;
+        stdout.flush()?;
+        Ok(())
+    }
     pub fn put_char(
         &mut self,
         stdout: &mut impl Write,
@@ -453,6 +476,10 @@ impl<T> ReadChar<T> {
                 code: KeyCode::Backspace,
                 ..
             }) if self.cursor != 0 => self.backspace(stdout, string, run)?,
+            Event::Key(KeyEvent {
+                code: KeyCode::Delete,
+                ..
+            }) if self.cursor != self.line_len => self.delete(stdout, string, run)?,
             Event::Key(KeyEvent {
                 code: KeyCode::Char(c),
                 modifiers: KeyModifiers::NONE,
