@@ -299,11 +299,12 @@ impl ReadChar {
         self.print_result(string, stdout, run)?;
         stdout.flush()
     }
-    pub(crate) fn resize(&mut self, col: u16, row: u16) {
+    pub(crate) fn resize(&mut self, col: u16, row: u16, string: &str) {
         self.cursor_row = self.cursor / col;
         self.cursor_col = self.cursor % col;
         self.cursor_row_max = (self.line_len + self.carrot.len() as u16) / col;
         (self.row, self.col) = (row, col);
+        self.new_lines = self.out_lines(string);
     }
     pub(crate) fn go_left(&mut self, stdout: &mut impl Write) -> io::Result<()> {
         self.insert -= self.line
@@ -442,7 +443,7 @@ impl ReadChar {
     ) -> io::Result<bool> {
         match event {
             Event::Paste(s) => self.put_str(stdout, string, run, &s)?,
-            Event::Resize(col, row) => self.resize(col, row),
+            Event::Resize(col, row) => self.resize(col, row, string),
             Event::Key(KeyEvent {
                 code: KeyCode::Enter,
                 ..
