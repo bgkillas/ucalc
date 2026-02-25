@@ -1,5 +1,5 @@
+use crate::parse::Token;
 use crate::polynomial::PolyRef;
-use crate::tokens::Token;
 use crate::{Functions, Number, Tokens, Variables};
 use std::fmt::{Display, Formatter};
 use std::ops::Deref;

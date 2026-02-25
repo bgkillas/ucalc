@@ -1,5 +1,5 @@
 use crate::inverse::Inverse;
-use crate::tokens::TokensRef;
+use crate::parse::TokensRef;
 use crate::{Function, Functions, Number, Token, Tokens, Variables};
 use std::mem;
 #[cfg(feature = "complex")]

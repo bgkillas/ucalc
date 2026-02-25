@@ -1,5 +1,5 @@
 use crate::inverse::Inverse;
-use crate::tokens::{Token, TokensRef};
+use crate::parse::{Token, TokensRef};
 use crate::{Functions, Number, Tokens, Variables};
 use std::ops::Deref;
 impl<'a> TokensRef<'a> {

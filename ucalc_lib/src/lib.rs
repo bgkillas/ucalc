@@ -5,15 +5,15 @@ mod compute;
 mod functions;
 mod inverse;
 mod operators;
+mod parse;
 mod polynomial;
 mod polynomial_impls;
 #[cfg(test)]
 mod tests;
-mod tokens;
 mod variable;
 pub use functions::Function;
 pub use operators::Operators;
-pub use tokens::{Token, Tokens};
+pub use parse::{Token, Tokens};
 pub use variable::{FunctionVar, Functions, Variable, Variables};
 #[cfg(not(feature = "complex"))]
 pub type NumberBase = ucalc_numbers::Float;

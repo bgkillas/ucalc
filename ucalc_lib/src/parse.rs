@@ -297,7 +297,7 @@ impl Tokens {
         let mut abs = 0;
         while let Some((i, c)) = chars.next() {
             match c {
-                ' ' | '\n' => {}
+                ' ' => {}
                 'a'..='z' | '@' => {
                     let mut l = c.len_utf8();
                     let mut count = 1;
@@ -348,7 +348,7 @@ impl Tokens {
                     req_input = false;
                     expect_expr = !open_input;
                 }
-                '0'..='9' if c.is_ascii_digit() => {
+                '0'..='9' => {
                     let mut l = 1;
                     for t in value[i + 1..].chars() {
                         if t.is_ascii_digit() || t == '.' {
