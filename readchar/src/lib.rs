@@ -1,4 +1,3 @@
-#![feature(trait_alias)]
 pub mod history;
 use crate::history::History;
 pub use crossterm;
@@ -12,8 +11,6 @@ use crossterm::{ExecutableCommand, QueueableCommand, event, terminal};
 use std::io;
 use std::io::{Write, stdout};
 use std::process::exit;
-pub trait RunFn<T> = FnOnce(&str, &mut String) -> Option<T>;
-pub trait FinishFn<T> = FnOnce(&T);
 pub struct ReadChar<T> {
     line: String,
     line_len: u16,
@@ -96,7 +93,7 @@ impl<T> ReadChar<T> {
         &mut self,
         string: &mut String,
         stdout: &mut impl Write,
-        run: impl RunFn<T>,
+        run: impl FnOnce(&str, &mut String) -> Option<T>,
     ) -> io::Result<()> {
         self.last = run(&self.line, string);
         self.new_lines = self.out_lines(string);
@@ -206,7 +203,7 @@ impl<T> ReadChar<T> {
         &mut self,
         stdout: &mut impl Write,
         string: &mut String,
-        run: impl RunFn<T>,
+        run: impl FnOnce(&str, &mut String) -> Option<T>,
         up: bool,
     ) -> io::Result<()> {
         let s = self.history.mv(&self.line, up);
@@ -228,11 +225,7 @@ impl<T> ReadChar<T> {
         stdout.flush()?;
         Ok(())
     }
-    pub fn new_line(
-        &mut self,
-        stdout: &mut impl Write,
-        finish: impl FinishFn<T>,
-    ) -> io::Result<()> {
+    pub fn new_line(&mut self, stdout: &mut impl Write, finish: impl FnOnce(&T)) -> io::Result<()> {
         if !self.line.is_empty() {
             self.history.push(&self.line)?;
         }
@@ -276,7 +269,7 @@ impl<T> ReadChar<T> {
         &mut self,
         stdout: &mut impl Write,
         string: &mut String,
-        run: impl RunFn<T>,
+        run: impl FnOnce(&str, &mut String) -> Option<T>,
         s: &str,
     ) -> io::Result<()> {
         self.line.insert_str(self.insert as usize, s);
@@ -364,7 +357,7 @@ impl<T> ReadChar<T> {
         &mut self,
         stdout: &mut impl Write,
         string: &mut String,
-        run: impl RunFn<T>,
+        run: impl FnOnce(&str, &mut String) -> Option<T>,
     ) -> io::Result<()> {
         self.insert -= self
             .line
@@ -391,7 +384,7 @@ impl<T> ReadChar<T> {
         &mut self,
         stdout: &mut impl Write,
         string: &mut String,
-        run: impl RunFn<T>,
+        run: impl FnOnce(&str, &mut String) -> Option<T>,
         c: char,
     ) -> io::Result<()> {
         self.line.insert(self.insert as usize, c);
@@ -417,8 +410,8 @@ impl<T> ReadChar<T> {
         &mut self,
         stdout: &mut impl Write,
         string: &mut String,
-        run: impl RunFn<T>,
-        finish: impl FinishFn<T>,
+        run: impl FnOnce(&str, &mut String) -> Option<T>,
+        finish: impl FnOnce(&T),
         event: Event,
     ) -> io::Result<()> {
         match event {
@@ -478,8 +471,8 @@ impl<T> ReadChar<T> {
         &mut self,
         stdout: &mut impl Write,
         string: &mut String,
-        run: impl RunFn<T>,
-        finish: impl FinishFn<T>,
+        run: impl FnOnce(&str, &mut String) -> Option<T>,
+        finish: impl FnOnce(&T),
     ) -> io::Result<()> {
         self.event(stdout, string, run, finish, event::read()?)
     }
