@@ -43,18 +43,26 @@ fn test_print() {
     assert_eq!(str::from_utf8(&s).unwrap(), "> ");
     let alpha = "abcdefghijklmnopqrstuvwxyz";
     readchar
-        .put_str(&mut s, &mut o, |_, _| None, alpha)
+        .put_str(
+            &mut s,
+            &mut o,
+            |_, s| {
+                s.push_str("res");
+                None
+            },
+            alpha,
+        )
         .unwrap();
     assert_eq!(
         get_str(str::from_utf8(&s).unwrap()).as_str(),
-        format!("> {alpha}\n")
+        format!("> {alpha}\nres")
     );
     readchar
         .put_str(&mut s, &mut o, |_, _| None, alpha)
         .unwrap();
     assert_eq!(
         get_str(str::from_utf8(&s).unwrap()).as_str(),
-        format!("> {alpha}\n{alpha}{alpha}\n")
+        format!("> {alpha}\nres{alpha}{alpha}\nres")
     );
     assert_eq!(readchar.cursor, 2 * alpha.len() as u16);
     assert_eq!(readchar.cursor_col, 6);
@@ -68,7 +76,7 @@ fn test_print() {
         .unwrap();
     assert_eq!(
         get_str(str::from_utf8(&s).unwrap()).as_str(),
-        format!("> {alpha}\n{alpha}{alpha}\n{alpha}{alpha}{alpha} \n")
+        format!("> {alpha}\nres{alpha}{alpha}\nres{alpha}{alpha}{alpha} \nres")
     );
     assert_eq!(readchar.cursor, 2 * alpha.len() as u16);
     assert_eq!(readchar.cursor_col, 6);

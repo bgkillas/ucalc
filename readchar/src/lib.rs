@@ -99,13 +99,16 @@ impl<T> ReadChar<T> {
     ) -> io::Result<()> {
         self.last = run(&self.line, string);
         self.new_lines = self.out_lines(string);
-        writeln!(stdout)?;
-        stdout.queue(MoveToColumn(0))?;
         stdout.queue(Clear(ClearType::FromCursorDown))?;
-        write!(stdout, "{string}")?;
-        stdout.queue(MoveToPreviousLine(
-            self.new_lines + self.cursor_row_max - self.cursor_row,
-        ))?;
+        for l in string.lines() {
+            stdout.queue(MoveToColumn(0))?;
+            write!(stdout, "\n{l}")?;
+        }
+        if self.new_lines + self.cursor_row_max != self.cursor_row {
+            stdout.queue(MoveToPreviousLine(
+                self.new_lines + self.cursor_row_max - self.cursor_row,
+            ))?;
+        }
         stdout.queue(MoveToColumn(self.col()))?;
         Ok(())
     }
