@@ -23,18 +23,16 @@ fn main() {
         vars.push(Variable::new("@", Number::default()));
         readchar.init(&mut stdout).unwrap();
         let mut string = String::with_capacity(64);
+        let mut last = None;
         loop {
-            let mut n = None;
-            readchar
-                .read(
-                    &mut stdout,
-                    &mut string,
-                    |line, string| process_line(line, &mut vars, &mut funs, infix, string),
-                    |num| n = Some(num.clone()),
-                )
-                .unwrap();
-            if let Some(num) = n {
-                vars.get_mut("@").value = num;
+            if readchar
+                .read(&mut stdout, &mut string, |line, string| {
+                    last = process_line(line, &mut vars, &mut funs, infix, string)
+                })
+                .unwrap()
+                && let Some(n) = last.take()
+            {
+                vars.get_mut("@").value = n;
             }
         }
     }

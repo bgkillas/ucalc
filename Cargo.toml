@@ -1,6 +1,6 @@
 cargo-features = ["panic-immediate-abort"]
 [workspace.package]
-version = "0.0.1"
+version = "0.0.2"
 edition = "2024"
 license = "GPL-3.0-only"
 repository = "https://github.com/bgkillas/ucalc"
@@ -22,6 +22,6 @@ members = ["ucalc_lib", "ucalc", "ucalc_numbers", "readchar"]
 default-members = ["ucalc", "ucalc_lib", "ucalc_numbers", "readchar"]
 
 [workspace.dependencies]
-ucalc_numbers = {path = "ucalc_numbers", version="0.0.1", default-features=false}
-ucalc_lib = {path = "ucalc_lib", version="0.0.1", default-features=false}
-readchar = {path = "readchar", version = "0.1.0"}
+ucalc_numbers = {path = "ucalc_numbers", version="0.0.2", default-features=false}
+ucalc_lib = {path = "ucalc_lib", version="0.0.2", default-features=false}
+readchar = {path = "readchar", version = "0.1.1"}

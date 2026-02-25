@@ -12,9 +12,19 @@ pub enum History {
     None,
 }
 impl History {
+    /// creates a new history struct either using local history, specified by None
+    ///
+    /// or having local history and writing new entries to the file specified by path,
+    /// notably does not read new entries of the path after this initialization
+    ///
+    /// use History::default() for no history
     pub fn new(path: Option<&Path>) -> io::Result<Self> {
         if let Some(path) = path {
-            let mut file = OpenOptions::new().read(true).append(true).open(path)?;
+            let mut file = OpenOptions::new()
+                .read(true)
+                .append(true)
+                .create(true)
+                .open(path)?;
             let mut history = String::with_capacity(file.metadata()?.len() as usize);
             file.read_to_string(&mut history)?;
             let char_index = history.len();
@@ -39,25 +49,25 @@ impl History {
             }))
         }
     }
-    pub fn mv(&mut self, cur: &str, up: bool) -> &str {
+    pub(crate) fn mv(&mut self, cur: &str, up: bool) -> &str {
         match self {
             History::Local(v) | History::File(v, _) => v.mv(cur, up),
             History::None => unreachable!(),
         }
     }
-    pub fn at_start(&self) -> bool {
+    pub(crate) fn at_start(&self) -> bool {
         match self {
             History::Local(h) | History::File(h, _) => h.index == 0,
             History::None => true,
         }
     }
-    pub fn at_end(&self) -> bool {
+    pub(crate) fn at_end(&self) -> bool {
         match self {
             History::Local(h) | History::File(h, _) => h.index == h.lines,
             History::None => true,
         }
     }
-    pub fn push(&mut self, s: &str) -> io::Result<()> {
+    pub(crate) fn push(&mut self, s: &str) -> io::Result<()> {
         match self {
             History::Local(h) => h.push(s),
             History::File(h, f) => {
@@ -78,7 +88,7 @@ pub struct LocalHistory {
     lines: usize,
 }
 impl LocalHistory {
-    pub fn history_modified(&self, cur: &str) -> bool {
+    pub(crate) fn history_modified(&self, cur: &str) -> bool {
         self.history_modified
             .get(&self.index)
             .map(|s| s != cur)
@@ -97,7 +107,7 @@ impl LocalHistory {
                         .unwrap_or(false),
             )
     }
-    pub fn mv(&mut self, cur: &str, up: bool) -> &str {
+    pub(crate) fn mv(&mut self, cur: &str, up: bool) -> &str {
         if up {
             if self.history_modified(cur) {
                 self.history_modified.insert(self.index, cur.to_string());
@@ -138,7 +148,7 @@ impl LocalHistory {
                 .unwrap_or(s)
         }
     }
-    pub fn push(&mut self, s: &str) {
+    pub(crate) fn push(&mut self, s: &str) {
         use std::fmt::Write;
         writeln!(&mut self.history, "{s}").unwrap();
         self.history_modified.clear();

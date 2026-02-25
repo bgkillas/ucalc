@@ -1,6 +1,6 @@
-use crate::ReadChar;
 use crate::history::History;
-impl ReadChar<()> {
+use crate::readchar::ReadChar;
+impl ReadChar {
     fn no_terminal() -> Self {
         Self {
             line: String::with_capacity(64),
@@ -14,7 +14,6 @@ impl ReadChar<()> {
             cursor_col: 0,
             new_lines: 0,
             history: History::default(),
-            last: None,
             carrot: "> ",
             carrot_color: None,
         }
@@ -43,23 +42,13 @@ fn test_print() {
     assert_eq!(str::from_utf8(&s).unwrap(), "> ");
     let alpha = "abcdefghijklmnopqrstuvwxyz";
     readchar
-        .put_str(
-            &mut s,
-            &mut o,
-            |_, s| {
-                s.push_str("res");
-                None
-            },
-            alpha,
-        )
+        .put_str(&mut s, &mut o, |_, s| s.push_str("res"), alpha)
         .unwrap();
     assert_eq!(
         get_str(str::from_utf8(&s).unwrap()).as_str(),
         format!("> {alpha}\nres")
     );
-    readchar
-        .put_str(&mut s, &mut o, |_, _| None, alpha)
-        .unwrap();
+    readchar.put_str(&mut s, &mut o, |_, _| (), alpha).unwrap();
     assert_eq!(
         get_str(str::from_utf8(&s).unwrap()).as_str(),
         format!("> {alpha}\nres{alpha}{alpha}\nres")
@@ -71,9 +60,7 @@ fn test_print() {
     assert_eq!(readchar.cursor, alpha.len() as u16);
     assert_eq!(readchar.cursor_col, 12);
     assert_eq!(readchar.cursor_row, 1);
-    readchar
-        .put_str(&mut s, &mut o, |_, _| None, alpha)
-        .unwrap();
+    readchar.put_str(&mut s, &mut o, |_, _| (), alpha).unwrap();
     assert_eq!(
         get_str(str::from_utf8(&s).unwrap()).as_str(),
         format!("> {alpha}\nres{alpha}{alpha}\nres{alpha}{alpha}{alpha} \nres")

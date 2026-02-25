@@ -242,7 +242,7 @@ dependencies = [
 
 [[package]]
 name = "readchar"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "crossterm",
 ]
@@ -345,7 +345,7 @@ dependencies = [
 
 [[package]]
 name = "ucalc"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "readchar",
  "ucalc_lib",
@@ -353,7 +353,7 @@ dependencies = [
 
 [[package]]
 name = "ucalc_lib"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "stacker",
  "ucalc_numbers",
@@ -361,7 +361,7 @@ dependencies = [
 
 [[package]]
 name = "ucalc_numbers"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "fastnum",
  "rug",
