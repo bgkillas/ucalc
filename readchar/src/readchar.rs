@@ -156,7 +156,7 @@ impl ReadChar {
         }
         Ok(false)
     }
-    pub(crate) fn left(&mut self, n: u16, _stdout: &mut impl Write) -> io::Result<bool> {
+    pub(crate) fn left(&mut self, n: u16) -> io::Result<u16> {
         self.cursor -= n;
         if self.col() < n {
             let rows = n.div_ceil(self.col);
@@ -168,13 +168,13 @@ impl ReadChar {
                     0
                 };
             self.cursor_row -= rows;
-            Ok(true)
+            Ok(rows)
         } else {
             self.cursor_col -= n;
-            Ok(false)
+            Ok(0)
         }
     }
-    pub(crate) fn right(&mut self, n: u16, _stdout: &mut impl Write) -> io::Result<u16> {
+    pub(crate) fn right(&mut self, n: u16) -> io::Result<u16> {
         self.cursor += n;
         if self.col() + n >= self.col {
             let rows = (self.col() + n) / self.col;
@@ -284,7 +284,7 @@ impl ReadChar {
             stdout.queue(MoveToPreviousLine(self.cursor_row))?;
         }
         stdout.queue(MoveToColumn(self.carrot.len() as u16))?;
-        let rows = self.right(count, stdout)?;
+        let rows = self.right(count)?;
         if rows != 0 {
             self.cursor_row_max += rows;
             stdout.queue(Clear(ClearType::FromCursorDown))?;
@@ -313,7 +313,7 @@ impl ReadChar {
             .next()
             .unwrap()
             .len_utf8() as u16;
-        if self.left(1, stdout)? {
+        if self.left(1)? != 0 {
             stdout.queue(MoveToPreviousLine(1))?;
         }
         stdout.queue(MoveToColumn(self.col()))?;
@@ -327,7 +327,7 @@ impl ReadChar {
             .next()
             .unwrap()
             .len_utf8() as u16;
-        if self.right(1, stdout)? != 0 {
+        if self.right(1)? != 0 {
             stdout.queue(MoveToNextLine(1))?;
         }
         stdout.queue(MoveToColumn(self.col()))?;
@@ -363,19 +363,22 @@ impl ReadChar {
         stdout: &mut impl Write,
         string: &mut String,
         run: impl FnOnce(&str, &mut String),
+        n: u16,
     ) -> io::Result<()> {
-        self.insert -= self
-            .line
-            .remove(self.line.floor_char_boundary(self.insert as usize - 1))
-            .len_utf8() as u16;
-        self.line_len -= 1;
+        for _ in 0..n {
+            self.insert -= self
+                .line
+                .remove(self.line.floor_char_boundary(self.insert as usize - 1))
+                .len_utf8() as u16;
+        }
+        self.line_len -= n;
         if self.cursor_row != 0 {
             stdout.queue(MoveToPreviousLine(self.cursor_row))?;
         }
         stdout.queue(MoveToColumn(self.carrot.len() as u16))?;
-        self.left(1, stdout)?;
-        if (self.line_len + self.carrot.len() as u16 + 1).is_multiple_of(self.col) {
-            self.cursor_row_max -= 1;
+        let rows = self.left(n)?;
+        if rows != 0 {
+            self.cursor_row_max -= rows;
             stdout.queue(Clear(ClearType::FromCursorDown))?;
             write!(stdout, "{}", self.line)?;
         } else {
@@ -390,15 +393,18 @@ impl ReadChar {
         stdout: &mut impl Write,
         string: &mut String,
         run: impl FnOnce(&str, &mut String),
+        n: u16,
     ) -> io::Result<()> {
-        self.line.remove(self.insert as usize);
-        self.line_len -= 1;
+        for _ in 0..n {
+            self.line.remove(self.insert as usize);
+        }
+        self.line_len -= n;
         if self.cursor_row != 0 {
             stdout.queue(MoveToPreviousLine(self.cursor_row))?;
         }
         stdout.queue(MoveToColumn(self.carrot.len() as u16))?;
         if (self.line_len + self.carrot.len() as u16 + 1).is_multiple_of(self.col) {
-            self.cursor_row_max -= 1;
+            self.cursor_row_max = (self.line_len + self.carrot.len() as u16 + 1) / self.col;
             stdout.queue(Clear(ClearType::FromCursorDown))?;
             write!(stdout, "{}", self.line)?;
         } else {
@@ -422,7 +428,7 @@ impl ReadChar {
             stdout.queue(MoveToPreviousLine(self.cursor_row))?;
         }
         stdout.queue(MoveToColumn(self.carrot.len() as u16))?;
-        self.right(1, stdout)?;
+        self.right(1)?;
         if (self.line_len + self.carrot.len() as u16).is_multiple_of(self.col) {
             self.cursor_row_max += 1;
             stdout.queue(Clear(ClearType::FromCursorDown))?;
@@ -482,11 +488,11 @@ impl ReadChar {
             Event::Key(KeyEvent {
                 code: KeyCode::Backspace,
                 ..
-            }) if self.cursor != 0 => self.backspace(stdout, string, run)?,
+            }) if self.cursor != 0 => self.backspace(stdout, string, run, 1)?,
             Event::Key(KeyEvent {
                 code: KeyCode::Delete,
                 ..
-            }) if self.cursor != self.line_len => self.delete(stdout, string, run)?,
+            }) if self.cursor != self.line_len => self.delete(stdout, string, run, 1)?,
             Event::Key(KeyEvent {
                 code: KeyCode::Char(c),
                 modifiers: KeyModifiers::NONE,

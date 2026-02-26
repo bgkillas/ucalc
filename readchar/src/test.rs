@@ -56,7 +56,7 @@ fn test_print() {
     assert_eq!(readchar.cursor, 2 * alpha.len() as u16);
     assert_eq!(readchar.cursor_col, 6);
     assert_eq!(readchar.cursor_row, 3);
-    readchar.left(alpha.len() as u16, &mut s).unwrap();
+    readchar.left(alpha.len() as u16).unwrap();
     assert_eq!(readchar.cursor, alpha.len() as u16);
     assert_eq!(readchar.cursor_col, 12);
     assert_eq!(readchar.cursor_row, 1);
