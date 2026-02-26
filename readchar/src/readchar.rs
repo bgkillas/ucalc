@@ -291,7 +291,7 @@ impl ReadChar {
             write!(stdout, "{}", self.line)?;
             let rem = (self.line_len + self.carrot.len() as u16) % self.col;
             if rem == 0 {
-                write!(stdout, " ")?;
+                writeln!(stdout)?;
             }
         } else {
             write!(stdout, "{}", self.line)?;
@@ -377,13 +377,9 @@ impl ReadChar {
         }
         stdout.queue(MoveToColumn(self.carrot.len() as u16))?;
         let rows = self.left(n)?;
-        if rows != 0 {
-            self.cursor_row_max -= rows;
-            stdout.queue(Clear(ClearType::FromCursorDown))?;
-            write!(stdout, "{}", self.line)?;
-        } else {
-            write!(stdout, "{} ", self.line)?;
-        }
+        self.cursor_row_max -= rows;
+        stdout.queue(Clear(ClearType::FromCursorDown))?;
+        write!(stdout, "{}", self.line)?;
         self.print_result(string, stdout, run)?;
         stdout.flush()?;
         Ok(())
@@ -403,13 +399,9 @@ impl ReadChar {
             stdout.queue(MoveToPreviousLine(self.cursor_row))?;
         }
         stdout.queue(MoveToColumn(self.carrot.len() as u16))?;
-        if (self.line_len + self.carrot.len() as u16 + 1).is_multiple_of(self.col) {
-            self.cursor_row_max = (self.line_len + self.carrot.len() as u16 + 1) / self.col;
-            stdout.queue(Clear(ClearType::FromCursorDown))?;
-            write!(stdout, "{}", self.line)?;
-        } else {
-            write!(stdout, "{} ", self.line)?;
-        }
+        self.cursor_row_max = (self.line_len + self.carrot.len() as u16 + 1) / self.col;
+        stdout.queue(Clear(ClearType::FromCursorDown))?;
+        write!(stdout, "{}", self.line)?;
         self.print_result(string, stdout, run)?;
         stdout.flush()?;
         Ok(())
@@ -432,7 +424,7 @@ impl ReadChar {
         if (self.line_len + self.carrot.len() as u16).is_multiple_of(self.col) {
             self.cursor_row_max += 1;
             stdout.queue(Clear(ClearType::FromCursorDown))?;
-            write!(stdout, "{} ", self.line)?;
+            writeln!(stdout, "{}", self.line)?;
         } else {
             write!(stdout, "{}", self.line)?;
         }
