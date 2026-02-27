@@ -25,8 +25,8 @@ pub struct ReadChar {
     pub(crate) insert: u16,
     pub(crate) new_lines: u16,
     pub(crate) history: History,
-    pub(crate) carrot: &'static str,
-    pub(crate) carrot_color: Option<Color>,
+    pub carrot: &'static str,
+    pub carrot_color: Option<Color>,
 }
 impl Default for ReadChar {
     fn default() -> Self {
@@ -162,7 +162,7 @@ impl ReadChar {
             let rows = n.div_ceil(self.col);
             self.cursor_col = rows * self.col + self.col()
                 - n
-                - if self.cursor_row == 1 {
+                - if self.cursor_row == rows {
                     self.carrot.len() as u16
                 } else {
                     0
@@ -228,7 +228,6 @@ impl ReadChar {
         self.cursor_row_max = (self.line_len + self.carrot.len() as u16) / self.col;
         stdout.queue(Clear(ClearType::FromCursorDown))?;
         write!(stdout, "{}", self.line)?;
-        stdout.flush()?;
         self.print_result(string, stdout, run)?;
         stdout.flush()?;
         Ok(())
@@ -298,7 +297,8 @@ impl ReadChar {
             write!(stdout, "{}", self.line)?;
         }
         self.print_result(string, stdout, run)?;
-        stdout.flush()
+        stdout.flush()?;
+        Ok(())
     }
     pub(crate) fn resize(&mut self, col: u16, row: u16, string: &str) {
         self.cursor_row = (self.cursor + self.carrot.len() as u16) / col;
@@ -307,6 +307,46 @@ impl ReadChar {
         (self.row, self.col) = (row, col);
         self.new_lines = self.out_lines(string);
     }
+    pub(crate) fn go_left_word(&mut self, stdout: &mut impl Write) -> io::Result<()> {
+        let mut n = 0;
+        while self.insert != 0
+            && let Some(c) = self.line
+                [self.line.floor_char_boundary(self.insert as usize - 1)..self.insert as usize]
+                .chars()
+                .next()
+            && (c.is_alphanumeric() || n == 0)
+        {
+            self.insert -= c.len_utf8() as u16;
+            n += 1;
+        }
+        let rows = self.left(n)?;
+        if rows != 0 {
+            stdout.queue(MoveToPreviousLine(rows))?;
+        }
+        stdout.queue(MoveToColumn(self.col()))?;
+        stdout.flush()?;
+        Ok(())
+    }
+    pub(crate) fn go_right_word(&mut self, stdout: &mut impl Write) -> io::Result<()> {
+        let mut n = 0;
+        while self.insert != self.line_len
+            && let Some(c) = self.line
+                [self.insert as usize..self.line.ceil_char_boundary(self.insert as usize + 1)]
+                .chars()
+                .next()
+            && (c.is_alphanumeric() || n == 0)
+        {
+            self.insert += c.len_utf8() as u16;
+            n += 1;
+        }
+        let rows = self.right(n)?;
+        if rows != 0 {
+            stdout.queue(MoveToNextLine(rows))?;
+        }
+        stdout.queue(MoveToColumn(self.col()))?;
+        stdout.flush()?;
+        Ok(())
+    }
     pub(crate) fn go_left(&mut self, stdout: &mut impl Write) -> io::Result<()> {
         self.insert -= self.line
             [self.line.floor_char_boundary(self.insert as usize - 1)..self.insert as usize]
@@ -314,11 +354,9 @@ impl ReadChar {
             .next()
             .unwrap()
             .len_utf8() as u16;
-        stdout.flush()?;
         if self.left(1)? != 0 {
             stdout.queue(MoveToPreviousLine(1))?;
         }
-        stdout.flush()?;
         stdout.queue(MoveToColumn(self.col()))?;
         stdout.flush()?;
         Ok(())
@@ -460,10 +498,12 @@ impl ReadChar {
             }
             Event::Key(KeyEvent {
                 code: KeyCode::Left,
+                modifiers: KeyModifiers::NONE,
                 ..
             }) if self.cursor != 0 => self.go_left(stdout)?,
             Event::Key(KeyEvent {
                 code: KeyCode::Right,
+                modifiers: KeyModifiers::NONE,
                 ..
             }) if self.cursor != self.line_len => self.go_right(stdout)?,
             Event::Key(KeyEvent {
@@ -486,6 +526,16 @@ impl ReadChar {
                 modifiers: KeyModifiers::CONTROL,
                 ..
             }) if self.cursor != self.line_len => self.go_down(stdout)?,
+            Event::Key(KeyEvent {
+                code: KeyCode::Left,
+                modifiers: KeyModifiers::CONTROL,
+                ..
+            }) if self.cursor != 0 => self.go_left_word(stdout)?,
+            Event::Key(KeyEvent {
+                code: KeyCode::Right,
+                modifiers: KeyModifiers::CONTROL,
+                ..
+            }) if self.cursor != self.line_len => self.go_right_word(stdout)?,
             Event::Key(KeyEvent {
                 code: KeyCode::Backspace,
                 ..
