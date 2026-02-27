@@ -213,21 +213,22 @@ impl ReadChar {
         run: impl FnOnce(&str, &mut String),
         up: bool,
     ) -> io::Result<()> {
+        if self.cursor_row != 0 {
+            stdout.queue(MoveToPreviousLine(self.cursor_row))?;
+        }
+        stdout.queue(MoveToColumn(self.carrot.len() as u16))?;
         let s = self.history.mv(&self.line, up);
         self.line.clear();
         self.line.push_str(s);
         self.cursor = self.line.chars().count() as u16;
         self.insert = self.line.len() as u16;
         self.line_len = self.insert;
-        self.cursor_row = self.cursor / self.col;
-        self.cursor_col = self.cursor % self.col;
+        self.cursor_row = (self.cursor + self.carrot.len() as u16) / self.col;
+        self.cursor_col = (self.cursor + self.carrot.len() as u16) % self.col;
         self.cursor_row_max = (self.line_len + self.carrot.len() as u16) / self.col;
-        if self.cursor_row != 0 {
-            stdout.queue(MoveToPreviousLine(self.cursor_row))?;
-        }
-        stdout.queue(MoveToColumn(self.carrot.len() as u16))?;
         stdout.queue(Clear(ClearType::FromCursorDown))?;
         write!(stdout, "{}", self.line)?;
+        stdout.flush()?;
         self.print_result(string, stdout, run)?;
         stdout.flush()?;
         Ok(())
@@ -300,8 +301,8 @@ impl ReadChar {
         stdout.flush()
     }
     pub(crate) fn resize(&mut self, col: u16, row: u16, string: &str) {
-        self.cursor_row = self.cursor / col;
-        self.cursor_col = self.cursor % col;
+        self.cursor_row = (self.cursor + self.carrot.len() as u16) / col;
+        self.cursor_col = (self.cursor + self.carrot.len() as u16) % col;
         self.cursor_row_max = (self.line_len + self.carrot.len() as u16) / col;
         (self.row, self.col) = (row, col);
         self.new_lines = self.out_lines(string);
@@ -313,9 +314,11 @@ impl ReadChar {
             .next()
             .unwrap()
             .len_utf8() as u16;
+        stdout.flush()?;
         if self.left(1)? != 0 {
             stdout.queue(MoveToPreviousLine(1))?;
         }
+        stdout.flush()?;
         stdout.queue(MoveToColumn(self.col()))?;
         stdout.flush()?;
         Ok(())
@@ -376,10 +379,13 @@ impl ReadChar {
             stdout.queue(MoveToPreviousLine(self.cursor_row))?;
         }
         stdout.queue(MoveToColumn(self.carrot.len() as u16))?;
-        let rows = self.left(n)?;
-        self.cursor_row_max -= rows;
+        self.left(n)?;
+        self.cursor_row_max = (self.line_len + self.carrot.len() as u16) / self.col;
         stdout.queue(Clear(ClearType::FromCursorDown))?;
         write!(stdout, "{}", self.line)?;
+        if (self.line_len + self.carrot.len() as u16).is_multiple_of(self.col) {
+            writeln!(stdout)?;
+        }
         self.print_result(string, stdout, run)?;
         stdout.flush()?;
         Ok(())
@@ -399,9 +405,12 @@ impl ReadChar {
             stdout.queue(MoveToPreviousLine(self.cursor_row))?;
         }
         stdout.queue(MoveToColumn(self.carrot.len() as u16))?;
-        self.cursor_row_max = (self.line_len + self.carrot.len() as u16 + 1) / self.col;
+        self.cursor_row_max = (self.line_len + self.carrot.len() as u16) / self.col;
         stdout.queue(Clear(ClearType::FromCursorDown))?;
         write!(stdout, "{}", self.line)?;
+        if (self.line_len + self.carrot.len() as u16).is_multiple_of(self.col) {
+            writeln!(stdout)?;
+        }
         self.print_result(string, stdout, run)?;
         stdout.flush()?;
         Ok(())

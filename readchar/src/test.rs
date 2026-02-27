@@ -63,7 +63,7 @@ fn test_print() {
     readchar.put_str(&mut s, &mut o, |_, _| (), alpha).unwrap();
     assert_eq!(
         get_str(str::from_utf8(&s).unwrap()).as_str(),
-        format!("> {alpha}\nres{alpha}{alpha}\nres{alpha}{alpha}{alpha} \nres")
+        format!("> {alpha}\nres{alpha}{alpha}\nres{alpha}{alpha}{alpha}\n\nres")
     );
     assert_eq!(readchar.cursor, 2 * alpha.len() as u16);
     assert_eq!(readchar.cursor_col, 6);
