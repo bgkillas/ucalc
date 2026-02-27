@@ -88,28 +88,27 @@ pub struct LocalHistory {
     lines: usize,
 }
 impl LocalHistory {
+    pub(crate) fn is_modified(&self, cur: &str) -> bool {
+        self.history
+            .get(self.char_index + 1..self.char_index + 1 + cur.len())
+            .map(|s| s != cur)
+            .unwrap_or(true)
+            || self
+                .history
+                .as_bytes()
+                .get(self.char_index + 1 + cur.len())
+                .map(|c| *c != b'\n')
+                .unwrap_or(false)
+    }
     pub(crate) fn history_modified(&self, cur: &str) -> bool {
         self.history_modified
             .get(&self.index)
             .map(|s| s != cur)
-            .unwrap_or(
-                self.index == self.lines
-                    || self
-                        .history
-                        .get(self.char_index + 1..self.char_index + 1 + cur.len())
-                        .map(|s| s != cur)
-                        .unwrap_or(true)
-                    || self
-                        .history
-                        .as_bytes()
-                        .get(self.char_index + 1 + cur.len())
-                        .map(|c| *c != b'\n')
-                        .unwrap_or(false),
-            )
+            .unwrap_or_else(|| self.is_modified(cur))
     }
     pub(crate) fn mv(&mut self, cur: &str, up: bool) -> &str {
         if up {
-            if self.history_modified(cur) {
+            if self.history_modified(cur) && (!cur.is_empty() || self.lines != self.index) {
                 self.history_modified.insert(self.index, cur.to_string());
             }
             self.index -= 1;
@@ -126,7 +125,10 @@ impl LocalHistory {
         } else if self.index + 1 == self.lines {
             self.index += 1;
             self.char_index = self.history.len() - 1;
-            &self.history_modified[&self.index]
+            self.history_modified
+                .get(&self.index)
+                .map(|s| s.as_str())
+                .unwrap_or("")
         } else {
             if self.history_modified(cur) {
                 self.history_modified.insert(self.index, cur.to_string());
@@ -149,11 +151,16 @@ impl LocalHistory {
         }
     }
     pub(crate) fn push(&mut self, s: &str) {
+        if self.is_modified(s) {
+            self.lines += 1;
+        } else {
+            self.history
+                .replace_range(self.char_index + 1..=self.char_index + 1 + s.len(), "")
+        }
         use std::fmt::Write;
         writeln!(&mut self.history, "{s}").unwrap();
         self.history_modified.clear();
         self.char_index = self.history.len() - 1;
-        self.lines += 1;
         self.index = self.lines;
     }
 }

@@ -112,7 +112,9 @@ impl<'a> TokensRef<'a> {
                                         && a.contains(&Token::InnerVar(offset))
                                 })
                             })
-                            .unwrap_or(right_tokens.contains(&Token::InnerVar(fun_vars.len())))
+                            .unwrap_or_else(|| {
+                                right_tokens.contains(&Token::InnerVar(fun_vars.len()))
+                            })
                         {
                             let left_tokens = TokensRef(&self[start..last]);
                             let (left_tokens, _) = left_tokens.get_from_last(funs);
@@ -124,7 +126,9 @@ impl<'a> TokensRef<'a> {
                                             && a.contains(&Token::InnerVar(offset))
                                     })
                                 })
-                                .unwrap_or(left_tokens.contains(&Token::InnerVar(fun_vars.len())))
+                                .unwrap_or_else(|| {
+                                    left_tokens.contains(&Token::InnerVar(fun_vars.len()))
+                                })
                             {
                                 let poly = TokensRef(&self[start..=i]).compute_polynomial(
                                     fun_vars,
