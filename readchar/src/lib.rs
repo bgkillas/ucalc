@@ -1,6 +1,6 @@
 mod history;
 pub use history::History;
-pub use readchar::ReadChar;
+pub use readchar::{ReadChar, Return};
 mod readchar;
 #[cfg(test)]
 mod test;

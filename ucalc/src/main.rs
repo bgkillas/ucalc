@@ -1,7 +1,11 @@
-use readchar::ReadChar;
+use readchar::crossterm::QueueableCommand;
+use readchar::crossterm::cursor::MoveTo;
+use readchar::crossterm::terminal::{Clear, ClearType};
+use readchar::{ReadChar, Return};
 use std::env::args;
 use std::fmt::Write;
 use std::io::{BufRead, IsTerminal, stdin, stdout};
+use std::process::exit;
 use ucalc_lib::{Functions, Number, Tokens, Variable, Variables};
 fn main() {
     let mut vars = Variables::default();
@@ -25,14 +29,35 @@ fn main() {
         let mut string = String::with_capacity(64);
         let mut last = None;
         loop {
-            if readchar
-                .read(&mut stdout, &mut string, |line, string| {
-                    last = process_line(line, &mut vars, &mut funs, infix, string)
-                })
-                .unwrap()
-                && let Some(n) = last.take()
-            {
-                vars.get_mut("@").value = n;
+            match readchar.read(
+                &mut stdout,
+                &mut string,
+                |line, string| last = process_line(line, &mut vars, &mut funs, infix, string),
+                |readchar, stdout, line| match line {
+                    "exit" => {
+                        readchar.close(stdout).unwrap();
+                        exit(0);
+                    }
+                    "clear" => {
+                        stdout.queue(Clear(ClearType::Purge)).unwrap();
+                        stdout.queue(Clear(ClearType::All)).unwrap();
+                        stdout.queue(MoveTo(0, 0)).unwrap();
+                    }
+                    _ => {}
+                },
+            ) {
+                Ok(Return::Finish) => {
+                    if let Some(n) = last.take() {
+                        vars.get_mut("@").value = n;
+                    }
+                }
+                Ok(Return::Cancel) => return,
+                Ok(Return::None) => {}
+                Err(e) => {
+                    drop(readchar);
+                    println!("\n{e:?}");
+                    return;
+                }
             }
         }
     }
@@ -45,23 +70,24 @@ fn process_line(
     str: &mut String,
 ) -> Option<Number> {
     str.clear();
-    if line.is_empty() {
-        None
-    } else {
-        match if infix {
-            Tokens::infix(line, vars, funs, &[], false)
-        } else {
-            Tokens::rpn(line, vars, funs, &[], false)
-        } {
-            Ok(Some(tokens)) => {
-                let compute = tokens.compute(&[], funs, vars);
-                write!(str, "{}", compute).unwrap();
-                Some(compute)
-            }
-            Ok(None) => None,
-            Err(e) => {
-                write!(str, "{e:?}").unwrap();
-                None
+    match line {
+        "" | "exit" | "clear" => None,
+        _ => {
+            match if infix {
+                Tokens::infix(line, vars, funs, &[], false)
+            } else {
+                Tokens::rpn(line, vars, funs, &[], false)
+            } {
+                Ok(Some(tokens)) => {
+                    let compute = tokens.compute(&[], funs, vars);
+                    write!(str, "{}", compute).unwrap();
+                    Some(compute)
+                }
+                Ok(None) => None,
+                Err(e) => {
+                    write!(str, "{e:?}").unwrap();
+                    None
+                }
             }
         }
     }

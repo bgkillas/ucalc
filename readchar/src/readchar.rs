@@ -1,5 +1,5 @@
 use crate::History;
-use crossterm::cursor::{MoveTo, MoveToColumn, MoveToNextLine, MoveToPreviousLine};
+use crossterm::cursor::{MoveToColumn, MoveToNextLine, MoveToPreviousLine};
 use crossterm::event::{
     DisableBracketedPaste, EnableBracketedPaste, Event, KeyCode, KeyEvent, KeyModifiers,
 };
@@ -8,7 +8,6 @@ use crossterm::terminal::{Clear, ClearType};
 use crossterm::{ExecutableCommand, QueueableCommand, event, terminal};
 use std::io;
 use std::io::{Write, stdout};
-use std::process::exit;
 /// the ReadChar struct, see `read` for usage
 ///
 /// on drop disables bracketed paste and terminal raw mode
@@ -27,6 +26,11 @@ pub struct ReadChar {
     pub(crate) history: History,
     pub carrot: &'static str,
     pub carrot_color: Option<Color>,
+}
+pub enum Return {
+    Finish,
+    Cancel,
+    None,
 }
 impl Default for ReadChar {
     fn default() -> Self {
@@ -232,7 +236,31 @@ impl ReadChar {
         stdout.flush()?;
         Ok(())
     }
-    pub(crate) fn new_line(&mut self, stdout: &mut impl Write) -> io::Result<()> {
+    pub(crate) fn exit(&mut self, stdout: &mut impl Write) -> io::Result<()> {
+        if self.cursor_row_max != self.cursor_row {
+            stdout.execute(MoveToNextLine(self.cursor_row_max - self.cursor_row))?;
+        }
+        for _ in 0..=self.new_lines {
+            writeln!(stdout)?;
+        }
+        stdout.queue(MoveToColumn(0))?;
+        stdout.flush()?;
+        Ok(())
+    }
+    pub fn close(&self, stdout: &mut impl Write) -> io::Result<()> {
+        stdout.queue(DisableBracketedPaste)?;
+        terminal::disable_raw_mode()?;
+        stdout.flush()?;
+        Ok(())
+    }
+    pub(crate) fn new_line<T>(
+        &mut self,
+        stdout: &mut T,
+        finish: impl FnOnce(&ReadChar, &mut T, &str),
+    ) -> io::Result<()>
+    where
+        T: Write,
+    {
         if !self.line.is_empty() {
             self.history.push(&self.line)?;
         }
@@ -249,24 +277,11 @@ impl ReadChar {
         self.cursor_row_max = 0;
         self.insert = 0;
         self.line_len = 0;
-        match self.line.as_str() {
-            "exit" => {
-                stdout.queue(DisableBracketedPaste)?;
-                terminal::disable_raw_mode()?;
-                stdout.flush()?;
-                exit(0);
-            }
-            "clear" => {
-                stdout.queue(Clear(ClearType::Purge))?;
-                stdout.queue(Clear(ClearType::All))?;
-                stdout.queue(MoveTo(0, 0))?;
-            }
-            _ => {}
-        }
+        finish(self, stdout, &self.line);
         self.carrot(stdout)?;
         stdout.flush()?;
-        self.line.clear();
         self.new_lines = 0;
+        self.line.clear();
         Ok(())
     }
     pub(crate) fn put_str(
@@ -479,13 +494,17 @@ impl ReadChar {
         stdout.flush()?;
         Ok(())
     }
-    pub(crate) fn event(
+    pub(crate) fn event<T>(
         &mut self,
-        stdout: &mut impl Write,
+        stdout: &mut T,
         string: &mut String,
         run: impl FnOnce(&str, &mut String),
+        finish: impl FnOnce(&ReadChar, &mut T, &str),
         event: Event,
-    ) -> io::Result<bool> {
+    ) -> io::Result<Return>
+    where
+        T: Write,
+    {
         match event {
             Event::Paste(s) => self.put_str(stdout, string, run, &s)?,
             Event::Resize(col, row) => self.resize(col, row, string),
@@ -493,8 +512,16 @@ impl ReadChar {
                 code: KeyCode::Enter,
                 ..
             }) => {
-                self.new_line(stdout)?;
-                return Ok(true);
+                self.new_line(stdout, finish)?;
+                return Ok(Return::Finish);
+            }
+            Event::Key(KeyEvent {
+                code: KeyCode::Char('c'),
+                modifiers: KeyModifiers::CONTROL,
+                ..
+            }) => {
+                self.exit(stdout)?;
+                return Ok(Return::Cancel);
             }
             Event::Key(KeyEvent {
                 code: KeyCode::Left,
@@ -556,7 +583,7 @@ impl ReadChar {
             }) => self.put_char(stdout, string, run, c)?,
             _ => {}
         }
-        Ok(false)
+        Ok(Return::None)
     }
     /// reads the next user input and reacts accordingly
     /// # Arguments
@@ -566,12 +593,16 @@ impl ReadChar {
     ///   contents of the string buffer passed into it, expected to have no trailing newlines
     /// # Returns
     /// returns if the line has been completed or not by the enter key
-    pub fn read(
+    pub fn read<T>(
         &mut self,
-        stdout: &mut impl Write,
+        stdout: &mut T,
         string: &mut String,
         run: impl FnOnce(&str, &mut String),
-    ) -> io::Result<bool> {
-        self.event(stdout, string, run, event::read()?)
+        finish: impl FnOnce(&ReadChar, &mut T, &str),
+    ) -> io::Result<Return>
+    where
+        T: Write,
+    {
+        self.event(stdout, string, run, finish, event::read()?)
     }
 }

@@ -22,23 +22,19 @@ will run `calc` on each input line while you type
 
 ## Actions
 
-| Keystroke             | Action                                                                      |
-| --------------------- | --------------------------------------------------------------------------- |
-| Left                  | Move cursor one character left                                              |
-| Right                 | Move cursor one character right                                             |
-| Ctrl-Up               | Move cursor up one line                                                     |
-| Ctrl-Down             | Move cursor down one line                                                   |
-| Up                    | Move up history by 1 entry                                                  |
-| Down                  | Move down history by 1 entry                                                |
-| Backspace             | Removes the character left of the cursor, the moves left one character      |
-| Delete                | Removes the character on the cursor                                         |
-| Enter                 | goes to next line and resets input                                          |
-
-## Special keywords
-
-runs these on enter
-
-I might remove these or make these optional
-
-- `clear` clears the terminal
-- `exit` exits the program
+| Keystroke  | Action                                                                 |
+|------------|------------------------------------------------------------------------|
+| Left       | Move cursor one character left                                         |
+| Right      | Move cursor one character right                                        |
+| Ctrl-Left  | Move cursor one word left                                              |
+| Ctrl-Right | Move cursor one word right                                             |
+| Up         | Move up history by 1 entry                                             |
+| Down       | Move down history by 1 entry                                           |
+| Ctrl-Up    | Move cursor up one line                                                |
+| Ctrl-Down  | Move cursor down one line                                              |
+| Home       | Moves to start of line                                                 |
+| End        | Moves to end of line                                                   |
+| Backspace  | Removes the character left of the cursor, the moves left one character |
+| Delete     | Removes the character on the cursor                                    |
+| Ctrl-C     | Exits buffer                                                           |
+| Enter      | Finishes line                                                          |
