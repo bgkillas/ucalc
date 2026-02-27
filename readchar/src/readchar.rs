@@ -156,7 +156,11 @@ impl ReadChar {
                 stdout.queue(MoveToNextLine(1))?;
             }
             self.cursor = self.line_len;
-            self.cursor_col = (self.line_len + self.carrot.len() as u16) % self.col;
+            self.cursor_col = if self.cursor_row == 0 {
+                self.cursor
+            } else {
+                self.cursor + self.carrot.len() as u16
+            } % self.col;
         }
         Ok(false)
     }
@@ -228,7 +232,11 @@ impl ReadChar {
         self.insert = self.line.len() as u16;
         self.line_len = self.insert;
         self.cursor_row = (self.cursor + self.carrot.len() as u16) / self.col;
-        self.cursor_col = (self.cursor + self.carrot.len() as u16) % self.col;
+        self.cursor_col = if self.cursor_row == 0 {
+            self.cursor
+        } else {
+            self.cursor + self.carrot.len() as u16
+        } % self.col;
         self.cursor_row_max = (self.line_len + self.carrot.len() as u16) / self.col;
         stdout.queue(Clear(ClearType::FromCursorDown))?;
         write!(stdout, "{}", self.line)?;
@@ -317,7 +325,11 @@ impl ReadChar {
     }
     pub(crate) fn resize(&mut self, col: u16, row: u16, string: &str) {
         self.cursor_row = (self.cursor + self.carrot.len() as u16) / col;
-        self.cursor_col = (self.cursor + self.carrot.len() as u16) % col;
+        self.cursor_col = if self.cursor_row == 0 {
+            self.cursor
+        } else {
+            self.cursor + self.carrot.len() as u16
+        } % col;
         self.cursor_row_max = (self.line_len + self.carrot.len() as u16) / col;
         (self.row, self.col) = (row, col);
         self.new_lines = self.out_lines(string);
@@ -358,6 +370,34 @@ impl ReadChar {
         if rows != 0 {
             stdout.queue(MoveToNextLine(rows))?;
         }
+        stdout.queue(MoveToColumn(self.col()))?;
+        stdout.flush()?;
+        Ok(())
+    }
+    pub(crate) fn home(&mut self, stdout: &mut impl Write) -> io::Result<()> {
+        self.insert = 0;
+        self.cursor = 0;
+        if self.cursor_row != 0 {
+            stdout.queue(MoveToPreviousLine(self.cursor_row))?;
+        }
+        self.cursor_row = 0;
+        self.cursor_col = 0;
+        stdout.queue(MoveToColumn(self.col()))?;
+        stdout.flush()?;
+        Ok(())
+    }
+    pub(crate) fn end(&mut self, stdout: &mut impl Write) -> io::Result<()> {
+        self.insert = self.line.len() as u16;
+        self.cursor = self.line_len;
+        if self.cursor_row != self.cursor_row_max {
+            stdout.queue(MoveToNextLine(self.cursor_row_max - self.cursor_row))?;
+        }
+        self.cursor_row = self.cursor_row_max;
+        self.cursor_col = if self.cursor_row == 0 {
+            self.cursor
+        } else {
+            self.cursor + self.carrot.len() as u16
+        } % self.col;
         stdout.queue(MoveToColumn(self.col()))?;
         stdout.flush()?;
         Ok(())
@@ -510,6 +550,7 @@ impl ReadChar {
             Event::Resize(col, row) => self.resize(col, row, string),
             Event::Key(KeyEvent {
                 code: KeyCode::Enter,
+                modifiers: KeyModifiers::NONE,
                 ..
             }) => {
                 self.new_line(stdout, finish)?;
@@ -523,6 +564,16 @@ impl ReadChar {
                 self.exit(stdout)?;
                 return Ok(Return::Cancel);
             }
+            Event::Key(KeyEvent {
+                code: KeyCode::Home,
+                modifiers: KeyModifiers::NONE,
+                ..
+            }) if self.cursor != 0 => self.home(stdout)?,
+            Event::Key(KeyEvent {
+                code: KeyCode::End,
+                modifiers: KeyModifiers::NONE,
+                ..
+            }) if self.cursor != self.line_len => self.end(stdout)?,
             Event::Key(KeyEvent {
                 code: KeyCode::Left,
                 modifiers: KeyModifiers::NONE,
@@ -565,10 +616,12 @@ impl ReadChar {
             }) if self.cursor != self.line_len => self.go_right_word(stdout)?,
             Event::Key(KeyEvent {
                 code: KeyCode::Backspace,
+                modifiers: KeyModifiers::NONE,
                 ..
             }) if self.cursor != 0 => self.backspace(stdout, string, run, 1)?,
             Event::Key(KeyEvent {
                 code: KeyCode::Delete,
+                modifiers: KeyModifiers::NONE,
                 ..
             }) if self.cursor != self.line_len => self.delete(stdout, string, run, 1)?,
             Event::Key(KeyEvent {
