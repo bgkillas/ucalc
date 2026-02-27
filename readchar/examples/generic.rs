@@ -21,7 +21,7 @@ fn main() {
                     string.push_str(str::from_utf8(&out.stdout).unwrap().trim_end_matches("\n"));
                 }
             },
-            |_, _, _| {},
+            |_, _, _| Return::Finish,
         ) {
             Ok(Return::Finish) => {}
             Ok(Return::Cancel) => return,

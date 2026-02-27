@@ -1,5 +1,5 @@
 use crate::History;
-use crossterm::cursor::{MoveToColumn, MoveToNextLine, MoveToPreviousLine};
+use crossterm::cursor::{MoveTo, MoveToColumn, MoveToNextLine, MoveToPreviousLine};
 use crossterm::event::{
     DisableBracketedPaste, EnableBracketedPaste, Event, KeyCode, KeyEvent, KeyModifiers,
 };
@@ -27,6 +27,7 @@ pub struct ReadChar {
     pub carrot: &'static str,
     pub carrot_color: Option<Color>,
 }
+#[derive(Debug, PartialEq)]
 pub enum Return {
     Finish,
     Cancel,
@@ -258,14 +259,19 @@ impl ReadChar {
     pub fn close(&self, stdout: &mut impl Write) -> io::Result<()> {
         stdout.queue(DisableBracketedPaste)?;
         terminal::disable_raw_mode()?;
-        stdout.flush()?;
+        Ok(())
+    }
+    pub fn clear(&self, stdout: &mut impl Write) -> io::Result<()> {
+        stdout.queue(Clear(ClearType::Purge))?;
+        stdout.queue(Clear(ClearType::All))?;
+        stdout.queue(MoveTo(0, 0))?;
         Ok(())
     }
     pub(crate) fn new_line<T>(
         &mut self,
         stdout: &mut T,
-        finish: impl FnOnce(&ReadChar, &mut T, &str),
-    ) -> io::Result<()>
+        finish: impl FnOnce(&ReadChar, &mut T, &str) -> Return,
+    ) -> io::Result<Return>
     where
         T: Write,
     {
@@ -285,12 +291,14 @@ impl ReadChar {
         self.cursor_row_max = 0;
         self.insert = 0;
         self.line_len = 0;
-        finish(self, stdout, &self.line);
-        self.carrot(stdout)?;
+        let ret = finish(self, stdout, &self.line);
+        if ret != Return::Cancel {
+            self.carrot(stdout)?;
+        }
         stdout.flush()?;
         self.new_lines = 0;
         self.line.clear();
-        Ok(())
+        Ok(ret)
     }
     pub(crate) fn put_str(
         &mut self,
@@ -539,7 +547,7 @@ impl ReadChar {
         stdout: &mut T,
         string: &mut String,
         run: impl FnOnce(&str, &mut String),
-        finish: impl FnOnce(&ReadChar, &mut T, &str),
+        finish: impl FnOnce(&ReadChar, &mut T, &str) -> Return,
         event: Event,
     ) -> io::Result<Return>
     where
@@ -552,10 +560,7 @@ impl ReadChar {
                 code: KeyCode::Enter,
                 modifiers: KeyModifiers::NONE,
                 ..
-            }) => {
-                self.new_line(stdout, finish)?;
-                return Ok(Return::Finish);
-            }
+            }) => return self.new_line(stdout, finish),
             Event::Key(KeyEvent {
                 code: KeyCode::Char('c'),
                 modifiers: KeyModifiers::CONTROL,
@@ -651,7 +656,7 @@ impl ReadChar {
         stdout: &mut T,
         string: &mut String,
         run: impl FnOnce(&str, &mut String),
-        finish: impl FnOnce(&ReadChar, &mut T, &str),
+        finish: impl FnOnce(&ReadChar, &mut T, &str) -> Return,
     ) -> io::Result<Return>
     where
         T: Write,

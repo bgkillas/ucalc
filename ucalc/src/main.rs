@@ -5,7 +5,6 @@ use readchar::{ReadChar, Return};
 use std::env::args;
 use std::fmt::Write;
 use std::io::{BufRead, IsTerminal, stdin, stdout};
-use std::process::exit;
 use ucalc_lib::{Functions, Number, Tokens, Variable, Variables};
 fn main() {
     let mut vars = Variables::default();
@@ -36,14 +35,15 @@ fn main() {
                 |readchar, stdout, line| match line {
                     "exit" => {
                         readchar.close(stdout).unwrap();
-                        exit(0);
+                        Return::Cancel
                     }
                     "clear" => {
                         stdout.queue(Clear(ClearType::Purge)).unwrap();
                         stdout.queue(Clear(ClearType::All)).unwrap();
                         stdout.queue(MoveTo(0, 0)).unwrap();
+                        Return::Finish
                     }
-                    _ => {}
+                    _ => Return::Finish,
                 },
             ) {
                 Ok(Return::Finish) => {
