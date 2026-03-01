@@ -114,7 +114,7 @@ impl TokensRef<'_> {
             match &self[i] {
                 Token::Function(operator) => {
                     let inputs = operator.inputs();
-                    if operator.has_var() {
+                    if operator.has_inner_fn() {
                         operator.compute_var(stack, fun_vars, vars, funs, custom_vars, offset)
                     } else if operator.is_chainable() {
                         let chain = if self.get(i + 1).is_some_and(|o| {

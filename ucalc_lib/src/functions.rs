@@ -458,6 +458,12 @@ impl Function {
     pub fn has_var(self) -> bool {
         matches!(
             self,
+            Self::Sum | Self::Prod | Self::Iter | Self::Fold | Self::Set | Self::Solve
+        )
+    }
+    pub fn has_inner_fn(self) -> bool {
+        matches!(
+            self,
             Self::Sum | Self::Prod | Self::Iter | Self::Fold | Self::Set | Self::Solve | Self::If
         )
     }

@@ -1958,6 +1958,19 @@ fn test_sum() {
         res(385)
     );
     assert_correct!(
+        infix("sum(0,10,sq(x))"),
+        rpn("0 10 x x sq sum"),
+        vec![
+            num(0),
+            num(10),
+            Token::Skip(2),
+            Token::InnerVar(0),
+            Function::Sq.into(),
+            Function::Sum.into()
+        ],
+        res(385)
+    );
+    assert_correct!(
         infix("sum(0,10,x,pix)"),
         rpn("0 10 x pi x * sum"),
         vec![

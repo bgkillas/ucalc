@@ -346,13 +346,23 @@ impl Tokens {
                             open_input = false;
                             fn_inputs.push(1);
                         } else if s.chars().all(|c| c.is_ascii_alphabetic())
-                            && fn_inputs.last().is_some_and(|n| {
+                            && !fn_inputs.is_empty()
+                            && {
+                                let mut inputs = fn_inputs.iter();
+                                let mut last = None;
                                 operator_stack
                                     .iter()
-                                    .rfind(|l| matches!(l, Operators::Function(_)))
+                                    .rfind(|l| {
+                                        if let Operators::Function(f) = l {
+                                            last = inputs.next_back();
+                                            f.has_var()
+                                        } else {
+                                            false
+                                        }
+                                    })
                                     .unwrap()
-                                    .expected_var(*n)
-                            })
+                                    .expected_var(*last.unwrap())
+                            }
                         {
                             tokens.push(Token::InnerVar(inner_vars.len()));
                             inner_vars.push(s);
