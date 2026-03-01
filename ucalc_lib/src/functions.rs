@@ -446,6 +446,15 @@ impl Function {
             _ => 0,
         }
     }
+    pub fn expected_var(self, n: usize) -> bool {
+        match self {
+            Self::Solve => n == 1,
+            Self::Set => n == 2,
+            Self::Sum | Self::Prod | Self::Iter => n == 3,
+            Self::Fold => n == 4 || n == 5,
+            _ => false,
+        }
+    }
     pub fn has_var(self) -> bool {
         matches!(
             self,
@@ -542,7 +551,6 @@ impl Function {
                 *stack[len - (l + 2)].num_mut() = fun_vars.pop().unwrap();
             }
             Self::If => {
-                //TODO remove recursion
                 let ([ifelse, ifthen], l) = stack.get_skip_tokens();
                 let [condition] = stack.get_skip_var(l);
                 let condition = condition.num_ref();

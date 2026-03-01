@@ -174,6 +174,13 @@ impl Operators {
             | Self::Bracket(_) => unreachable!(),
         }
     }
+    pub fn expected_var(self, n: usize) -> bool {
+        if let Self::Function(f) = self {
+            f.expected_var(n)
+        } else {
+            false
+        }
+    }
     pub fn precedence(self) -> u8 {
         match self {
             Self::Or => 0,

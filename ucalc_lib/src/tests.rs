@@ -188,14 +188,26 @@ fn parse_fact() {
 #[test]
 fn parse_mul() {
     assert_correct!(
+        infix("ipii"),
+        rpn("i pi * i *"),
+        vec![
+            var("i"),
+            var("pi"),
+            Operators::Mul.into(),
+            var("i"),
+            Operators::Mul.into()
+        ],
+        -res(Constant::Pi)
+    );
+    assert_correct!(
         infix("2*4"),
         rpn("2 4 *"),
         vec![num(2), num(4), Operators::Mul.into()],
         res(8)
     );
     assert_correct!(
-        infix("set(x,2,2x^2)"),
-        rpn("x 2 2 x 2 ^ * set"),
+        infix("set(2,x,2x^2)"),
+        rpn("2 x 2 x 2 ^ * set"),
         vec![
             num(2),
             Token::Skip(5),
@@ -839,6 +851,19 @@ fn parse_abs() {
         res(8).sqrt()
     );
     assert_correct!(
+        infix("ln|-1+0.5|"),
+        rpn("1 _ 0.5 + abs ln"),
+        vec![
+            num(1),
+            Function::Negate.into(),
+            num(0.5),
+            Function::Add.into(),
+            Function::Abs.into(),
+            Function::Ln.into()
+        ],
+        res(0.5).ln()
+    );
+    assert_correct!(
         infix("|1|"),
         rpn("1 abs"),
         vec![num(1), Function::Abs.into()],
@@ -1088,8 +1113,8 @@ fn test_graph_vars() {
 #[test]
 fn test_set() {
     assert_correct!(
-        infix("set(x,2,x^2)"),
-        rpn("x 2 x 2 ^ set"),
+        infix("set(2,x,x^2)"),
+        rpn("2 x x 2 ^ set"),
         vec![
             num(2),
             Token::Skip(3),
@@ -1351,8 +1376,8 @@ fn test_solve() {
 #[test]
 fn test_fold() {
     assert_correct!(
-        infix("fold(x,k,1,1,9,x*k)"),
-        rpn("x k 1 1 9 x k * fold"),
+        infix("fold(1,1,9,x,k,x*k)"),
+        rpn("1 1 9 x k x k * fold"),
         vec![
             num(1),
             num(1),
@@ -1366,8 +1391,8 @@ fn test_fold() {
         res(362880)
     );
     assert_correct!(
-        infix("fold(x,k,0,1,9,x+k)"),
-        rpn("x k 0 1 9 x k + fold"),
+        infix("fold(0,1,9,x,k,x+k)"),
+        rpn("0 1 9 x k x k + fold"),
         vec![
             num(0),
             num(1),
@@ -1828,7 +1853,7 @@ fn test_custom_functions() {
     );
     assert_correct_with!(
         Tokens::infix(
-            "sum(n,0,10,sum(k,3,6,f(n,k)^2+f(k,n)-2))",
+            "sum(0,10,n,sum(3,6,k,f(n,k)^2+f(k,n)-2))",
             &mut Variables::default(),
             &mut funs,
             &[],
@@ -1875,8 +1900,8 @@ fn test_custom_functions() {
 #[test]
 fn test_sum() {
     assert_correct!(
-        infix("sum(x,0,10,x^2)"),
-        rpn("x 0 10 x 2 ^ sum"),
+        infix("sum(0,10,x,x^2)"),
+        rpn("0 10 x x 2 ^ sum"),
         vec![
             num(0),
             num(10),
@@ -1888,12 +1913,26 @@ fn test_sum() {
         ],
         res(385)
     );
+    assert_correct!(
+        infix("sum(0,10,x,pix)"),
+        rpn("0 10 x pi x * sum"),
+        vec![
+            num(0),
+            num(10),
+            Token::Skip(3),
+            var("pi"),
+            Token::InnerVar(0),
+            Operators::Mul.into(),
+            Function::Sum.into()
+        ],
+        res(50) * res(Constant::Pi)
+    );
 }
 #[test]
 fn test_inner_fn() {
     assert_correct!(
-        infix("sum(x,0,10,sum(y,3,6,x-y)+prod(y,3,6,x-y))"),
-        rpn("x 0 10 y 3 6 x y - sum y 3 6 x y - prod + sum"),
+        infix("sum(0,10,x,sum(3,6,y,x-y)+prod(3,6,y,x-y))"),
+        rpn("0 10 x 3 6 y x y - sum 3 6 y x y - prod + sum"),
         vec![
             num(0),
             num(10),
@@ -1921,8 +1960,8 @@ fn test_inner_fn() {
 #[test]
 fn test_prod() {
     assert_correct!(
-        infix("prod(x,1,4,x^2)"),
-        rpn("x 1 4 x 2 ^ prod"),
+        infix("prod(1,4,x,x^2)"),
+        rpn("1 4 x x 2 ^ prod"),
         vec![
             num(1),
             num(4),
@@ -1938,8 +1977,8 @@ fn test_prod() {
 #[test]
 fn test_iter() {
     assert_correct!(
-        infix("iter(x,1,4,x/2)"),
-        rpn("x 1 4 x 2 / iter"),
+        infix("iter(1,4,x,x/2)"),
+        rpn("1 4 x x 2 / iter"),
         vec![
             num(1),
             num(4),
@@ -1952,8 +1991,8 @@ fn test_iter() {
         res(1) / Float::from(16)
     );
     assert_correct!(
-        infix("iter(x,1,0,x/2)"),
-        rpn("x 1 0 x 2 / iter"),
+        infix("iter(1,0,x,x/2)"),
+        rpn("1 0 x x 2 / iter"),
         vec![
             num(1),
             num(0),
@@ -1966,8 +2005,8 @@ fn test_iter() {
         res(1)
     );
     assert_correct!(
-        infix("iter(x,1,4,iter(y,2,5,x/y))"),
-        rpn("x 1 4 y 2 5 x y / iter iter"),
+        infix("iter(1,4,x,iter(2,5,y,x/y))"),
+        rpn("1 4 x 2 5 y x y / iter iter"),
         vec![
             num(1),
             num(4),

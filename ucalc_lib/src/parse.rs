@@ -3,6 +3,7 @@ use crate::operators::{Bracket, Operators};
 use crate::polynomial::Polynomial;
 use crate::variable::{Functions, Variables};
 use crate::{Number, NumberBase, Variable};
+use std::cmp::Ordering;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::ops::{Deref, DerefMut};
@@ -54,6 +55,7 @@ pub enum ParseError {
     RightParenthesisNotFound,
     AbsoluteBracketFailed,
     MissingInput,
+    ExtraInput,
     VarExpectedName,
 }
 impl Display for Tokens {
@@ -286,6 +288,7 @@ impl Tokens {
         let mut tokens = Tokens(Vec::with_capacity(value.len()));
         let mut operator_stack: Vec<Operators> = Vec::with_capacity(value.len());
         let mut inner_vars: Vec<&str> = Vec::with_capacity(value.len());
+        let mut fn_inputs: Vec<usize> = Vec::with_capacity(value.len());
         let mut chars = value.char_indices();
         let mut inputs = None;
         let mut negate = true;
@@ -311,36 +314,53 @@ impl Tokens {
                             }
                         }
                     }
-                    let s = &value[i..i + l];
-                    if s == "let" {
-                        expect_let = true;
-                    } else if expect_let && s.chars().all(|c| c.is_ascii_alphabetic()) {
-                        inner_vars.push(s);
-                        open_input = true;
-                    } else if let Some(i) = funs.position(s) {
-                        tokens.last_mul(&mut operator_stack, negate, &mut last_mul, false);
-                        operator_stack.push(Operators::Function(Function::Custom(i)));
-                        open_input = false;
-                    } else if let Some(i) = inner_vars.iter().position(|v| *v == s) {
-                        tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
-                        tokens.push(Token::InnerVar(i));
-                        open_input = true;
-                    } else if let Some(i) = vars.position(s) {
-                        tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
-                        tokens.push(Token::Var(i));
-                        open_input = true;
-                    } else if let Some(i) = graph_vars.iter().position(|v| v == &s) {
-                        tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
-                        tokens.push(Token::GraphVar(i));
-                        open_input = true;
-                    } else if let Ok(fun) = Function::try_from(s) {
-                        tokens.last_mul(&mut operator_stack, negate, &mut last_mul, false);
-                        operator_stack.push(Operators::Function(fun));
-                        open_input = false;
-                    } else if s.chars().all(|c| c.is_ascii_alphabetic()) {
-                        inner_vars.push(s);
-                    } else {
-                        unreachable!()
+                    loop {
+                        let s = &value[i..i + l];
+                        if i == 0 && s == "let" {
+                            expect_let = true;
+                            open_input = false;
+                        } else if expect_let && s.chars().all(|c| c.is_ascii_alphabetic()) {
+                            inner_vars.push(s);
+                            open_input = true;
+                        } else if let Some(i) = funs.position(s) {
+                            tokens.last_mul(&mut operator_stack, negate, &mut last_mul, false);
+                            operator_stack.push(Operators::Function(Function::Custom(i)));
+                            open_input = false;
+                            fn_inputs.push(1);
+                        } else if let Some(i) = inner_vars.iter().position(|v| *v == s) {
+                            tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
+                            tokens.push(Token::InnerVar(i));
+                            open_input = true;
+                        } else if let Some(i) = vars.position(s) {
+                            tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
+                            tokens.push(Token::Var(i));
+                            open_input = true;
+                        } else if let Some(i) = graph_vars.iter().position(|v| v == &s) {
+                            tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
+                            tokens.push(Token::GraphVar(i));
+                            open_input = true;
+                        } else if let Ok(fun) = Function::try_from(s) {
+                            tokens.last_mul(&mut operator_stack, negate, &mut last_mul, false);
+                            operator_stack.push(Operators::Function(fun));
+                            open_input = false;
+                            fn_inputs.push(1);
+                        } else if s.chars().all(|c| c.is_ascii_alphabetic())
+                            && fn_inputs.last().is_some_and(|n| {
+                                operator_stack[operator_stack.len() - 2].expected_var(*n)
+                            })
+                        {
+                            println!("b");
+                            *fn_inputs.last_mut().unwrap() -= 1;
+                            inner_vars.push(s);
+                            open_input = true;
+                        } else if count != 1 {
+                            count -= 1;
+                            l -= value[i..i + l].chars().last().unwrap().len_utf8();
+                            continue;
+                        } else {
+                            unreachable!()
+                        }
+                        break;
                     }
                     let _ = chars.advance_by(count - 1);
                     negate = false;
@@ -371,6 +391,9 @@ impl Tokens {
                     expect_expr = false;
                 }
                 ',' => {
+                    if req_input || expect_expr {
+                        return Err(ParseError::MissingInput);
+                    }
                     while let Some(top) = operator_stack.last()
                         && !matches!(top, Operators::Bracket(_))
                     {
@@ -380,6 +403,10 @@ impl Tokens {
                     last_abs = false;
                     last_mul = false;
                     open_input = false;
+                    expect_expr = true;
+                    if let Some(last) = fn_inputs.last_mut() {
+                        *last += 1;
+                    }
                 }
                 ')' => {
                     if req_input || expect_expr {
@@ -396,7 +423,12 @@ impl Tokens {
                     ) {
                         return Err(ParseError::LeftParenthesisNotFound);
                     }
-                    tokens.close_off_bracket(&mut operator_stack, &mut inner_vars, funs);
+                    tokens.close_off_bracket(
+                        &mut operator_stack,
+                        &mut inner_vars,
+                        funs,
+                        &mut fn_inputs,
+                    )?;
                     last_mul = true;
                     negate = false;
                     last_abs = false;
@@ -434,8 +466,13 @@ impl Tokens {
                         ) {
                             return Err(ParseError::AbsoluteBracketFailed);
                         }
-                        tokens.close_off_bracket(&mut operator_stack, &mut inner_vars, funs);
                         tokens.push(Function::Abs.into());
+                        tokens.close_off_bracket(
+                            &mut operator_stack,
+                            &mut inner_vars,
+                            funs,
+                            &mut fn_inputs,
+                        )?;
                         abs -= 1;
                         last_mul = true;
                         negate = false;
@@ -537,20 +574,34 @@ impl Tokens {
         operator_stack: &mut Vec<Operators>,
         inner_vars: &mut Vec<&str>,
         funs: &Functions,
-    ) {
+        fn_inputs: &mut Vec<usize>,
+    ) -> Result<(), ParseError> {
         if let Some(top) = operator_stack.last() {
             match top {
                 Operators::Function(Function::Custom(i)) => {
+                    let inputs = fn_inputs.pop().unwrap();
+                    match funs.get(*i).unwrap().inputs.cmp(&inputs) {
+                        Ordering::Greater => return Err(ParseError::MissingInput),
+                        Ordering::Less => return Err(ParseError::ExtraInput),
+                        _ => {}
+                    }
                     self.push(Token::Fun(*i));
                     operator_stack.pop();
                 }
                 Operators::Function(fun) => {
+                    let inputs = fn_inputs.pop().unwrap();
+                    match fun.inputs().cmp(&inputs) {
+                        Ordering::Greater => return Err(ParseError::MissingInput),
+                        Ordering::Less => return Err(ParseError::ExtraInput),
+                        _ => {}
+                    }
                     self.compact_args(fun, inner_vars, funs);
-                    self.push(operator_stack.pop().unwrap().into())
+                    self.push(operator_stack.pop().unwrap().into());
                 }
                 _ => {}
             }
         }
+        Ok(())
     }
     pub fn compact_args(&mut self, fun: &Function, inner_vars: &mut Vec<&str>, funs: &Functions) {
         let mut t = 0;
