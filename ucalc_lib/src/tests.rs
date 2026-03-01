@@ -1925,7 +1925,7 @@ fn test_sum() {
             Operators::Mul.into(),
             Function::Sum.into()
         ],
-        res(50) * res(Constant::Pi)
+        res(55) * res(Constant::Pi)
     );
 }
 #[test]

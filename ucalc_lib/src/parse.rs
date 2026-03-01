@@ -288,7 +288,7 @@ impl Tokens {
         let mut tokens = Tokens(Vec::with_capacity(value.len()));
         let mut operator_stack: Vec<Operators> = Vec::with_capacity(value.len());
         let mut inner_vars: Vec<&str> = Vec::with_capacity(value.len());
-        let mut fn_inputs: Vec<usize> = Vec::with_capacity(value.len());
+        let mut fn_inputs: Vec<(usize, u8)> = Vec::with_capacity(value.len());
         let mut chars = value.char_indices();
         let mut inputs = None;
         let mut negate = true;
@@ -326,7 +326,7 @@ impl Tokens {
                             tokens.last_mul(&mut operator_stack, negate, &mut last_mul, false);
                             operator_stack.push(Operators::Function(Function::Custom(i)));
                             open_input = false;
-                            fn_inputs.push(1);
+                            fn_inputs.push((1, 0));
                         } else if let Some(i) = inner_vars.iter().position(|v| *v == s) {
                             tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
                             tokens.push(Token::InnerVar(i));
@@ -343,14 +343,15 @@ impl Tokens {
                             tokens.last_mul(&mut operator_stack, negate, &mut last_mul, false);
                             operator_stack.push(Operators::Function(fun));
                             open_input = false;
-                            fn_inputs.push(1);
+                            fn_inputs.push((1, 0));
                         } else if s.chars().all(|c| c.is_ascii_alphabetic())
                             && fn_inputs.last().is_some_and(|n| {
-                                operator_stack[operator_stack.len() - 2].expected_var(*n)
+                                operator_stack[operator_stack.len() - 2]
+                                    .expected_var(n.0 + n.1 as usize)
                             })
                         {
-                            println!("b");
-                            *fn_inputs.last_mut().unwrap() -= 1;
+                            fn_inputs.last_mut().unwrap().0 -= 1;
+                            fn_inputs.last_mut().unwrap().1 += 1;
                             inner_vars.push(s);
                             open_input = true;
                         } else if count != 1 {
@@ -405,7 +406,7 @@ impl Tokens {
                     open_input = false;
                     expect_expr = true;
                     if let Some(last) = fn_inputs.last_mut() {
-                        *last += 1;
+                        last.0 += 1;
                     }
                 }
                 ')' => {
@@ -574,13 +575,13 @@ impl Tokens {
         operator_stack: &mut Vec<Operators>,
         inner_vars: &mut Vec<&str>,
         funs: &Functions,
-        fn_inputs: &mut Vec<usize>,
+        fn_inputs: &mut Vec<(usize, u8)>,
     ) -> Result<(), ParseError> {
         if let Some(top) = operator_stack.last() {
             match top {
                 Operators::Function(Function::Custom(i)) => {
                     let inputs = fn_inputs.pop().unwrap();
-                    match funs.get(*i).unwrap().inputs.cmp(&inputs) {
+                    match funs.get(*i).unwrap().inputs.cmp(&inputs.0) {
                         Ordering::Greater => return Err(ParseError::MissingInput),
                         Ordering::Less => return Err(ParseError::ExtraInput),
                         _ => {}
@@ -590,7 +591,7 @@ impl Tokens {
                 }
                 Operators::Function(fun) => {
                     let inputs = fn_inputs.pop().unwrap();
-                    match fun.inputs().cmp(&inputs) {
+                    match fun.inputs().cmp(&inputs.0) {
                         Ordering::Greater => return Err(ParseError::MissingInput),
                         Ordering::Less => return Err(ParseError::ExtraInput),
                         _ => {}
