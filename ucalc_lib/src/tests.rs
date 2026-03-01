@@ -188,16 +188,16 @@ fn parse_fact() {
 #[test]
 fn parse_mul() {
     assert_correct!(
-        infix("ipii"),
-        rpn("i pi * i *"),
+        infix("epie"),
+        rpn("e pi * e *"),
         vec![
-            var("i"),
+            var("e"),
             var("pi"),
             Operators::Mul.into(),
-            var("i"),
+            var("e"),
             Operators::Mul.into()
         ],
-        -res(Constant::Pi)
+        res(Constant::Pi) * res(Constant::E) * res(Constant::E)
     );
     assert_correct!(
         infix("2*4"),
@@ -1391,6 +1391,36 @@ fn test_fold() {
         res(362880)
     );
     assert_correct!(
+        infix("fold(1,1,9,x*k)"),
+        rpn("1 1 9 x k x k * fold"),
+        vec![
+            num(1),
+            num(1),
+            num(9),
+            Token::Skip(3),
+            Token::InnerVar(0).into(),
+            Token::InnerVar(1).into(),
+            Operators::Mul.into(),
+            Function::Fold.into()
+        ],
+        res(362880)
+    );
+    assert_correct!(
+        infix("fold(1,1,9,x,x*k)"),
+        rpn("1 1 9 x k x k * fold"),
+        vec![
+            num(1),
+            num(1),
+            num(9),
+            Token::Skip(3),
+            Token::InnerVar(0).into(),
+            Token::InnerVar(1).into(),
+            Operators::Mul.into(),
+            Function::Fold.into()
+        ],
+        res(362880)
+    );
+    assert_correct!(
         infix("fold(0,1,9,x,k,x+k)"),
         rpn("0 1 9 x k x k + fold"),
         vec![
@@ -1901,6 +1931,20 @@ fn test_custom_functions() {
 fn test_sum() {
     assert_correct!(
         infix("sum(0,10,x,x^2)"),
+        rpn("0 10 x x 2 ^ sum"),
+        vec![
+            num(0),
+            num(10),
+            Token::Skip(3),
+            Token::InnerVar(0),
+            num(2),
+            Operators::Pow.into(),
+            Function::Sum.into()
+        ],
+        res(385)
+    );
+    assert_correct!(
+        infix("sum(0,10,x^2)"),
         rpn("0 10 x x 2 ^ sum"),
         vec![
             num(0),

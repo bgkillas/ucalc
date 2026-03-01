@@ -56,6 +56,7 @@ pub enum ParseError {
     AbsoluteBracketFailed,
     MissingInput,
     ExtraInput,
+    InnerVarError,
     VarExpectedName,
 }
 impl Display for Tokens {
@@ -268,7 +269,7 @@ impl Tokens {
                     tokens.push(Token::GraphVar(i))
                 }
                 _ if let Ok(fun) = Function::try_from(token) => {
-                    tokens.compact_args(&fun, &mut inner_vars, funs);
+                    tokens.compact_args(fun, &mut inner_vars, funs);
                     tokens.push(fun.into());
                 }
                 _ if token.chars().all(|c| c.is_ascii_alphabetic()) => inner_vars.push(token),
@@ -288,7 +289,7 @@ impl Tokens {
         let mut tokens = Tokens(Vec::with_capacity(value.len()));
         let mut operator_stack: Vec<Operators> = Vec::with_capacity(value.len());
         let mut inner_vars: Vec<&str> = Vec::with_capacity(value.len());
-        let mut fn_inputs: Vec<(usize, u8)> = Vec::with_capacity(value.len());
+        let mut fn_inputs: Vec<usize> = Vec::with_capacity(value.len());
         let mut chars = value.char_indices();
         let mut inputs = None;
         let mut negate = true;
@@ -326,7 +327,7 @@ impl Tokens {
                             tokens.last_mul(&mut operator_stack, negate, &mut last_mul, false);
                             operator_stack.push(Operators::Function(Function::Custom(i)));
                             open_input = false;
-                            fn_inputs.push((1, 0));
+                            fn_inputs.push(1);
                         } else if let Some(i) = inner_vars.iter().position(|v| *v == s) {
                             tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
                             tokens.push(Token::InnerVar(i));
@@ -343,15 +344,17 @@ impl Tokens {
                             tokens.last_mul(&mut operator_stack, negate, &mut last_mul, false);
                             operator_stack.push(Operators::Function(fun));
                             open_input = false;
-                            fn_inputs.push((1, 0));
+                            fn_inputs.push(1);
                         } else if s.chars().all(|c| c.is_ascii_alphabetic())
                             && fn_inputs.last().is_some_and(|n| {
-                                operator_stack[operator_stack.len() - 2]
-                                    .expected_var(n.0 + n.1 as usize)
+                                operator_stack
+                                    .iter()
+                                    .rfind(|l| matches!(l, Operators::Function(_)))
+                                    .unwrap()
+                                    .expected_var(*n)
                             })
                         {
-                            fn_inputs.last_mut().unwrap().0 -= 1;
-                            fn_inputs.last_mut().unwrap().1 += 1;
+                            tokens.push(Token::InnerVar(inner_vars.len()));
                             inner_vars.push(s);
                             open_input = true;
                         } else if count != 1 {
@@ -406,7 +409,7 @@ impl Tokens {
                     open_input = false;
                     expect_expr = true;
                     if let Some(last) = fn_inputs.last_mut() {
-                        last.0 += 1;
+                        *last += 1;
                     }
                 }
                 ')' => {
@@ -575,42 +578,54 @@ impl Tokens {
         operator_stack: &mut Vec<Operators>,
         inner_vars: &mut Vec<&str>,
         funs: &Functions,
-        fn_inputs: &mut Vec<(usize, u8)>,
+        fn_inputs: &mut Vec<usize>,
     ) -> Result<(), ParseError> {
-        if let Some(top) = operator_stack.last() {
+        if let Some(top) = operator_stack.pop_if(|l| matches!(l, Operators::Function(_))) {
             match top {
                 Operators::Function(Function::Custom(i)) => {
                     let inputs = fn_inputs.pop().unwrap();
-                    match funs.get(*i).unwrap().inputs.cmp(&inputs.0) {
+                    match funs.get(i).unwrap().inputs.cmp(&inputs) {
                         Ordering::Greater => return Err(ParseError::MissingInput),
                         Ordering::Less => return Err(ParseError::ExtraInput),
                         _ => {}
                     }
-                    self.push(Token::Fun(*i));
-                    operator_stack.pop();
+                    self.push(Token::Fun(i));
                 }
                 Operators::Function(fun) => {
-                    let inputs = fn_inputs.pop().unwrap();
-                    match fun.inputs().cmp(&inputs.0) {
+                    let mut inputs = fn_inputs.pop().unwrap();
+                    if fun.inputs() + 1 - fun.inner_vars() < inputs {
+                        let last = TokensRef(self).get_last(funs);
+                        let mut t = last;
+                        for _ in fun.inputs()..inputs {
+                            let last = TokensRef(&self[0..t]).get_last(funs);
+                            if t - 1 == last && matches!(self[last], Token::InnerVar(_)) {
+                                self.remove(last);
+                            } else {
+                                return Err(ParseError::InnerVarError);
+                            }
+                            t = last;
+                        }
+                        inputs = fun.inputs();
+                    }
+                    match fun.inputs().cmp(&inputs) {
                         Ordering::Greater => return Err(ParseError::MissingInput),
                         Ordering::Less => return Err(ParseError::ExtraInput),
                         _ => {}
                     }
                     self.compact_args(fun, inner_vars, funs);
-                    self.push(operator_stack.pop().unwrap().into());
+                    self.push(top.into());
                 }
                 _ => {}
             }
         }
         Ok(())
     }
-    pub fn compact_args(&mut self, fun: &Function, inner_vars: &mut Vec<&str>, funs: &Functions) {
-        let mut t = 0;
+    pub fn compact_args(&mut self, fun: Function, inner_vars: &mut Vec<&str>, funs: &Functions) {
+        let mut t = self.len();
         for _ in 0..fun.compact() {
-            let to = self.len() - t;
-            let last = TokensRef(&self[0..to]).get_last(funs);
-            self.insert(last, Token::Skip(to - last));
-            t += to - last + 1;
+            let last = TokensRef(&self[0..t]).get_last(funs);
+            self.insert(last, Token::Skip(t - last));
+            t = last;
             inner_vars.pop();
         }
     }
