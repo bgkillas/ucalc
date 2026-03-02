@@ -1,3 +1,5 @@
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 use readchar::crossterm::QueueableCommand;
 use readchar::crossterm::cursor::MoveTo;
 use readchar::crossterm::terminal::{Clear, ClearType};

@@ -8,7 +8,7 @@ homepage.workspace = true
 description.workspace = true
 
 [features]
-default = ["f64", "complex"]
+default = ["f64", "complex", "mimalloc"]
 f16 = ["ucalc_lib/f16"]
 f32 = ["ucalc_lib/f32"]
 f64 = ["ucalc_lib/f64"]
@@ -20,7 +20,9 @@ vector = ["ucalc_lib/vector"]
 matrix = ["ucalc_lib/matrix"]
 list = ["ucalc_lib/list"]
 complex = ["ucalc_lib/complex"]
+mimalloc = ["dep:mimalloc"]
 
 [dependencies]
 ucalc_lib = {workspace = true}
 readchar = {workspace = true}
+mimalloc = {version="0.1.48", features = ["v3"], optional = true}
