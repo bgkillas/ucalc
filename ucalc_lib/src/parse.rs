@@ -49,8 +49,8 @@ impl Display for Token {
     }
 }
 #[derive(Debug, PartialEq)]
-pub enum ParseError {
-    UnknownToken(String),
+pub enum ParseError<'a> {
+    UnknownToken(&'a str),
     LeftParenthesisNotFound,
     RightParenthesisNotFound,
     AbsoluteBracketFailed,
@@ -230,13 +230,13 @@ impl Tokens {
             Some(self)
         }
     }
-    pub fn rpn(
-        value: &str,
+    pub fn rpn<'a>(
+        value: &'a str,
         vars: &mut Variables,
         funs: &mut Functions,
         graph_vars: &[&str],
         mut expect_let: bool,
-    ) -> Result<Option<Self>, ParseError> {
+    ) -> Result<Option<Self>, ParseError<'a>> {
         let mut tokens = Tokens(Vec::with_capacity(value.len()));
         let mut inner_vars: Vec<&str> = Vec::with_capacity(value.len());
         let mut inputs = None;
@@ -274,22 +274,23 @@ impl Tokens {
                 }
                 _ if token.chars().all(|c| c.is_ascii_alphabetic()) => inner_vars.push(token),
                 _ if let Some(n) = NumberBase::parse_radix(token, 10) => tokens.push(n.into()),
-                _ => return Err(ParseError::UnknownToken(token.to_string())),
+                _ => return Err(ParseError::UnknownToken(token)),
             }
         }
         Ok(tokens.end(inputs, vars, funs))
     }
-    pub fn infix(
-        value: &str,
+    pub fn infix<'a>(
+        value: &'a str,
         vars: &mut Variables,
         funs: &mut Functions,
         graph_vars: &[&str],
         mut expect_let: bool,
-    ) -> Result<Option<Self>, ParseError> {
+    ) -> Result<Option<Self>, ParseError<'a>> {
         let mut tokens = Tokens(Vec::with_capacity(value.len()));
         let mut operator_stack: Vec<Operators> = Vec::with_capacity(value.len());
         let mut inner_vars: Vec<&str> = Vec::with_capacity(value.len());
         let mut fn_inputs: Vec<usize> = Vec::with_capacity(value.len());
+        let mut inner_vars_count: Vec<u8> = Vec::with_capacity(value.len());
         let mut chars = value.char_indices();
         let mut inputs = None;
         let mut negate = true;
@@ -315,6 +316,7 @@ impl Tokens {
                             }
                         }
                     }
+                    let o = l;
                     loop {
                         let s = &value[i..i + l];
                         if i == 0 && s == "let" {
@@ -341,29 +343,48 @@ impl Tokens {
                             tokens.push(Token::GraphVar(i));
                             open_input = true;
                         } else if let Ok(fun) = Function::try_from(s) {
+                            if fun.has_var() {
+                                inner_vars_count.push(0);
+                            }
                             tokens.last_mul(&mut operator_stack, negate, &mut last_mul, false);
                             operator_stack.push(Operators::Function(fun));
                             open_input = false;
                             fn_inputs.push(1);
                         } else if s.chars().all(|c| c.is_ascii_alphabetic())
-                            && !fn_inputs.is_empty()
+                            && !inner_vars_count.is_empty()
                             && {
                                 let mut inputs = fn_inputs.iter();
+                                let mut inner_vars_count = inner_vars_count.iter_mut();
                                 let mut last = None;
-                                operator_stack
+                                let mut last_count = None;
+                                if operator_stack
                                     .iter()
                                     .rfind(|l| {
                                         if let Operators::Function(f) = l {
                                             last = inputs.next_back();
-                                            f.has_var()
+                                            if f.has_var() {
+                                                last_count = inner_vars_count.next_back();
+                                                f.inner_vars() != **last_count.as_ref().unwrap()
+                                                    && f.expected_var(*last.unwrap())
+                                            } else {
+                                                false
+                                            }
                                         } else {
                                             false
                                         }
                                     })
-                                    .unwrap()
-                                    .expected_var(*last.unwrap())
+                                    .is_some()
+                                {
+                                    *last_count.unwrap() += 1;
+                                    true
+                                } else if l == 1 {
+                                    return Err(ParseError::InnerVarError);
+                                } else {
+                                    false
+                                }
                             }
                         {
+                            tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
                             tokens.push(Token::InnerVar(inner_vars.len()));
                             inner_vars.push(s);
                             open_input = true;
@@ -372,7 +393,7 @@ impl Tokens {
                             l -= value[i..i + l].chars().last().unwrap().len_utf8();
                             continue;
                         } else {
-                            unreachable!()
+                            return Err(ParseError::UnknownToken(&value[i..i + o]));
                         }
                         break;
                     }
@@ -393,7 +414,7 @@ impl Tokens {
                     }
                     let s = &value[i..i + l];
                     let Some(float) = NumberBase::parse_radix(s, 10) else {
-                        return Err(ParseError::UnknownToken(s.to_string()));
+                        return Err(ParseError::UnknownToken(s));
                     };
                     tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
                     tokens.push(float.into());
@@ -440,6 +461,7 @@ impl Tokens {
                     tokens.close_off_bracket(
                         &mut operator_stack,
                         &mut inner_vars,
+                        &mut inner_vars_count,
                         funs,
                         &mut fn_inputs,
                     )?;
@@ -484,6 +506,7 @@ impl Tokens {
                         tokens.close_off_bracket(
                             &mut operator_stack,
                             &mut inner_vars,
+                            &mut inner_vars_count,
                             funs,
                             &mut fn_inputs,
                         )?;
@@ -535,7 +558,7 @@ impl Tokens {
                         negate = operator != Operators::Factorial;
                         last_abs = false;
                     } else {
-                        return Err(ParseError::UnknownToken(s.to_string()));
+                        return Err(ParseError::UnknownToken(s));
                     }
                     last_mul = false;
                 }
@@ -587,9 +610,10 @@ impl Tokens {
         &mut self,
         operator_stack: &mut Vec<Operators>,
         inner_vars: &mut Vec<&str>,
+        inner_vars_count: &mut Vec<u8>,
         funs: &Functions,
         fn_inputs: &mut Vec<usize>,
-    ) -> Result<(), ParseError> {
+    ) -> Result<(), ParseError<'static>> {
         if let Some(top) = operator_stack.pop_if(|l| matches!(l, Operators::Function(_))) {
             match top {
                 Operators::Function(Function::Custom(i)) => {
@@ -602,8 +626,11 @@ impl Tokens {
                     self.push(Token::Fun(i));
                 }
                 Operators::Function(fun) => {
+                    if fun.has_var() {
+                        inner_vars_count.pop();
+                    }
                     let mut inputs = fn_inputs.pop().unwrap();
-                    if fun.inputs() + 1 - fun.inner_vars() < inputs {
+                    if fun.inputs() + 1 - (fun.inner_vars() as usize) < inputs {
                         let last = TokensRef(self).get_last(funs);
                         let mut t = last;
                         for _ in fun.inputs()..inputs {

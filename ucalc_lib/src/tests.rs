@@ -1958,6 +1958,44 @@ fn test_sum() {
         res(385)
     );
     assert_correct!(
+        infix("sum(0,10,sum(n,10,n+k))"),
+        rpn("0 10 n n 10 k n k + sum sum"),
+        vec![
+            num(0),
+            num(10),
+            Token::Skip(7),
+            Token::InnerVar(0),
+            num(10),
+            Token::Skip(3),
+            Token::InnerVar(0),
+            Token::InnerVar(1),
+            Operators::Add.into(),
+            Function::Sum.into(),
+            Function::Sum.into()
+        ],
+        res(660)
+    );
+    assert_correct!(
+        infix("sum(0,10,sum(0,10,n n+k))"),
+        rpn("0 10 n 0 10 k n n * k + sum sum"),
+        vec![
+            num(0),
+            num(10),
+            Token::Skip(9),
+            num(0),
+            num(10),
+            Token::Skip(5),
+            Token::InnerVar(0),
+            Token::InnerVar(0),
+            Function::Mul.into(),
+            Token::InnerVar(1),
+            Operators::Add.into(),
+            Function::Sum.into(),
+            Function::Sum.into()
+        ],
+        res(4840)
+    );
+    assert_correct!(
         infix("sum(0,10,sq(x))"),
         rpn("0 10 x x sq sum"),
         vec![
@@ -2321,7 +2359,7 @@ fn test_err() {
             &[],
             false
         ),
-        Err(ParseError::UnknownToken("2.3.4".to_string()))
+        Err(ParseError::UnknownToken("2.3.4"))
     );
     assert_eq!(
         Tokens::infix(
@@ -2391,7 +2429,7 @@ fn test_err() {
             &[],
             true,
         ),
-        Err(ParseError::UnknownToken("=-=".to_string()))
+        Err(ParseError::UnknownToken("=-="))
     );
     assert_eq!(
         Tokens::infix(
@@ -2401,11 +2439,11 @@ fn test_err() {
             &[],
             true,
         ),
-        Err(ParseError::UnknownToken('\\'.to_string()))
+        Err(ParseError::UnknownToken("\\"))
     );
     /*assert_teq!(
         Tokens::infix("abc(2)", Variables::default(), Functions::default()),
         Tokens::rpn("2 abc", Variables::default(), Functions::default()),
-        Err(ParseError::UnknownToken("abc".to_string()))
+        Err(ParseError::UnknownToken("abc"))
     );*/
 }

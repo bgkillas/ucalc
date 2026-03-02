@@ -439,7 +439,7 @@ impl Function {
             _ => 0,
         }
     }
-    pub fn inner_vars(self) -> usize {
+    pub fn inner_vars(self) -> u8 {
         match self {
             Self::Sum | Self::Prod | Self::Iter | Self::Set | Self::Solve => 1,
             Self::Fold => 2,
