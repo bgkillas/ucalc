@@ -4,9 +4,9 @@ use crate::polynomial::Polynomial;
 use crate::variable::{Functions, Variables};
 use crate::{Number, NumberBase, Variable};
 use std::cmp::Ordering;
-use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::ops::{Deref, DerefMut};
+use std::{fmt, iter};
 use ucalc_numbers::FloatTrait;
 #[derive(Default, PartialEq, Debug, Clone)]
 pub struct Tokens(pub Vec<Token>);
@@ -344,7 +344,7 @@ impl Tokens {
                             open_input = true;
                         } else if let Ok(fun) = Function::try_from(s) {
                             if fun.has_var() {
-                                inner_vars_count.push(0);
+                                inner_vars_count.push(fun.inner_vars());
                             }
                             tokens.last_mul(&mut operator_stack, negate, &mut last_mul, false);
                             operator_stack.push(Operators::Function(fun));
@@ -352,19 +352,21 @@ impl Tokens {
                             fn_inputs.push(1);
                         } else if s.chars().all(|c| c.is_ascii_alphabetic())
                             && !inner_vars_count.is_empty()
-                            && {
+                            && let Some(n) = {
+                                let mut n = inner_vars_count.len();
                                 let mut inputs = fn_inputs.iter();
-                                let mut inner_vars_count = inner_vars_count.iter_mut();
+                                let mut inner_vars_count_iter = inner_vars_count.iter_mut();
                                 let mut last = None;
                                 let mut last_count = None;
-                                if operator_stack
+                                if let Some(f) =  operator_stack
                                     .iter()
                                     .rfind(|l| {
                                         if let Operators::Function(f) = l {
                                             last = inputs.next_back();
                                             if f.has_var() {
-                                                last_count = inner_vars_count.next_back();
-                                                f.inner_vars() != **last_count.as_ref().unwrap()
+                                                last_count = inner_vars_count_iter.next_back();
+                                                n -= 1;
+                                                0 != **last_count.as_ref().unwrap()
                                                     && f.expected_var(*last.unwrap())
                                             } else {
                                                 false
@@ -373,20 +375,27 @@ impl Tokens {
                                             false
                                         }
                                     })
-                                    .is_some()
                                 {
-                                    *last_count.unwrap() += 1;
-                                    true
+                                    *last_count.unwrap() -= 1;
+                                    Some(n)
                                 } else if l == 1 {
                                     return Err(ParseError::InnerVarError);
                                 } else {
-                                    false
+                                    None
                                 }
                             }
                         {
                             tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
-                            tokens.push(Token::InnerVar(inner_vars.len()));
-                            inner_vars.push(s);
+                            tokens.push(Token::InnerVar(n));
+                            println!("{s:?} {inner_vars:?} {n}");
+                            if let Some(k) = inner_vars.get_mut(n+1) {
+                                *k = s;
+                            } else {
+                                if inner_vars.len() != n {
+                                    inner_vars.extend(iter::repeat_n("", n - inner_vars.len()));
+                                }
+                                inner_vars.insert(n, s);
+                            }
                             open_input = true;
                         } else if count != 1 {
                             count -= 1;

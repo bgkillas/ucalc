@@ -2068,6 +2068,66 @@ fn test_prod() {
         ],
         res(576)
     );
+    assert_correct!(
+        infix("prod(1,3,a,prod(1,3,b,a b))"),
+        rpn("1 3 a 1 3 b a b * prod prod"),
+        vec![
+            num(1),
+            num(3),
+            Token::Skip(7),
+            num(1),
+            num(3),
+            Token::Skip(3),
+            Token::InnerVar(0),
+            Token::InnerVar(1),
+            Function::Mul.into(),
+            Function::Prod.into(),
+            Function::Prod.into()
+        ],
+        res(46656)
+    );
+    assert_correct!(
+        infix("prod(1,3,sum(1,3,a b))"),
+        rpn("1 3 a 1 3 b a b * sum prod"),
+        vec![
+            num(1),
+            num(3),
+            Token::Skip(7),
+            num(1),
+            num(3),
+            Token::Skip(3),
+            Token::InnerVar(0),
+            Token::InnerVar(1),
+            Function::Mul.into(),
+            Function::Sum.into(),
+            Function::Prod.into()
+        ],
+        res(1296)
+    );
+    assert_correct!(
+        infix("prod(1,3,sum(1,3,a)+sum(1,3,b)+c)"),
+        rpn("1 3 c 1 3 a sum 1 3 b sum + c + prod"),
+        vec![
+            num(1),
+            num(3),
+            Token::Skip(13),
+            num(1),
+            num(3),
+            Token::Skip(1),
+            Token::InnerVar(1),
+            Function::Sum.into(),
+            num(1),
+            num(3),
+            Token::Skip(1),
+            Token::InnerVar(1),
+            Function::Sum.into(),
+            Function::Add.into(),
+            Token::InnerVar(0),
+            Function::Add.into(),
+            Function::Prod.into()
+        ],
+        res(2730)
+    );
 }
 #[test]
 fn test_iter() {
