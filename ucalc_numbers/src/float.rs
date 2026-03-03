@@ -111,6 +111,9 @@ impl RealTrait<Float> for Float {
     fn into_isize(self) -> isize {
         self.0 as isize
     }
+    fn into_usize(self) -> usize {
+        self.0 as usize
+    }
 }
 impl FloatTrait<Float> for Float {
     fn real(&self) -> &Self {

@@ -78,6 +78,7 @@ pub enum Function {
     If,
     Fold,
     Set,
+    Modify,
     Solve,
     Custom(usize),
 }
@@ -134,6 +135,7 @@ impl TryFrom<&str> for Function {
             "imag" => Self::Imag,
             "if" => Self::If,
             "set" => Self::Set,
+            "modify" => Self::Modify,
             "fold" => Self::Fold,
             "solve" => Self::Solve,
             "add" => Self::Add,
@@ -215,6 +217,7 @@ impl Display for Function {
                 Self::Imag => "imag",
                 Self::If => "if",
                 Self::Set => "set",
+                Self::Modify => "modify",
                 Self::Fold => "fold",
                 Self::Solve => "solve",
                 Self::Add => "add",
@@ -301,7 +304,7 @@ impl Function {
             | Self::Max
             | Self::Min
             | Self::Set => 2,
-            Self::Quadratic | Self::Sum | Self::Prod | Self::Iter | Self::If => 3,
+            Self::Quadratic | Self::Sum | Self::Prod | Self::Iter | Self::If | Self::Modify => 3,
             Self::Fold => 4,
             #[cfg(feature = "complex")]
             Self::Cubic => 4,
@@ -429,12 +432,19 @@ impl Function {
             | Self::If
             | Self::Fold
             | Self::Set
+            | Self::Modify
             | Self::Solve => unreachable!(),
         }
     }
     pub fn compact(self) -> usize {
         match self {
-            Self::Sum | Self::Prod | Self::Iter | Self::Fold | Self::Set | Self::Solve => 1,
+            Self::Sum
+            | Self::Prod
+            | Self::Iter
+            | Self::Fold
+            | Self::Set
+            | Self::Solve
+            | Self::Modify => 1,
             Self::If => 2,
             _ => 0,
         }
@@ -464,7 +474,14 @@ impl Function {
     pub fn has_inner_fn(self) -> bool {
         matches!(
             self,
-            Self::Sum | Self::Prod | Self::Iter | Self::Fold | Self::Set | Self::Solve | Self::If
+            Self::Sum
+                | Self::Prod
+                | Self::Iter
+                | Self::Fold
+                | Self::Set
+                | Self::Solve
+                | Self::If
+                | Self::Modify
         )
     }
     pub fn compute_var(
@@ -516,6 +533,22 @@ impl Function {
                 let ([tokens], l) = stack.get_skip_tokens();
                 let [value] = stack.get_skip_var(l);
                 fun_vars.push(value.num_ref().clone());
+                let mut stck = Tokens(Vec::with_capacity(tokens.len()));
+                *stack[len - (l + 1)].num_mut() = tokens.compute_buffer_with(
+                    fun_vars,
+                    vars,
+                    funs,
+                    custom_vars,
+                    &mut stck,
+                    offset,
+                );
+                stack.drain(len - l..);
+                fun_vars.pop();
+            }
+            Self::Modify => {
+                let ([tokens], l) = stack.get_skip_tokens();
+                let [value, var] = stack.get_skip_var(l);
+                fun_vars[var.num_ref().real().clone().into_usize()] = value.num_ref().clone();
                 let mut stck = Tokens(Vec::with_capacity(tokens.len()));
                 *stack[len - (l + 1)].num_mut() = tokens.compute_buffer_with(
                     fun_vars,

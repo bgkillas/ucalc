@@ -151,4 +151,5 @@ pub trait RealTrait<F>: FloatTrait<F> {
     fn is_sign_positive(&self) -> bool;
     fn hypot_mut(&mut self, other: &Self);
     fn into_isize(self) -> isize;
+    fn into_usize(self) -> usize;
 }

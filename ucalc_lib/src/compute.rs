@@ -163,6 +163,7 @@ impl TokensRef<'_> {
                 Token::GraphVar(index) => stack.push(Token::Num(vars[*index].clone())),
                 Token::Skip(to) => {
                     let back = stack.len();
+                    //TODO no need to write to stack for this immutable bit of data
                     stack.extend_from_slice(&self[i + 1..=i + to]);
                     stack.push(Token::Skip(back));
                     i += to;

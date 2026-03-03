@@ -171,7 +171,8 @@ impl From<Function> for Inverse {
             | Function::Fold
             | Function::Set
             | Function::Solve
-            | Function::Custom(_) => Self::None,
+            | Function::Custom(_)
+            | Function::Modify => Self::None,
             #[cfg(feature = "complex")]
             Function::Arg
             | Function::Real
