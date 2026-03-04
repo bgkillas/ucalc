@@ -100,7 +100,7 @@ fn var(n: &str) -> Token {
         Variables::default()
             .iter()
             .position(|v| v.name.as_ref().is_some_and(|v| v.as_ref() == n))
-            .unwrap(),
+            .unwrap() as u16,
     )
 }
 #[test]
@@ -1944,6 +1944,24 @@ fn test_sum() {
         res(385)
     );
     assert_correct!(
+        infix("sum(1,3,a,sum(1,9,3)+a)"),
+        rpn("1 3 a 1 9 b 3 sum a + sum"),
+        vec![
+            num(1),
+            num(3),
+            Token::Skip(7),
+            num(1),
+            num(9),
+            Token::Skip(1),
+            num(3),
+            Function::Sum.into(),
+            Token::InnerVar(0),
+            Operators::Add.into(),
+            Function::Sum.into()
+        ],
+        res(87)
+    );
+    assert_correct!(
         infix("sum(0,10,x^2)"),
         rpn("0 10 x x 2 ^ sum"),
         vec![
@@ -1977,7 +1995,7 @@ fn test_sum() {
     );
     assert_correct!(
         infix("sum(0,10,sum(0,10,n n+k))"),
-        rpn("0 10 n 0 10 k n n * k + sum sum"),
+        rpn("0 10 k 0 10 n n n * k + sum sum"),
         vec![
             num(0),
             num(10),
@@ -1985,10 +2003,10 @@ fn test_sum() {
             num(0),
             num(10),
             Token::Skip(5),
-            Token::InnerVar(0),
-            Token::InnerVar(0),
-            Function::Mul.into(),
             Token::InnerVar(1),
+            Token::InnerVar(1),
+            Function::Mul.into(),
+            Token::InnerVar(0),
             Operators::Add.into(),
             Function::Sum.into(),
             Function::Sum.into()
@@ -2053,6 +2071,39 @@ fn test_inner_fn() {
     );
 }
 #[test]
+fn test_modify() {
+    assert_correct!(
+        infix("set(2,x,modify(3,x,x))"),
+        rpn("2 x 3 x x modify set"),
+        vec![
+            num(2),
+            Token::Skip(5),
+            num(3),
+            Token::InnerVar(0),
+            Token::Skip(1),
+            Token::InnerVar(0),
+            Function::Modify.into(),
+            Function::Set.into()
+        ],
+        res(3)
+    );
+    assert_correct!(
+        infix("set(2,modify(3,x,x))"),
+        rpn("2 x 3 x x modify set"),
+        vec![
+            num(2),
+            Token::Skip(5),
+            num(3),
+            Token::InnerVar(0),
+            Token::Skip(1),
+            Token::InnerVar(0),
+            Function::Modify.into(),
+            Function::Set.into()
+        ],
+        res(3)
+    );
+}
+#[test]
 fn test_prod() {
     assert_correct!(
         infix("prod(1,4,x,x^2)"),
@@ -2088,7 +2139,7 @@ fn test_prod() {
     );
     assert_correct!(
         infix("prod(1,3,sum(1,3,a b))"),
-        rpn("1 3 a 1 3 b a b * sum prod"),
+        rpn("1 3 b 1 3 a a b * sum prod"),
         vec![
             num(1),
             num(3),
@@ -2096,8 +2147,8 @@ fn test_prod() {
             num(1),
             num(3),
             Token::Skip(3),
-            Token::InnerVar(0),
             Token::InnerVar(1),
+            Token::InnerVar(0),
             Function::Mul.into(),
             Function::Sum.into(),
             Function::Prod.into()
@@ -2106,7 +2157,7 @@ fn test_prod() {
     );
     assert_correct!(
         infix("prod(1,3,sum(1,3,a)+sum(1,3,b)+c)"),
-        rpn("1 3 c 1 3 a sum 1 3 b sum + c + prod"),
+        rpn("1 3 c 1 3 a a sum 1 3 b b sum + c + prod"),
         vec![
             num(1),
             num(3),

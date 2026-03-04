@@ -127,7 +127,7 @@ impl TryFrom<&str> for Operators {
 }
 impl Operators {
     pub const MAX_INPUT: usize = Function::MAX_INPUT;
-    pub fn inputs(self) -> usize {
+    pub fn inputs(self) -> u8 {
         match self {
             Self::Mul
             | Self::Div
@@ -174,7 +174,7 @@ impl Operators {
             | Self::Bracket(_) => unreachable!(),
         }
     }
-    pub fn expected_var(self, n: usize) -> bool {
+    pub fn expected_var(self, n: u8) -> bool {
         if let Self::Function(f) = self {
             f.expected_var(n)
         } else {

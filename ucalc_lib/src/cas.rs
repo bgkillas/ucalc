@@ -43,19 +43,19 @@ impl<'a> TokensRef<'a> {
             i -= 1;
             match self[i] {
                 Token::Fun(n) => {
-                    let fun = &funs[n];
+                    let fun = &funs[n as usize];
                     let tokens = TokensRef(&self[start..=i]);
                     let mut args = tokens.get_lasts(funs);
                     let count = args
                         .iter()
-                        .filter(|a| a.contains(&Token::InnerVar(fun_vars.len())))
+                        .filter(|a| a.contains(&Token::InnerVar(fun_vars.len() as u16)))
                         .count();
                     if count != 1 {
                         todo!() //polynomial
                     }
                     let end = fun_vars.len();
                     for arg in args.iter() {
-                        if arg.contains(&Token::InnerVar(fun_vars.len())) {
+                        if arg.contains(&Token::InnerVar(fun_vars.len() as u16)) {
                             fun_vars.push(Number::default())
                         } else {
                             let n = arg.compute_buffer_with(
@@ -108,12 +108,12 @@ impl<'a> TokensRef<'a> {
                             .as_ref()
                             .map(|a| {
                                 a.iter().enumerate().any(|(i, a)| {
-                                    right_tokens.contains(&Token::InnerVar(i))
-                                        && a.contains(&Token::InnerVar(offset))
+                                    right_tokens.contains(&Token::InnerVar(i as u16))
+                                        && a.contains(&Token::InnerVar(offset as u16))
                                 })
                             })
                             .unwrap_or_else(|| {
-                                right_tokens.contains(&Token::InnerVar(fun_vars.len()))
+                                right_tokens.contains(&Token::InnerVar(fun_vars.len() as u16))
                             })
                         {
                             let left_tokens = TokensRef(&self[start..last]);
@@ -122,12 +122,12 @@ impl<'a> TokensRef<'a> {
                                 .as_ref()
                                 .map(|a| {
                                     a.iter().enumerate().any(|(i, a)| {
-                                        left_tokens.contains(&Token::InnerVar(i))
-                                            && a.contains(&Token::InnerVar(offset))
+                                        left_tokens.contains(&Token::InnerVar(i as u16))
+                                            && a.contains(&Token::InnerVar(offset as u16))
                                     })
                                 })
                                 .unwrap_or_else(|| {
-                                    left_tokens.contains(&Token::InnerVar(fun_vars.len()))
+                                    left_tokens.contains(&Token::InnerVar(fun_vars.len() as u16))
                                 })
                             {
                                 let poly = TokensRef(&self[start..=i]).compute_polynomial(
@@ -139,10 +139,12 @@ impl<'a> TokensRef<'a> {
                                     offset,
                                     Some(
                                         args.and_then(|a| {
-                                            a.iter()
-                                                .position(|a| a.contains(&Token::InnerVar(offset)))
+                                            a.iter().position(|a| {
+                                                a.contains(&Token::InnerVar(offset as u16))
+                                            })
                                         })
-                                        .unwrap_or(fun_vars.len()),
+                                        .unwrap_or(fun_vars.len())
+                                            as u16,
                                     ),
                                 )?;
                                 let poly = *poly.poly() - ret.deref();

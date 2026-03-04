@@ -10,18 +10,18 @@ pub struct Variable {
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionVar {
     pub name: Option<Box<str>>,
-    pub inputs: usize,
     pub tokens: Tokens,
+    pub inputs: u8,
 }
 impl FunctionVar {
-    pub fn new(name: impl Into<Box<str>>, inputs: usize, tokens: Tokens) -> Self {
+    pub fn new(name: impl Into<Box<str>>, inputs: u8, tokens: Tokens) -> Self {
         Self {
             name: Some(name.into()),
             inputs,
             tokens,
         }
     }
-    pub fn null(inputs: usize, tokens: Tokens) -> Self {
+    pub fn null(inputs: u8, tokens: Tokens) -> Self {
         Self {
             name: None,
             inputs,
@@ -43,9 +43,10 @@ impl Variable {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Variables(pub Vec<Variable>);
 impl Variables {
-    pub fn position(&self, name: &str) -> Option<usize> {
+    pub fn position(&self, name: &str) -> Option<u16> {
         self.iter()
             .position(|v| v.name.as_ref().is_some_and(|n| n.as_ref() == name))
+            .map(|i| i as u16)
     }
     pub fn get_mut(&mut self, name: &str) -> &mut Variable {
         self.iter_mut()
@@ -56,18 +57,19 @@ impl Variables {
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct Functions(pub Vec<FunctionVar>);
 impl Functions {
-    pub fn position(&self, name: &str) -> Option<usize> {
+    pub fn position(&self, name: &str) -> Option<u16> {
         self.iter()
             .position(|v| v.name.as_ref().is_some_and(|n| n.as_ref() == name))
+            .map(|i| i as u16)
     }
-    pub fn add(&mut self, vars: &mut Variables, name: &str, inputs: usize) {
+    pub fn add(&mut self, vars: &mut Variables, name: &str, inputs: u8) {
         vars.iter_mut().for_each(|v| {
             if v.name.as_ref().is_some_and(|n| n.as_ref() == name) {
                 v.name = None;
             }
         });
         if let Some(v) = self.position(name) {
-            self[v].inputs = inputs;
+            self[v as usize].inputs = inputs;
         } else {
             self.push(FunctionVar::new(name, inputs, Tokens::default()));
         }

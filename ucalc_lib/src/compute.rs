@@ -113,7 +113,7 @@ impl TokensRef<'_> {
             let len = stack.len();
             match &self[i] {
                 Token::Function(operator) => {
-                    let inputs = operator.inputs();
+                    let inputs = operator.inputs() as usize;
                     if operator.has_inner_fn() {
                         operator.compute_var(stack, fun_vars, vars, funs, custom_vars, offset)
                     } else if operator.is_chainable() {
@@ -143,24 +143,29 @@ impl TokensRef<'_> {
                         stack.drain(len + 1 - inputs..);
                     }
                 }
-                Token::Var(index) => stack.push(Token::Num(custom_vars[*index].value.clone())),
+                Token::Var(index) => {
+                    stack.push(Token::Num(custom_vars[*index as usize].value.clone()))
+                }
                 Token::Fun(index) => {
-                    let inputs = funs[*index].inputs;
+                    let inputs = funs[*index as usize].inputs as usize;
                     let end = fun_vars.len();
                     fun_vars.push(stack[len - inputs].num_ref().clone());
                     fun_vars.extend(stack.drain(len + 1 - inputs..).map(|n| n.num()));
-                    *stack[len - inputs].num_mut() = funs[*index].tokens.compute_buffer_with(
-                        fun_vars,
-                        vars,
-                        funs,
-                        custom_vars,
-                        &mut Tokens(Vec::with_capacity(funs[*index].tokens.len())),
-                        end,
-                    );
+                    *stack[len - inputs].num_mut() =
+                        funs[*index as usize].tokens.compute_buffer_with(
+                            fun_vars,
+                            vars,
+                            funs,
+                            custom_vars,
+                            &mut Tokens(Vec::with_capacity(funs[*index as usize].tokens.len())),
+                            end,
+                        );
                     fun_vars.drain(end..);
                 }
-                Token::InnerVar(index) => stack.push(Token::Num(fun_vars[offset + index].clone())),
-                Token::GraphVar(index) => stack.push(Token::Num(vars[*index].clone())),
+                Token::InnerVar(index) => {
+                    stack.push(Token::Num(fun_vars[offset + *index as usize].clone()))
+                }
+                Token::GraphVar(index) => stack.push(Token::Num(vars[*index as usize].clone())),
                 Token::Skip(to) => {
                     let back = stack.len();
                     //TODO no need to write to stack for this immutable bit of data

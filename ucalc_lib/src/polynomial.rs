@@ -412,7 +412,7 @@ impl TokensRef<'_> {
         custom_vars: &Variables,
         stack: &mut Tokens,
         offset: usize,
-        to_poly: Option<usize>,
+        to_poly: Option<u16>,
     ) -> Option<Token> {
         let mut i = 0;
         let mut poly = Vec::with_capacity(8).into();
@@ -420,25 +420,28 @@ impl TokensRef<'_> {
             let len = stack.len();
             match &self[i] {
                 Token::Function(operator) => {
-                    let inputs = operator.inputs();
+                    let inputs = operator.inputs() as usize;
                     operator.compute_poly(&mut stack[len - inputs..], &mut poly)?;
                     stack.drain(len + 1 - inputs..);
                 }
-                Token::Var(index) => stack.push(Token::Num(custom_vars[*index].value.clone())),
+                Token::Var(index) => {
+                    stack.push(Token::Num(custom_vars[*index as usize].value.clone()))
+                }
                 Token::Fun(index) => {
-                    let inputs = funs[*index].inputs;
+                    let inputs = funs[*index as usize].inputs as usize;
                     let end = fun_vars.len();
                     fun_vars.push(stack[len - inputs].num_ref().clone());
                     fun_vars.extend(stack.drain(len + 1 - inputs..).map(|n| n.num()));
-                    stack[len - inputs] = TokensRef(&funs[*index].tokens).compute_polynomial(
-                        fun_vars,
-                        vars,
-                        funs,
-                        custom_vars,
-                        &mut Tokens(Vec::with_capacity(funs[*index].tokens.len())),
-                        end,
-                        None,
-                    )?;
+                    stack[len - inputs] = TokensRef(&funs[*index as usize].tokens)
+                        .compute_polynomial(
+                            fun_vars,
+                            vars,
+                            funs,
+                            custom_vars,
+                            &mut Tokens(Vec::with_capacity(funs[*index as usize].tokens.len())),
+                            end,
+                            None,
+                        )?;
                     fun_vars.drain(end..);
                 }
                 Token::Num(n) => {
@@ -448,10 +451,10 @@ impl TokensRef<'_> {
                     if Some(*index) == to_poly {
                         stack.push(Polynomial::new().into())
                     } else {
-                        stack.push(Token::Num(fun_vars[offset + index].clone()))
+                        stack.push(Token::Num(fun_vars[offset + *index as usize].clone()))
                     }
                 }
-                Token::GraphVar(index) => stack.push(Token::Num(vars[*index].clone())),
+                Token::GraphVar(index) => stack.push(Token::Num(vars[*index as usize].clone())),
                 Token::Skip(to) => {
                     let back = stack.len();
                     stack.extend_from_slice(&self[i + 1..=i + to]);

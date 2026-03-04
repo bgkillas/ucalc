@@ -80,7 +80,7 @@ pub enum Function {
     Set,
     Modify,
     Solve,
-    Custom(usize),
+    Custom(u16),
 }
 impl TryFrom<&str> for Function {
     type Error = ();
@@ -247,7 +247,7 @@ impl Display for Function {
 }
 impl Function {
     pub const MAX_INPUT: usize = 3;
-    pub fn inputs(self) -> usize {
+    pub fn inputs(self) -> u8 {
         match self {
             Self::Not
             | Self::Factorial
@@ -456,7 +456,7 @@ impl Function {
             _ => 0,
         }
     }
-    pub fn expected_var(self, n: usize) -> bool {
+    pub fn expected_var(self, n: u8) -> bool {
         match self {
             Self::Solve => n == 1,
             Self::Set => n == 2,
@@ -547,7 +547,7 @@ impl Function {
             }
             Self::Modify => {
                 let ([tokens], l) = stack.get_skip_tokens();
-                let [value, var] = stack.get_skip_var(l);
+                let [var, value] = stack.get_skip_var(l);
                 fun_vars[var.num_ref().real().clone().into_usize()] = value.num_ref().clone();
                 let mut stck = Tokens(Vec::with_capacity(tokens.len()));
                 *stack[len - (l + 1)].num_mut() = tokens.compute_buffer_with(
