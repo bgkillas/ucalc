@@ -438,14 +438,8 @@ impl Function {
     }
     pub fn compact(self) -> usize {
         match self {
-            Self::Sum
-            | Self::Prod
-            | Self::Iter
-            | Self::Fold
-            | Self::Set
-            | Self::Solve
-            | Self::Modify => 1,
-            Self::If => 2,
+            Self::Sum | Self::Prod | Self::Iter | Self::Fold | Self::Set | Self::Solve => 1,
+            Self::If | Self::Modify => 2,
             _ => 0,
         }
     }
@@ -555,9 +549,9 @@ impl Function {
                 fun_vars.pop();
             }
             Self::Modify => {
-                let ([tokens], l) = stack.get_skip_tokens();
-                let [var, value] = stack.get_skip_var(l);
-                fun_vars[var.num_ref().real().clone().into_usize()] = value.num_ref().clone();
+                let ([tokens, var], l) = stack.get_skip_tokens();
+                let [value] = stack.get_skip_var(l);
+                fun_vars[var[0].inner_var_ref() as usize] = value.num_ref().clone();
                 let mut stck = Tokens(Vec::with_capacity(tokens.len()));
                 *stack[len - (l + 1)].num_mut() = tokens.compute_buffer_with(
                     fun_vars,

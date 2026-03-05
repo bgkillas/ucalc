@@ -578,25 +578,22 @@ impl Tokens {
         if operator_stack
             .iter()
             .rfind(|la| {
-                if let Operators::Function(f) = la {
-                    last = inputs.next_back();
-                    if f.has_var() {
-                        n -= 1;
-                        if f.expected_var(*last.unwrap()) {
-                            if inner_vars_count[n] != 0 {
-                                inner_vars -= inner_vars_count[n] as usize;
-                                true
-                            } else {
-                                inner_vars = f.inner_vars() as usize;
-                                false
-                            }
-                        } else {
-                            false
-                        }
-                    } else {
-                        false
-                    }
+                let Operators::Function(f) = la else {
+                    return false;
+                };
+                last = inputs.next_back();
+                if !f.has_var() {
+                    return false;
+                }
+                n -= 1;
+                if !f.expected_var(*last.unwrap()) {
+                    return false;
+                }
+                if inner_vars_count[n] != 0 {
+                    inner_vars -= inner_vars_count[n] as usize;
+                    true
                 } else {
+                    inner_vars = f.inner_vars() as usize;
                     false
                 }
             })
@@ -799,6 +796,12 @@ impl Token {
             unreachable!()
         };
         n
+    }
+    pub fn inner_var_ref(&self) -> u16 {
+        let Token::InnerVar(n) = self else {
+            unreachable!()
+        };
+        *n
     }
     pub fn num_mut(&mut self) -> &mut Number {
         let Token::Num(num) = self else {

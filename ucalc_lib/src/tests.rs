@@ -2077,8 +2077,9 @@ fn test_modify() {
         rpn("2 x 3 x x modify set"),
         vec![
             num(2),
-            Token::Skip(5),
+            Token::Skip(6),
             num(3),
+            Token::Skip(1),
             Token::InnerVar(0),
             Token::Skip(1),
             Token::InnerVar(0),
@@ -2092,8 +2093,9 @@ fn test_modify() {
         rpn("2 x 3 x x modify set"),
         vec![
             num(2),
-            Token::Skip(5),
+            Token::Skip(6),
             num(3),
+            Token::Skip(1),
             Token::InnerVar(0),
             Token::Skip(1),
             Token::InnerVar(0),
