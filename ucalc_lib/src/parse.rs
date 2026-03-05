@@ -344,6 +344,9 @@ impl Tokens {
                             tokens.push(Token::GraphVar(i as u8));
                             open_input = true;
                         } else if let Ok(fun) = Function::try_from(s) {
+                            if fun.first_expected_var(1) {
+                                inner_vars.extend(iter::repeat_n("", fun.inner_vars() as usize));
+                            }
                             if fun.has_var() {
                                 inner_vars_count.push(fun.inner_vars());
                             }
@@ -358,19 +361,12 @@ impl Tokens {
                                 &fn_inputs,
                                 &operator_stack,
                                 l,
+                                inner_vars.len(),
                             )?
                         {
                             tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
                             tokens.push(Token::InnerVar(n as u16));
-                            println!("{s:?} {inner_vars:?} {n}");
-                            if let Some(k) = inner_vars.get_mut(n + 1) {
-                                *k = s;
-                            } else {
-                                if inner_vars.len() != n {
-                                    inner_vars.extend(iter::repeat_n("", n - inner_vars.len()));
-                                }
-                                inner_vars.insert(n, s);
-                            }
+                            inner_vars[n] = s;
                             open_input = true;
                         } else if count != 1 {
                             count -= 1;
@@ -418,14 +414,21 @@ impl Tokens {
                     {
                         tokens.push(operator_stack.pop().unwrap().into());
                     }
+                    if let Some(last) = fn_inputs.last_mut() {
+                        *last += 1;
+                        let Operators::Function(fun) = operator_stack[operator_stack.len() - 2]
+                        else {
+                            unreachable!()
+                        };
+                        if fun.first_expected_var(*last) {
+                            inner_vars.extend(iter::repeat_n("", fun.inner_vars() as usize));
+                        }
+                    }
                     negate = true;
                     last_abs = false;
                     last_mul = false;
                     open_input = false;
                     expect_expr = true;
-                    if let Some(last) = fn_inputs.last_mut() {
-                        *last += 1;
-                    }
                 }
                 ')' => {
                     if req_input || expect_expr {
@@ -567,28 +570,40 @@ impl Tokens {
         fn_inputs: &[u8],
         operator_stack: &[Operators],
         l: usize,
+        mut inner_vars: usize,
     ) -> Result<Option<usize>, ParseError<'static>> {
         let mut n = inner_vars_count.len();
         let mut inputs = fn_inputs.iter();
-        let mut inner_vars_count_iter = inner_vars_count.iter_mut();
         let mut last = None;
-        let mut last_count = None;
-        if let Some(f) = operator_stack.iter().rfind(|l| {
-            if let Operators::Function(f) = l {
-                last = inputs.next_back();
-                if f.has_var() {
-                    last_count = inner_vars_count_iter.next_back();
-                    n -= 1;
-                    0 != **last_count.as_ref().unwrap() && f.expected_var(*last.unwrap())
+        if operator_stack
+            .iter()
+            .rfind(|la| {
+                if let Operators::Function(f) = la {
+                    last = inputs.next_back();
+                    if f.has_var() {
+                        n -= 1;
+                        if f.expected_var(*last.unwrap()) {
+                            if inner_vars_count[n] != 0 {
+                                inner_vars -= inner_vars_count[n] as usize;
+                                true
+                            } else {
+                                inner_vars = f.inner_vars() as usize;
+                                false
+                            }
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
+                    }
                 } else {
                     false
                 }
-            } else {
-                false
-            }
-        }) {
-            *last_count.unwrap() -= 1;
-            Ok(Some(n))
+            })
+            .is_some()
+        {
+            inner_vars_count[n] -= 1;
+            Ok(Some(inner_vars))
         } else if l == 1 {
             Err(ParseError::InnerVarError)
         } else {
@@ -680,6 +695,8 @@ impl Tokens {
             let last = TokensRef(&self[0..t]).get_last(funs);
             self.insert(last, Token::Skip(t - last));
             t = last;
+        }
+        for _ in 0..fun.inner_vars() {
             inner_vars.pop().unwrap();
         }
     }

@@ -465,6 +465,15 @@ impl Function {
             _ => false,
         }
     }
+    pub fn first_expected_var(self, n: u8) -> bool {
+        match self {
+            Self::Solve => n == 1,
+            Self::Set => n == 2,
+            Self::Sum | Self::Prod | Self::Iter => n == 3,
+            Self::Fold => n == 4,
+            _ => false,
+        }
+    }
     pub fn has_var(self) -> bool {
         matches!(
             self,
