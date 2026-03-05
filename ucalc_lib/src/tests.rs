@@ -1944,6 +1944,41 @@ fn test_sum() {
         res(385)
     );
     assert_correct!(
+        infix("set(2^2,n,sum(1,n,sum(1,n,sum(1,n,sum(1,n,a+b+c+d)))))"),
+        rpn("2 2 ^ n 1 n d 1 n c 1 n b 1 n a a b + c + d + sum sum sum sum set"),
+        vec![
+            num(2),
+            num(2),
+            Operators::Pow.into(),
+            Token::Skip(23),
+            num(1),
+            Token::InnerVar(0),
+            Token::Skip(19),
+            num(1),
+            Token::InnerVar(0),
+            Token::Skip(15),
+            num(1),
+            Token::InnerVar(0),
+            Token::Skip(11),
+            num(1),
+            Token::InnerVar(0),
+            Token::Skip(7),
+            Token::InnerVar(4),
+            Token::InnerVar(3),
+            Operators::Add.into(),
+            Token::InnerVar(2),
+            Operators::Add.into(),
+            Token::InnerVar(1),
+            Operators::Add.into(),
+            Function::Sum.into(),
+            Function::Sum.into(),
+            Function::Sum.into(),
+            Function::Sum.into(),
+            Function::Set.into()
+        ],
+        res(2560)
+    );
+    assert_correct!(
         infix("sum(1,3,a,sum(1,9,3)+a)"),
         rpn("1 3 a 1 9 b 3 sum a + sum"),
         vec![

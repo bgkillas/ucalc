@@ -593,7 +593,7 @@ impl Tokens {
                     inner_vars -= inner_vars_count[n] as usize;
                     true
                 } else {
-                    inner_vars = f.inner_vars() as usize;
+                    inner_vars -= f.inner_vars() as usize;
                     false
                 }
             })
