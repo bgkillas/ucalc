@@ -1,4 +1,4 @@
-use crate::parse::Token;
+use crate::parse::{Token, TokensRef};
 use crate::polynomial::PolyRef;
 use crate::{Functions, Number, Tokens, Variables};
 use std::fmt::{Display, Formatter};
@@ -487,8 +487,10 @@ impl Function {
                 | Self::Modify
         )
     }
+    #[allow(clippy::too_many_arguments)]
     pub fn compute_var(
         self,
+        tokens: TokensRef,
         stack: &mut Tokens,
         fun_vars: &mut Vec<Number>,
         vars: &[Number],
@@ -499,17 +501,17 @@ impl Function {
         let len = stack.len();
         match self {
             Self::Sum => {
-                stack.range(fun_vars, vars, funs, custom_vars, offset, |iter| {
+                stack.range(tokens, fun_vars, vars, funs, custom_vars, offset, |iter| {
                     iter.sum::<Number>().into()
                 });
             }
             Self::Prod => {
-                stack.range(fun_vars, vars, funs, custom_vars, offset, |iter| {
+                stack.range(tokens, fun_vars, vars, funs, custom_vars, offset, |iter| {
                     iter.product::<Number>().into()
                 });
             }
             Self::Fold => {
-                let ([tokens], l) = stack.get_skip_tokens();
+                let ([tokens], l) = stack.get_skip_tokens(&tokens);
                 let [end, start, value] = stack.get_skip_var(l);
                 let start = start.num_ref().real().clone().into_isize();
                 let end = end.num_ref().real().clone().into_isize();
@@ -533,7 +535,7 @@ impl Function {
                 *stack[len - (l + 3)].num_mut() = fun_vars.pop().unwrap();
             }
             Self::Set => {
-                let ([tokens], l) = stack.get_skip_tokens();
+                let ([tokens], l) = stack.get_skip_tokens(&tokens);
                 let [value] = stack.get_skip_var(l);
                 fun_vars.push(value.num_ref().clone());
                 let mut stck = Tokens(Vec::with_capacity(tokens.len()));
@@ -549,7 +551,7 @@ impl Function {
                 fun_vars.pop().unwrap();
             }
             Self::Modify => {
-                let ([tokens, var], l) = stack.get_skip_tokens();
+                let ([tokens, var], l) = stack.get_skip_tokens(&tokens);
                 let [value] = stack.get_skip_var(l);
                 fun_vars[var[0].inner_var_ref() as usize] = value.num_ref().clone();
                 let mut stck = Tokens(Vec::with_capacity(tokens.len()));
@@ -564,7 +566,7 @@ impl Function {
                 stack.drain(len - l..);
             }
             Self::Solve => {
-                let ([tokens], l) = stack.get_skip_tokens();
+                let ([tokens], l) = stack.get_skip_tokens(&tokens);
                 stack[len - l] = tokens
                     .get_inverse(fun_vars, vars, funs, custom_vars, offset)
                     .unwrap_or(Number::from(Constant::Nan))
@@ -572,7 +574,7 @@ impl Function {
                 stack.drain(len - (l - 1)..);
             }
             Self::Iter => {
-                let ([tokens], l) = stack.get_skip_tokens();
+                let ([tokens], l) = stack.get_skip_tokens(&tokens);
                 let [steps, first] = stack.get_skip_var(l);
                 fun_vars.push(first.num_ref().clone());
                 let steps = steps.num_ref().real().clone().into_isize();
@@ -592,7 +594,7 @@ impl Function {
                 *stack[len - (l + 2)].num_mut() = fun_vars.pop().unwrap();
             }
             Self::If => {
-                let ([ifelse, ifthen], l) = stack.get_skip_tokens();
+                let ([ifelse, ifthen], l) = stack.get_skip_tokens(&tokens);
                 let [condition] = stack.get_skip_var(l);
                 let condition = condition.num_ref();
                 let tokens = if condition.is_zero() { ifelse } else { ifthen };

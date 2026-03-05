@@ -31,21 +31,26 @@ impl Tokens {
         let end = self.len() - (end + 1);
         array::from_fn(|i| &self[end - i])
     }
-    pub fn get_skip_tokens<const N: usize>(&self) -> ([TokensRef<'_>; N], usize) {
-        let len = self.len();
+    pub fn get_skip_tokens<'a, 'b: 'a, const N: usize>(
+        &self,
+        tokens: &'b TokensRef<'a>,
+    ) -> ([TokensRef<'a>; N], usize) {
+        let len = tokens.len();
         let mut t = len - 1;
         let mut l = 0;
-        let ret = array::from_fn(|_| {
-            let back = self[t].skip();
-            let ret = TokensRef(&self[back..t]);
+        let ret = array::from_fn(|i| {
+            let back = self[self.len() - (i + 1)].skip();
+            let ret = TokensRef(&tokens[back..t]);
             l += t - back + 1;
             t = back.saturating_sub(1);
             ret
         });
-        (ret, l)
+        (ret, N)
     }
+    #[allow(clippy::too_many_arguments)]
     pub fn range(
         &mut self,
+        tokens: TokensRef,
         fun_vars: &mut Vec<Number>,
         vars: &[Number],
         funs: &Functions,
@@ -54,7 +59,7 @@ impl Tokens {
         fun: impl FnOnce(&mut dyn Iterator<Item = Number>) -> Token,
     ) {
         let len = self.len();
-        let ([tokens], l) = self.get_skip_tokens();
+        let ([tokens], l) = self.get_skip_tokens(&tokens);
         let [end, start] = self.get_skip_var(l);
         let start = start.num_ref().real().clone().into_isize();
         let end = end.num_ref().real().clone().into_isize();
@@ -115,7 +120,15 @@ impl TokensRef<'_> {
                 Token::Function(operator) => {
                     let inputs = operator.inputs() as usize;
                     if operator.has_inner_fn() {
-                        operator.compute_var(stack, fun_vars, vars, funs, custom_vars, offset)
+                        operator.compute_var(
+                            TokensRef(&self[..=i]),
+                            stack,
+                            fun_vars,
+                            vars,
+                            funs,
+                            custom_vars,
+                            offset,
+                        )
                     } else if operator.is_chainable() {
                         let chain = if self.get(i + 1).is_some_and(|o| {
                             if let Token::Function(o) = o {
@@ -167,10 +180,7 @@ impl TokensRef<'_> {
                 }
                 Token::GraphVar(index) => stack.push(Token::Num(vars[*index as usize].clone())),
                 Token::Skip(to) => {
-                    let back = stack.len();
-                    //TODO no need to write to stack for this immutable bit of data
-                    stack.extend_from_slice(&self[i + 1..=i + to]);
-                    stack.push(Token::Skip(back));
+                    stack.push(Token::Skip(i + 1));
                     i += to;
                 }
                 Token::Num(n) => stack.push(Token::Num(n.clone())),
