@@ -656,7 +656,7 @@ impl Tokens {
                 }
                 Operators::Function(fun) => {
                     if fun.has_var() {
-                        inner_vars_count.pop();
+                        inner_vars_count.pop().unwrap();
                     }
                     let mut inputs = fn_inputs.pop().unwrap();
                     if fun.inputs() + 1 - fun.inner_vars() < inputs {

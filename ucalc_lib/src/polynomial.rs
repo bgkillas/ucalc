@@ -64,7 +64,7 @@ impl Poly {
     pub fn div_buffer(&mut self, rhs: &Self, buffer: &mut Poly) -> bool {
         while !self.is_zero() && self.0.len() >= rhs.0.len() {
             let tmp = self.0.last().unwrap().clone() / rhs.0.last().unwrap();
-            self.0.pop();
+            self.0.pop().unwrap();
             let start = (self.0.len() + 1) - rhs.len();
             self.0[start..]
                 .iter_mut()

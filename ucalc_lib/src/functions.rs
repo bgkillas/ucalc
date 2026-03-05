@@ -529,7 +529,7 @@ impl Function {
                     *fun_vars.last_mut().unwrap() += Float::from(1);
                 });
                 stack.drain(len - (l + 2)..);
-                fun_vars.pop();
+                fun_vars.pop().unwrap();
                 *stack[len - (l + 3)].num_mut() = fun_vars.pop().unwrap();
             }
             Self::Set => {
@@ -546,7 +546,7 @@ impl Function {
                     offset,
                 );
                 stack.drain(len - l..);
-                fun_vars.pop();
+                fun_vars.pop().unwrap();
             }
             Self::Modify => {
                 let ([tokens, var], l) = stack.get_skip_tokens();
@@ -562,7 +562,6 @@ impl Function {
                     offset,
                 );
                 stack.drain(len - l..);
-                fun_vars.pop();
             }
             Self::Solve => {
                 let ([tokens], l) = stack.get_skip_tokens();

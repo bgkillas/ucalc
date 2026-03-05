@@ -67,7 +67,7 @@ impl Tokens {
             ret
         });
         self[len - (l + 2)] = fun(&mut iter);
-        fun_vars.pop();
+        fun_vars.pop().unwrap();
         self.drain(len - (l + 1)..);
     }
 }
