@@ -10,7 +10,7 @@ use std::{fmt, iter};
 use ucalc_numbers::FloatTrait;
 #[derive(Default, PartialEq, Debug, Clone)]
 pub struct Tokens(pub Vec<Token>);
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct TokensRef<'a>(pub &'a [Token]);
 impl<'a> From<&'a Tokens> for TokensRef<'a> {
     fn from(value: &'a Tokens) -> Self {
@@ -699,7 +699,7 @@ impl Tokens {
     }
 }
 impl<'a> TokensRef<'a> {
-    pub fn get_last_with_end(&self, funs: &Functions, mut end: usize) -> usize {
+    pub fn get_last_with_end(self, funs: &Functions, mut end: usize) -> usize {
         let mut inputs = 1;
         while inputs != 0 {
             inputs -= 1;
@@ -713,21 +713,21 @@ impl<'a> TokensRef<'a> {
         }
         end
     }
-    pub fn get_last(&self, funs: &Functions) -> usize {
+    pub fn get_last(self, funs: &Functions) -> usize {
         self.get_last_with_end(funs, self.len())
     }
-    pub fn get_from_last_with_end(&'a self, funs: &Functions, end: usize) -> (Self, usize) {
+    pub fn get_from_last_with_end(self, funs: &Functions, end: usize) -> (Self, usize) {
         let last = self.get_last_with_end(funs, end);
         if matches!(self[end - 1], Token::Skip(_)) {
-            (Self(&self[last..end - 1]), last)
+            (Self(&self.0[last..end - 1]), last)
         } else {
-            (Self(&self[last..end]), last)
+            (Self(&self.0[last..end]), last)
         }
     }
-    pub fn get_from_last(&'a self, funs: &Functions) -> (Self, usize) {
+    pub fn get_from_last(self, funs: &Functions) -> (Self, usize) {
         self.get_from_last_with_end(funs, self.len())
     }
-    pub fn get_lasts(&'a self, funs: &Functions) -> Vec<Self> {
+    pub fn get_lasts(self, funs: &Functions) -> Vec<Self> {
         let inputs = match self.last().unwrap() {
             Token::Fun(j) => funs[*j as usize].inputs,
             Token::Function(o) => o.inputs(),

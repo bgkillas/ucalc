@@ -5,7 +5,7 @@
 #![feature(min_specialization)]
 #![allow(internal_features)]
 #![feature(rustc_attrs)]
-#![feature(dec2flt)]
+//#![feature(dec2flt)]
 #[cfg(feature = "float")]
 mod float;
 #[cfg(feature = "float")]

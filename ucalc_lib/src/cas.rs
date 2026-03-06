@@ -4,7 +4,7 @@ use crate::{Functions, Number, Tokens, Variables};
 use std::ops::Deref;
 impl<'a> TokensRef<'a> {
     pub fn get_inverse(
-        &'a self,
+        self,
         fun_vars: &mut Vec<Number>,
         vars: &[Number],
         funs: &Functions,
@@ -27,7 +27,7 @@ impl<'a> TokensRef<'a> {
     }
     #[allow(clippy::too_many_arguments)]
     fn cas_inner(
-        &'a self,
+        self,
         fun_vars: &mut Vec<Number>,
         vars: &[Number],
         funs: &Functions,

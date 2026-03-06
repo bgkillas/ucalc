@@ -7,7 +7,7 @@ use ucalc_numbers::ComplexTrait;
 use ucalc_numbers::{Float, FloatTrait, NegAssign, Pow};
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct Poly(pub Vec<Number>);
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct PolyRef<'a>(pub &'a [Number]);
 #[derive(Debug, PartialEq, Clone)]
 pub enum Func {
@@ -76,14 +76,14 @@ impl Poly {
     }
 }
 impl PolyRef<'_> {
-    pub fn len(&self) -> usize {
+    pub fn len(self) -> usize {
         if let Some(n) = self.iter().rposition(|a| !a.is_zero()) {
             n + 1
         } else {
             0
         }
     }
-    pub fn gcd(&self) -> usize {
+    pub fn gcd(self) -> usize {
         fn gcd(mut a: usize, mut b: usize) -> usize {
             while b != 0 {
                 let r = a % b;
@@ -100,10 +100,10 @@ impl PolyRef<'_> {
             .reduce(gcd)
             .unwrap_or(self.len())
     }
-    pub fn first(&self) -> usize {
+    pub fn first(self) -> usize {
         self.iter().position(|a| !a.is_zero()).unwrap_or(0)
     }
-    pub fn roots(&self) -> Option<Vec<Number>> {
+    pub fn roots(self) -> Option<Vec<Number>> {
         let first = self.first();
         if first != 0 {
             let len = self.len() - first;
@@ -142,10 +142,10 @@ impl PolyRef<'_> {
             }
         }
     }
-    pub fn linear(&self) -> Number {
+    pub fn linear(self) -> Number {
         -self[0].clone() / &self[1]
     }
-    pub fn quadratic(&self) -> [Number; 2] {
+    pub fn quadratic(self) -> [Number; 2] {
         let t = self[2].clone() * Float::from(2);
         let a = -self[1].clone() / &t;
         let b =
@@ -153,7 +153,7 @@ impl PolyRef<'_> {
         [a.clone() + &b, a - b]
     }
     #[cfg(feature = "complex")]
-    pub fn cubic(&self) -> [Number; 3] {
+    pub fn cubic(self) -> [Number; 3] {
         let d = self[0].clone() / &self[3];
         let c = self[1].clone() / &self[3];
         if self[2].is_zero() {
@@ -171,7 +171,7 @@ impl PolyRef<'_> {
         }
     }
     #[cfg(feature = "complex")]
-    pub fn quartic(&self) -> [Number; 4] {
+    pub fn quartic(self) -> [Number; 4] {
         let e = self[0].clone() / &self[4];
         let d = self[1].clone() / &self[4];
         let c = self[2].clone() / &self[4];
@@ -405,7 +405,7 @@ impl Polynomial {
 impl TokensRef<'_> {
     #[allow(clippy::too_many_arguments)]
     pub fn compute_polynomial(
-        &self,
+        self,
         fun_vars: &mut Vec<Number>,
         vars: &[Number],
         funs: &Functions,

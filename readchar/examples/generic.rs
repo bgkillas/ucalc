@@ -22,6 +22,7 @@ fn main() {
                 }
             },
             |_, _, _| Return::Finish,
+            None::<fn(&str) -> Vec<String>>,
         ) {
             Ok(Return::Finish) => {}
             Ok(Return::Cancel) => return,

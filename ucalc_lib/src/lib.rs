@@ -3,6 +3,7 @@
 mod cas;
 mod compute;
 mod functions;
+mod functions_list;
 mod inverse;
 mod operators;
 mod parse;
@@ -12,6 +13,7 @@ mod polynomial_impls;
 mod tests;
 mod variable;
 pub use functions::Function;
+pub use functions_list::FUNCTION_LIST;
 pub use operators::Operators;
 pub use parse::{Token, Tokens};
 pub use variable::{FunctionVar, Functions, Variable, Variables};

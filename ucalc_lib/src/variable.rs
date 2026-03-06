@@ -85,6 +85,8 @@ impl Default for Variables {
             Variable::new("i", Number::from((0, 1))),
             Variable::new("inf", Number::from(Constant::Infinity)),
             Variable::new("nan", Number::from(Constant::Nan)),
+            Variable::new("true", Number::from(true)),
+            Variable::new("false", Number::from(false)),
         ])
     }
 }

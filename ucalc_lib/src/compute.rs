@@ -29,7 +29,7 @@ impl Tokens {
     }
     pub fn get_skip<'a, 'b, 'c: 'a, const N: usize, const K: usize>(
         &'b self,
-        tokens: &'c TokensRef<'a>,
+        tokens: TokensRef<'a>,
     ) -> ([&'b Token; K], [TokensRef<'a>; N]) {
         let tokens = self.get_skip_tokens(tokens);
         let args = self.get_skip_var(N);
@@ -41,14 +41,14 @@ impl Tokens {
     }
     pub fn get_skip_tokens<'a, 'b: 'a, const N: usize>(
         &self,
-        tokens: &'b TokensRef<'a>,
+        tokens: TokensRef<'a>,
     ) -> [TokensRef<'a>; N] {
         let len = tokens.len();
         let mut t = len - 1;
         let mut l = 0;
         let mut arr = array::from_fn(|i| {
             let back = self[self.len() - (i + 1)].skip();
-            let ret = TokensRef(&tokens[back..t]);
+            let ret = TokensRef(&tokens.0[back..t]);
             l += t - back + 1;
             t = back.saturating_sub(1);
             ret
@@ -68,7 +68,7 @@ impl Tokens {
         fun: impl FnOnce(&mut dyn Iterator<Item = Number>) -> Token,
     ) {
         let len = self.len();
-        let ([start, end], [tokens]) = self.get_skip(&tokens);
+        let ([start, end], [tokens]) = self.get_skip(tokens);
         let start = start.num_ref().real().clone().into_isize();
         let end = end.num_ref().real().clone().into_isize();
         fun_vars.push(Number::from(start));
@@ -85,13 +85,13 @@ impl Tokens {
     }
 }
 impl TokensRef<'_> {
-    pub fn compute(&self, vars: &[Number], funs: &Functions, custom_vars: &Variables) -> Number {
+    pub fn compute(self, vars: &[Number], funs: &Functions, custom_vars: &Variables) -> Number {
         let mut fun_vars = Vec::with_capacity(self.len());
         let mut stack = Tokens(Vec::with_capacity(self.len()));
         self.compute_buffer(&mut fun_vars, vars, funs, custom_vars, &mut stack)
     }
     pub fn compute_with(
-        &self,
+        self,
         vars: &[Number],
         funs: &Functions,
         custom_vars: &Variables,
@@ -102,7 +102,7 @@ impl TokensRef<'_> {
         self.compute_buffer_with(&mut fun_vars, vars, funs, custom_vars, &mut stack, offset)
     }
     pub fn compute_buffer(
-        &self,
+        self,
         fun_vars: &mut Vec<Number>,
         vars: &[Number],
         funs: &Functions,
@@ -113,7 +113,7 @@ impl TokensRef<'_> {
     }
     #[allow(clippy::too_many_arguments)]
     pub fn compute_buffer_with(
-        &self,
+        self,
         fun_vars: &mut Vec<Number>,
         vars: &[Number],
         funs: &Functions,

@@ -8,7 +8,7 @@ use readchar::{ReadChar, Return};
 use std::env::args;
 use std::fmt::Write;
 use std::io::{BufRead, IsTerminal, stdin, stdout};
-use ucalc_lib::{Functions, Number, Tokens, Variable, Variables};
+use ucalc_lib::{FUNCTION_LIST, Functions, Number, Tokens, Variable, Variables};
 fn main() {
     let mut vars = Variables::default();
     let mut funs = Functions::default();
@@ -48,6 +48,7 @@ fn main() {
                     }
                     _ => Return::Finish,
                 },
+                Some(complete),
             ) {
                 Ok(Return::Finish) => {
                     if let Some(n) = last.take() {
@@ -64,6 +65,23 @@ fn main() {
             }
         }
     }
+}
+fn complete(line: &str) -> Vec<String> {
+    let word = if let Some(idx) = line.rfind(|c: char| !c.is_ascii_alphabetic()) {
+        if idx + 1 == line.len() {
+            return Vec::new();
+        }
+        &line[idx + 1..]
+    } else {
+        line
+    };
+    let mut ret = Vec::new();
+    for w in FUNCTION_LIST {
+        if w.0.starts_with(word) {
+            ret.push(format!("{}{}", w.0, w.1))
+        }
+    }
+    ret
 }
 fn process_line(
     line: &str,

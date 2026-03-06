@@ -542,12 +542,37 @@ impl ReadChar {
         stdout.flush()?;
         Ok(())
     }
+    pub(crate) fn complete(
+        &mut self,
+        stdout: &mut impl Write,
+        complete: impl FnOnce(&str) -> Vec<String>,
+    ) -> io::Result<()> {
+        let list = complete(&self.line[..self.cursor as usize]);
+        if !list.is_empty() {
+            stdout.queue(MoveToNextLine(self.cursor_row_max - self.cursor_row + 1))?;
+            stdout.queue(MoveToColumn(0))?;
+            stdout.queue(Clear(ClearType::FromCursorDown))?;
+            let longest = list.iter().map(|s| s.len()).max().unwrap();
+            let lines = (longest as u16).div_ceil(self.col);
+            for (i, s) in list.iter().enumerate() {
+                if i + 1 != list.len() && (i + 1) % lines as usize == 0 {}
+                write!(stdout, "{s}")?;
+            }
+            stdout.queue(MoveToPreviousLine(
+                self.cursor_row_max - self.cursor_row + lines,
+            ))?;
+            stdout.queue(MoveToColumn(self.col()))?;
+            stdout.flush()?;
+        }
+        Ok(())
+    }
     pub(crate) fn event<T>(
         &mut self,
         stdout: &mut T,
         string: &mut String,
         run: impl FnOnce(&str, &mut String),
         finish: impl FnOnce(&ReadChar, &mut T, &str) -> Return,
+        complete: Option<impl FnOnce(&str) -> Vec<String>>,
         event: Event,
     ) -> io::Result<Return>
     where
@@ -568,6 +593,15 @@ impl ReadChar {
             }) => {
                 self.exit(stdout)?;
                 return Ok(Return::Cancel);
+            }
+            Event::Key(KeyEvent {
+                code: KeyCode::Tab,
+                modifiers: KeyModifiers::NONE,
+                ..
+            }) => {
+                if let Some(complete) = complete {
+                    self.complete(stdout, complete)?
+                }
             }
             Event::Key(KeyEvent {
                 code: KeyCode::Home,
@@ -657,10 +691,11 @@ impl ReadChar {
         string: &mut String,
         run: impl FnOnce(&str, &mut String),
         finish: impl FnOnce(&ReadChar, &mut T, &str) -> Return,
+        complete: Option<impl FnOnce(&str) -> Vec<String>>,
     ) -> io::Result<Return>
     where
         T: Write,
     {
-        self.event(stdout, string, run, finish, event::read()?)
+        self.event(stdout, string, run, finish, complete, event::read()?)
     }
 }
