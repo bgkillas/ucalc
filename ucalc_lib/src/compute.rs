@@ -27,25 +27,34 @@ impl Tokens {
     ) -> Number {
         TokensRef(self).compute_buffer_with(fun_vars, vars, funs, custom_vars, stack, offset)
     }
+    pub fn get_skip<'a, 'b, 'c: 'a, const N: usize, const K: usize>(
+        &'b self,
+        tokens: &'c TokensRef<'a>,
+    ) -> ([&'b Token; K], [TokensRef<'a>; N]) {
+        let tokens = self.get_skip_tokens(tokens);
+        let args = self.get_skip_var(N);
+        (args, tokens)
+    }
     pub fn get_skip_var<const N: usize>(&self, end: usize) -> [&Token; N] {
         let end = self.len() - (end + 1);
-        array::from_fn(|i| &self[end - i])
+        array::from_fn(|i| &self[end - (N - (i + 1))])
     }
     pub fn get_skip_tokens<'a, 'b: 'a, const N: usize>(
         &self,
         tokens: &'b TokensRef<'a>,
-    ) -> ([TokensRef<'a>; N], usize) {
+    ) -> [TokensRef<'a>; N] {
         let len = tokens.len();
         let mut t = len - 1;
         let mut l = 0;
-        let ret = array::from_fn(|i| {
+        let mut arr = array::from_fn(|i| {
             let back = self[self.len() - (i + 1)].skip();
             let ret = TokensRef(&tokens[back..t]);
             l += t - back + 1;
             t = back.saturating_sub(1);
             ret
         });
-        (ret, N)
+        arr.reverse();
+        arr
     }
     #[allow(clippy::too_many_arguments)]
     pub fn range(
@@ -59,8 +68,7 @@ impl Tokens {
         fun: impl FnOnce(&mut dyn Iterator<Item = Number>) -> Token,
     ) {
         let len = self.len();
-        let ([tokens], l) = self.get_skip_tokens(&tokens);
-        let [end, start] = self.get_skip_var(l);
+        let ([start, end], [tokens]) = self.get_skip(&tokens);
         let start = start.num_ref().real().clone().into_isize();
         let end = end.num_ref().real().clone().into_isize();
         fun_vars.push(Number::from(start));
@@ -71,9 +79,9 @@ impl Tokens {
             *fun_vars.last_mut().unwrap() += Float::from(1);
             ret
         });
-        self[len - (l + 2)] = fun(&mut iter);
+        self[len - 3] = fun(&mut iter);
         fun_vars.pop().unwrap();
-        self.drain(len - (l + 1)..);
+        self.drain(len - 2..);
     }
 }
 impl TokensRef<'_> {
