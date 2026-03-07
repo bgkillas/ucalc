@@ -1,4 +1,4 @@
-use crate::{Complex, Float, Matrix, NegAssign, Number, Vector};
+use crate::{Complex, Float, HalfUsize, Matrix, NegAssign, Number, Vector};
 use crate::{Pow, PowAssign};
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -14,17 +14,42 @@ impl<T> Deref for Vector<T> {
         &self.0
     }
 }
-impl<T> Index<usize> for Matrix<T> {
+impl<T> Index<HalfUsize> for Matrix<T> {
     type Output = [T];
-    fn index(&self, index: usize) -> &Self::Output {
-        let start = index * self.height;
-        &self.vec[start..start + self.width]
+    fn index(&self, index: HalfUsize) -> &Self::Output {
+        let start = index as usize * self.height as usize;
+        unsafe {
+            self.vec
+                .add(start)
+                .cast_slice(self.width as usize)
+                .as_ref()
+                .unwrap()
+        }
     }
 }
-impl<T> IndexMut<usize> for Matrix<T> {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        let start = index * self.height;
-        &mut self.vec[start..start + self.width]
+impl<T> IndexMut<HalfUsize> for Matrix<T> {
+    fn index_mut(&mut self, index: HalfUsize) -> &mut Self::Output {
+        let start = index as usize * self.height as usize;
+        unsafe {
+            self.vec
+                .add(start)
+                .cast_slice(self.width as usize)
+                .as_mut()
+                .unwrap()
+        }
+    }
+}
+impl<T> Index<(HalfUsize, HalfUsize)> for Matrix<T> {
+    type Output = T;
+    fn index(&self, (i, j): (HalfUsize, HalfUsize)) -> &Self::Output {
+        let start = i as usize * self.height as usize;
+        unsafe { self.vec.add(start).add(j as usize).as_ref().unwrap() }
+    }
+}
+impl<T> IndexMut<(HalfUsize, HalfUsize)> for Matrix<T> {
+    fn index_mut(&mut self, (i, j): (HalfUsize, HalfUsize)) -> &mut Self::Output {
+        let start = i as usize * self.height as usize;
+        unsafe { self.vec.add(start).add(j as usize).as_mut().unwrap() }
     }
 }
 impl<T> Index<usize> for Vector<T> {

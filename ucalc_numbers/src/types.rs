@@ -21,7 +21,6 @@ pub struct Quantity<T, K, const N: usize> {
     pub num: T,
     pub units: Units<K, N>,
 }
-#[cfg(not(feature = "units"))]
 #[derive(Debug, PartialEq, Clone)]
 pub enum Number<T> {
     Value(T),
@@ -32,22 +31,19 @@ pub enum Number<T> {
     #[cfg(feature = "list")]
     List(Vec<Number<T>>),
 }
-#[cfg(feature = "units")]
 #[derive(Debug, PartialEq, Clone)]
-pub enum Number<T, K, const N: usize> {
-    Complex(Quantity<T, K, N>),
-    #[cfg(feature = "vector")]
-    Vector(Vector<Quantity<T, K, N>>),
-    #[cfg(feature = "matrix")]
-    Matrix(Matrix<Quantity<T, K, N>>),
-    #[cfg(feature = "list")]
-    List(Vec<Number<T, K, N>>),
-}
-#[derive(Debug, PartialEq, Clone)]
-pub struct Vector<T>(pub Vec<T>);
+pub struct Vector<T>(pub(crate) Vec<T>);
 #[derive(Debug, PartialEq, Clone)]
 pub struct Matrix<T> {
-    pub vec: Vector<T>,
-    pub width: usize,
-    pub height: usize,
+    pub(crate) vec: *mut T,
+    pub(crate) capacity_width: HalfUsize,
+    pub(crate) capacity_height: HalfUsize,
+    pub(crate) width: HalfUsize,
+    pub(crate) height: HalfUsize,
 }
+#[cfg(target_pointer_width = "64")]
+pub type HalfUsize = u32;
+#[cfg(target_pointer_width = "32")]
+pub type HalfUsize = u16;
+#[cfg(target_pointer_width = "16")]
+pub type HalfUsize = u8;

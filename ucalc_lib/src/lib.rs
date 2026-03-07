@@ -18,9 +18,13 @@ pub use operators::Operators;
 pub use parse::{Token, Tokens};
 pub use variable::{FunctionVar, Functions, Variable, Variables};
 #[cfg(not(feature = "complex"))]
-pub type NumberBase = ucalc_numbers::Float;
+pub type NBase = ucalc_numbers::Float;
 #[cfg(feature = "complex")]
-pub type NumberBase = ucalc_numbers::Complex;
+pub type NBase = ucalc_numbers::Complex;
+#[cfg(not(feature = "units"))]
+pub type NumberBase = NBase;
+#[cfg(feature = "units")]
+pub type NumberBase = Quantity<NBase, f32, 8>;
 #[cfg(any(
     feature = "list",
     feature = "vector",
