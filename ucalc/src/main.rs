@@ -66,7 +66,25 @@ fn main() {
         }
     }
 }
-fn complete(line: &str) -> Vec<String> {
+fn complete(mut line: &str) -> Vec<String> {
+    if line.ends_with(',') {
+        let mut bracket = 0;
+        for (i, c) in line.char_indices().rev() {
+            if c == ')' {
+                bracket += 1;
+            } else if c == '(' {
+                if bracket == 0 {
+                    line = &line[..i];
+                    break;
+                } else {
+                    bracket -= 1;
+                }
+            }
+        }
+    }
+    if line.ends_with(['(', '{', '[', '|']) {
+        line = &line[..line.len() - 1];
+    }
     let word = if let Some(idx) = line.rfind(|c: char| !c.is_ascii_alphabetic()) {
         if idx + 1 == line.len() {
             return Vec::new();
