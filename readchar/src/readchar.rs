@@ -555,7 +555,7 @@ impl ReadChar {
             let longest = list.iter().map(|s| s.len()).max().unwrap();
             let lines = (longest as u16).div_ceil(self.col);
             for (i, s) in list.iter().enumerate() {
-                if i + 1 != list.len() && (i + 1) % lines as usize == 0 {}
+                //if i + 1 != list.len() && (i + 1) % lines as usize == 0 {}
                 write!(stdout, "{s}")?;
             }
             stdout.queue(MoveToPreviousLine(

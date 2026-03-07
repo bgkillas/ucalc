@@ -77,8 +77,8 @@ fn complete(line: &str) -> Vec<String> {
     };
     let mut ret = Vec::new();
     for w in FUNCTION_LIST {
-        if w.0.starts_with(word) {
-            ret.push(format!("{}{}", w.0, w.1))
+        if w.starts_with(word) {
+            ret.push(w.to_string())
         }
     }
     ret
