@@ -24,7 +24,6 @@ pub const FUNCTION_LIST: &[&str] = &[
     "asin(x)",
     "acos(x)",
     "atan(x)",
-    "arctan",
     "sinh(t)",
     "cosh(t)",
     "tanh(t)",
@@ -66,7 +65,7 @@ pub const FUNCTION_LIST: &[&str] = &[
     #[cfg(feature = "complex")]
     "imag(x)",
     "if(cond,then,else)",
-    "fold(value,start,end(,acc)(,k),f(acc,k))",
+    "fold(start,end,value(,acc)(,k),f(acc,k))",
     "set(value(,x),f(x))",
     "modify(value,x,f(x))",
     "solve((x,)f(x))",

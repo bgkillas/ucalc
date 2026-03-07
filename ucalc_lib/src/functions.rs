@@ -511,7 +511,7 @@ impl Function {
                 });
             }
             Self::Fold => {
-                let ([value, start, end], [tokens]) = stack.get_skip(tokens);
+                let ([start, end, value], [tokens]) = stack.get_skip(tokens);
                 let start = start.num_ref().real().clone().into_isize();
                 let end = end.num_ref().real().clone().into_isize();
                 fun_vars.push(value.num_ref().clone());

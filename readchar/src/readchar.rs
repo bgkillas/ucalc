@@ -552,14 +552,22 @@ impl ReadChar {
             stdout.queue(MoveToNextLine(self.cursor_row_max - self.cursor_row + 1))?;
             stdout.queue(MoveToColumn(0))?;
             stdout.queue(Clear(ClearType::FromCursorDown))?;
-            let longest = list.iter().map(|s| s.len()).max().unwrap();
-            let lines = (longest as u16).div_ceil(self.col);
+            let longest = list.iter().map(|s| s.len()).max().unwrap() + 4;
+            self.new_lines = 1;
+            let words = self.col / longest as u16;
             for (i, s) in list.iter().enumerate() {
-                //if i + 1 != list.len() && (i + 1) % lines as usize == 0 {}
                 write!(stdout, "{s}")?;
+                for _ in s.len()..longest {
+                    write!(stdout, " ")?;
+                }
+                if i + 1 != list.len() && (i + 1) % words as usize == 0 {
+                    self.new_lines += 1;
+                    writeln!(stdout)?;
+                    stdout.queue(MoveToColumn(0))?;
+                }
             }
             stdout.queue(MoveToPreviousLine(
-                self.cursor_row_max - self.cursor_row + lines,
+                self.cursor_row_max - self.cursor_row + self.new_lines,
             ))?;
             stdout.queue(MoveToColumn(self.col()))?;
             stdout.flush()?;

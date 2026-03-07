@@ -1376,12 +1376,12 @@ fn test_solve() {
 #[test]
 fn test_fold() {
     assert_correct!(
-        infix("fold(1,1,9,x,k,x*k)"),
-        rpn("1 1 9 x k x k * fold"),
+        infix("fold(1,9,1,x,k,x*k)"),
+        rpn("1 9 1 x k x k * fold"),
         vec![
             num(1),
-            num(1),
             num(9),
+            num(1),
             Token::Skip(3),
             Token::InnerVar(0).into(),
             Token::InnerVar(1).into(),
@@ -1391,12 +1391,12 @@ fn test_fold() {
         res(362880)
     );
     assert_correct!(
-        infix("fold(1,1,9,x*k)"),
-        rpn("1 1 9 x k x k * fold"),
+        infix("fold(1,9,1,x*k)"),
+        rpn("1 9 1 x k x k * fold"),
         vec![
             num(1),
-            num(1),
             num(9),
+            num(1),
             Token::Skip(3),
             Token::InnerVar(0).into(),
             Token::InnerVar(1).into(),
@@ -1406,12 +1406,12 @@ fn test_fold() {
         res(362880)
     );
     assert_correct!(
-        infix("fold(1,1,9,x,x*k)"),
-        rpn("1 1 9 x k x k * fold"),
+        infix("fold(1,9,1,x,x*k)"),
+        rpn("1 9 1 x k x k * fold"),
         vec![
             num(1),
-            num(1),
             num(9),
+            num(1),
             Token::Skip(3),
             Token::InnerVar(0).into(),
             Token::InnerVar(1).into(),
@@ -1421,12 +1421,12 @@ fn test_fold() {
         res(362880)
     );
     assert_correct!(
-        infix("fold(0,1,9,x,k,x+k)"),
-        rpn("0 1 9 x k x k + fold"),
+        infix("fold(1,9,0,x,k,x+k)"),
+        rpn("1 9 0 x k x k + fold"),
         vec![
+            num(1),
+            num(9),
             num(0),
-            num(1),
-            num(9),
             Token::Skip(3),
             Token::InnerVar(0).into(),
             Token::InnerVar(1).into(),
