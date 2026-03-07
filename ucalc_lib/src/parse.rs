@@ -122,7 +122,13 @@ impl<'a> TokensRef<'a> {
                 let last = TokensRef(&self[..l]).get_last(funs);
                 if let Ok(o) = Operators::try_from(*f) {
                     let arg = TokensRef(&self[last..l]).get_infix(vars, funs, graph_vars);
-                    let arg = if self[l - 1].greater_precedence(o) {
+                    let arg = if self[l - 1].greater_precedence(o)
+                        || (f.is_chainable()
+                            && if let Token::Function(f) = self[l - 1] {
+                                f.is_chainable()
+                            } else {
+                                false
+                            }) {
                         format_args!("{arg}")
                     } else {
                         format_args!("({arg})")
