@@ -1,4 +1,4 @@
-use crate::functions::Function;
+use crate::functions::{Function, Inputs};
 use crate::operators::Operators;
 use crate::parse::ParseError;
 use crate::parse::{Token, Tokens};
@@ -338,7 +338,7 @@ fn test_inverses() {
         Function::Atanh,
         Function::Tanh,
         Function::Tan,
-        Function::Atan,
+        Function::Atan(Inputs::One),
         Function::Sqrt,
         Function::Sq,
         Function::Cbrt,
@@ -968,17 +968,17 @@ fn parse_asin() {
 fn parse_atan() {
     assert_correct!(
         infix("atan(1,1)"),
-        rpn("1 1 atan"),
-        vec![num(1), num(1), Function::Atan2.into()],
+        rpn("1 1 atan2"),
+        vec![num(1), num(1), Function::Atan(Inputs::Two).into()],
         res(Constant::Pi) / Float::from(4)
     );
 }
 #[test]
 fn parse_arctan() {
     assert_correct!(
-        infix("arctan(1)"),
-        rpn("1 arctan"),
-        vec![num(1), Function::Atan.into()],
+        infix("atan(1)"),
+        rpn("1 atan1"),
+        vec![num(1), Function::Atan(Inputs::One).into()],
         res(Constant::Pi) / Float::from(4)
     );
 }

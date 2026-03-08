@@ -7,6 +7,11 @@ use std::ops::Deref;
 use ucalc_numbers::ComplexTrait;
 use ucalc_numbers::{Constant, Float, FloatTrait, NegAssign, PowAssign, RealTrait};
 #[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Inputs {
+    One,
+    Two,
+}
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Function {
     Add,
     Sub,
@@ -41,8 +46,7 @@ pub enum Function {
     Atanh,
     Ln,
     Exp,
-    Atan,
-    Atan2,
+    Atan(Inputs),
     Max,
     Min,
     Quadratic,
@@ -98,8 +102,7 @@ impl TryFrom<&str> for Function {
             "cos" => Self::Cos,
             "sinh" => Self::Sinh,
             "cosh" => Self::Cosh,
-            "arctan" => Self::Atan,
-            "atan" => Self::Atan2,
+            "atan" => Self::Atan(Inputs::One),
             "sqrt" => Self::Sqrt,
             "sum" => Self::Sum,
             "prod" => Self::Prod,
@@ -180,8 +183,7 @@ impl Display for Function {
                 Self::Cos => "cos",
                 Self::Sinh => "sinh",
                 Self::Cosh => "cosh",
-                Self::Atan => "arctan",
-                Self::Atan2 => "atan",
+                Self::Atan(_) => "atan",
                 Self::Sqrt => "sqrt",
                 Self::Sum => "sum",
                 Self::Prod => "prod",
@@ -247,6 +249,13 @@ impl Display for Function {
 }
 impl Function {
     pub const MAX_INPUT: usize = 3;
+    pub fn set_inputs(&mut self, inputs: u8) {
+        #[allow(clippy::single_match)]
+        match self {
+            Self::Atan(a) if inputs == 2 => *a = Inputs::Two,
+            _ => {}
+        }
+    }
     pub fn inputs(self) -> u8 {
         match self {
             Self::Not
@@ -275,7 +284,7 @@ impl Function {
             | Self::Cbrt
             | Self::Cb
             | Self::Sq
-            | Self::Atan
+            | Self::Atan(Inputs::One)
             | Self::Ceil
             | Self::Floor
             | Self::Round
@@ -300,7 +309,7 @@ impl Function {
             | Self::LessEqual
             | Self::And
             | Self::Or
-            | Self::Atan2
+            | Self::Atan(Inputs::Two)
             | Self::Max
             | Self::Min
             | Self::Set => 2,
@@ -380,8 +389,8 @@ impl Function {
             Self::Cbrt => a.cbrt_mut(),
             Self::Sq => *a *= a.clone(),
             Self::Cb => *a = a.clone() * a.deref() * a.deref(),
-            Self::Atan => a.atan_mut(),
-            Self::Atan2 => a.atan2_mut(b[0].num_ref()),
+            Self::Atan(Inputs::One) => a.atan_mut(),
+            Self::Atan(Inputs::Two) => a.atan2_mut(b[0].num_ref()),
             Self::Max => a.max_mut(b[0].num_ref()),
             Self::Min => a.min_mut(b[0].num_ref()),
             Self::Ceil => a.ceil_mut(),

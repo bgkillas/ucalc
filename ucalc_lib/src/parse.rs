@@ -31,9 +31,10 @@ pub enum Token {
     Fun(u16),
     Var(u16),
     Skip(usize),
-    //Back(usize),
     Function(Function),
 }
+const _: () = assert!(size_of::<Token>() == 24);
+const _: () = assert!(align_of::<Token>() == 8);
 impl Display for Token {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
@@ -277,6 +278,14 @@ impl Tokens {
                 }
                 _ if let Ok(fun) = Function::try_from(token) => {
                     tokens.compact_args(fun, &mut inner_vars, funs);
+                    tokens.push(fun.into());
+                }
+                _ if let Some(i) = token.rfind(|c: char| !c.is_ascii_digit())
+                    && let Ok(mut fun) = Function::try_from(&token[..=i]) =>
+                {
+                    let inputs = token[i + 1..].parse().unwrap();
+                    tokens.compact_args(fun, &mut inner_vars, funs);
+                    fun.set_inputs(inputs);
                     tokens.push(fun.into());
                 }
                 _ if token.chars().all(|c| c.is_ascii_alphabetic()) => inner_vars.push(token),
@@ -660,7 +669,7 @@ impl Tokens {
                     }
                     self.push(Token::Fun(i));
                 }
-                Operators::Function(fun) => {
+                Operators::Function(mut fun) => {
                     if fun.has_var() {
                         inner_vars_count.pop().unwrap();
                     }
@@ -679,13 +688,14 @@ impl Tokens {
                         }
                         inputs = fun.inputs();
                     }
+                    fun.set_inputs(inputs);
                     match fun.inputs().cmp(&inputs) {
                         Ordering::Greater => return Err(ParseError::MissingInput),
                         Ordering::Less => return Err(ParseError::ExtraInput),
                         _ => {}
                     }
                     self.compact_args(fun, inner_vars, funs);
-                    self.push(top.into());
+                    self.push(fun.into());
                 }
                 _ => {}
             }

@@ -1,3 +1,4 @@
+use crate::functions::Inputs;
 use crate::{Function, Number};
 use ucalc_numbers::{FloatTrait, Pow, PowAssign};
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -53,7 +54,7 @@ impl Inverse {
             Self::Acosh => Function::Cosh,
             Self::Tanh => Function::Atanh,
             Self::Atanh => Function::Tanh,
-            Self::Tan => Function::Atan,
+            Self::Tan => Function::Atan(Inputs::One),
             Self::Atan => Function::Tan,
             Self::Sqrt => Function::Sq,
             Self::Sq => Function::Sqrt,
@@ -133,7 +134,7 @@ impl From<Function> for Inverse {
             Function::Tanh => Self::Tanh,
             Function::Atanh => Self::Atanh,
             Function::Tan => Self::Tan,
-            Function::Atan => Self::Atan,
+            Function::Atan(Inputs::One) => Self::Atan,
             Function::Sqrt => Self::Sqrt,
             Function::Sq => Self::Sq,
             Function::Cbrt => Self::Cbrt,
@@ -161,7 +162,7 @@ impl From<Function> for Inverse {
             | Function::Erfc
             | Function::Abs
             | Function::Iter
-            | Function::Atan2
+            | Function::Atan(Inputs::Two)
             | Function::Ceil
             | Function::Floor
             | Function::Round
