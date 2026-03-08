@@ -23,7 +23,7 @@ pub const FUNCTION_LIST: &[&str] = &[
     "tan(t)",
     "asin(x)",
     "acos(x)",
-    "atan(x)",
+    "atan(x(,y))",
     "sinh(t)",
     "cosh(t)",
     "tanh(t)",

@@ -33,8 +33,6 @@ pub enum Token {
     Skip(usize),
     Function(Function),
 }
-const _: () = assert!(size_of::<Token>() == 24);
-const _: () = assert!(align_of::<Token>() == 8);
 impl Display for Token {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
@@ -244,6 +242,7 @@ impl Tokens {
         funs: &mut Functions,
         graph_vars: &[&str],
         mut expect_let: bool,
+        base: u32,
     ) -> Result<Option<Self>, ParseError<'a>> {
         let mut tokens = Tokens(Vec::with_capacity(value.len()));
         let mut inner_vars: Vec<&str> = Vec::with_capacity(value.len());
@@ -289,7 +288,7 @@ impl Tokens {
                     tokens.push(fun.into());
                 }
                 _ if token.chars().all(|c| c.is_ascii_alphabetic()) => inner_vars.push(token),
-                _ if let Some(n) = NumberBase::parse_radix(token, 10) => tokens.push(n.into()),
+                _ if let Some(n) = NumberBase::parse_radix(token, base) => tokens.push(n.into()),
                 _ => return Err(ParseError::UnknownToken(token)),
             }
         }
@@ -301,6 +300,7 @@ impl Tokens {
         funs: &mut Functions,
         graph_vars: &[&str],
         mut expect_let: bool,
+        base: u32,
     ) -> Result<Option<Self>, ParseError<'a>> {
         let mut tokens = Tokens(Vec::with_capacity(value.len()));
         let mut operator_stack: Vec<Operators> = Vec::with_capacity(value.len());
@@ -319,17 +319,33 @@ impl Tokens {
         while let Some((i, c)) = chars.next() {
             match c {
                 ' ' => {}
-                _ if c.is_ascii_alphabetic() || c == '@' => {
+                '@' if let Some(i) = vars.position("@") => {
+                    tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
+                    tokens.push(Token::Var(i));
+                    open_input = true;
+                    negate = false;
+                    last_abs = false;
+                    req_input = false;
+                    expect_expr = false;
+                }
+                _ if if base > 10 {
+                    c.is_ascii_alphanumeric()
+                } else {
+                    c.is_ascii_alphabetic()
+                } =>
+                {
                     let mut l = c.len_utf8();
                     let mut count = 1;
-                    if c != '@' {
-                        for t in value[i + l..].chars() {
-                            if t.is_ascii_alphabetic() {
-                                l += t.len_utf8();
-                                count += 1;
-                            } else {
-                                break;
-                            }
+                    for t in value[i + l..].chars() {
+                        if if base > 10 {
+                            t.is_ascii_alphanumeric() || t == '.'
+                        } else {
+                            t.is_ascii_alphabetic()
+                        } {
+                            l += t.len_utf8();
+                            count += 1;
+                        } else {
+                            break;
                         }
                     }
                     let o = l;
@@ -383,6 +399,11 @@ impl Tokens {
                             tokens.push(Token::InnerVar(n as u16));
                             inner_vars[n] = s;
                             open_input = true;
+                        } else if let Some(f) = NumberBase::parse_radix(s, base) {
+                            tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
+                            tokens.push(f.into());
+                            let _ = chars.advance_by(l - 1);
+                            open_input = true;
                         } else if count != 1 {
                             count -= 1;
                             l -= value[i..i + l].chars().last().unwrap().len_utf8();
@@ -398,7 +419,7 @@ impl Tokens {
                     req_input = false;
                     expect_expr = !open_input;
                 }
-                '0'..='9' => {
+                '0'..='9' if base <= 10 => {
                     let mut l = 1;
                     for t in value[i + 1..].chars() {
                         if t.is_ascii_digit() || t == '.' {
@@ -408,7 +429,7 @@ impl Tokens {
                         }
                     }
                     let s = &value[i..i + l];
-                    let Some(float) = NumberBase::parse_radix(s, 10) else {
+                    let Some(float) = NumberBase::parse_radix(s, base) else {
                         return Err(ParseError::UnknownToken(s));
                     };
                     tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);

@@ -14,15 +14,22 @@ fn main() {
     let mut funs = Functions::default();
     let mut infix = true;
     let mut quit = false;
+    let mut base = 10;
     for arg in args().skip(1) {
         quit = true;
-        run_line(arg.as_str(), &mut infix, &mut vars, &mut funs)
+        run_line(arg.as_str(), &mut infix, &mut base, &mut vars, &mut funs)
     }
     let stdin = stdin().lock();
     if !stdin.is_terminal() {
-        stdin
-            .lines()
-            .for_each(|l| run_line(l.unwrap().as_str(), &mut infix, &mut vars, &mut funs));
+        stdin.lines().for_each(|l| {
+            run_line(
+                l.unwrap().as_str(),
+                &mut infix,
+                &mut base,
+                &mut vars,
+                &mut funs,
+            )
+        });
     } else if !quit {
         let mut readchar = ReadChar::default();
         let mut stdout = stdout().lock();
@@ -34,7 +41,7 @@ fn main() {
             match readchar.read(
                 &mut stdout,
                 &mut string,
-                |line, string| last = process_line(line, &mut vars, &mut funs, infix, string),
+                |line, string| last = process_line(line, &mut vars, &mut funs, infix, base, string),
                 |readchar, stdout, line| match line {
                     "exit" => {
                         readchar.close(stdout).unwrap();
@@ -106,6 +113,7 @@ fn process_line(
     vars: &mut Variables,
     funs: &mut Functions,
     infix: bool,
+    base: u32,
     str: &mut String,
 ) -> Option<Number> {
     str.clear();
@@ -113,9 +121,9 @@ fn process_line(
         "" | "exit" | "clear" => None,
         _ => {
             match if infix {
-                Tokens::infix(line, vars, funs, &[], false)
+                Tokens::infix(line, vars, funs, &[], false, base)
             } else {
-                Tokens::rpn(line, vars, funs, &[], false)
+                Tokens::rpn(line, vars, funs, &[], false, base)
             } {
                 Ok(Some(tokens)) => {
                     let compute = tokens.compute(&[], funs, vars);
@@ -131,16 +139,25 @@ fn process_line(
         }
     }
 }
-fn run_line(line: &str, infix: &mut bool, vars: &mut Variables, funs: &mut Functions) {
+fn run_line(
+    line: &str,
+    infix: &mut bool,
+    base: &mut u32,
+    vars: &mut Variables,
+    funs: &mut Functions,
+) {
     if line == "--rpn" {
         *infix = false;
         return;
     }
+    if let Some(s) = line.strip_prefix("--base=") {
+        *base = s.parse().unwrap();
+    }
     match tmr(|| {
         if *infix {
-            Tokens::infix(line, vars, funs, &[], false)
+            Tokens::infix(line, vars, funs, &[], false, *base)
         } else {
-            Tokens::rpn(line, vars, funs, &[], false)
+            Tokens::rpn(line, vars, funs, &[], false, *base)
         }
     }) {
         Ok(Some(tokens)) => {

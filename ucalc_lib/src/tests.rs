@@ -68,6 +68,7 @@ fn infix(s: &str) -> Tokens {
         &mut Functions::default(),
         &[],
         false,
+        10,
     )
     .unwrap()
     .unwrap()
@@ -79,6 +80,7 @@ fn rpn(s: &str) -> Tokens {
         &mut Functions::default(),
         &[],
         false,
+        10,
     )
     .unwrap()
     .unwrap()
@@ -124,7 +126,8 @@ fn test_solve_poly() {
             &mut Variables::default(),
             &mut fun,
             &[],
-            true
+            true,
+            10
         )
         .unwrap()
         .is_none()
@@ -141,7 +144,7 @@ fn test_solve_poly() {
             let s = format!(
                 "p(solve(y,p(y,{a}/2,{b}/2,{c}/2,{d}/2,{e}/2,{f}/2,{g}/2,{h}/2,{i}/2,{j}/2)),{a}/2,{b}/2,{c}/2,{d}/2,{e}/2,{f}/2,{g}/2,{h}/2,{i}/2,{j}/2)"
             );
-            let res = Tokens::infix(&s, &mut Variables::default(), &mut fun, &[], false)
+            let res = Tokens::infix(&s, &mut Variables::default(), &mut fun, &[], false, 10)
                 .unwrap()
                 .unwrap()
                 .compute_buffer_with(
@@ -1071,6 +1074,7 @@ fn test_graph_vars() {
         &mut Functions::default(),
         &["x", "y"],
         false,
+        10,
     )
     .unwrap()
     .unwrap();
@@ -1080,6 +1084,7 @@ fn test_graph_vars() {
         &mut Functions::default(),
         &["x", "y"],
         false,
+        10,
     )
     .unwrap()
     .unwrap();
@@ -1261,7 +1266,8 @@ fn test_solve() {
             &mut Variables::default(),
             &mut funs,
             &[],
-            true
+            true,
+            10
         )
         .is_ok()
     );
@@ -1271,7 +1277,8 @@ fn test_solve() {
             &mut Variables::default(),
             &mut funs,
             &[],
-            true
+            true,
+            10
         )
         .is_ok()
     );
@@ -1281,7 +1288,8 @@ fn test_solve() {
             &mut Variables::default(),
             &mut funs,
             &[],
-            false
+            false,
+            10
         )
         .unwrap()
         .unwrap(),
@@ -1290,7 +1298,8 @@ fn test_solve() {
             &mut Variables::default(),
             &mut funs,
             &[],
-            false
+            false,
+            10
         )
         .unwrap()
         .unwrap(),
@@ -1320,7 +1329,8 @@ fn test_solve() {
             &mut Variables::default(),
             &mut funs,
             &[],
-            true
+            true,
+            10
         )
         .is_ok()
     );
@@ -1330,7 +1340,8 @@ fn test_solve() {
             &mut Variables::default(),
             &mut funs,
             &[],
-            true
+            true,
+            10
         )
         .is_ok()
     );
@@ -1340,7 +1351,8 @@ fn test_solve() {
             &mut Variables::default(),
             &mut funs,
             &[],
-            false
+            false,
+            10
         )
         .unwrap()
         .unwrap(),
@@ -1349,7 +1361,8 @@ fn test_solve() {
             &mut Variables::default(),
             &mut funs,
             &[],
-            false
+            false,
+            10
         )
         .unwrap()
         .unwrap(),
@@ -1503,35 +1516,35 @@ fn test_overwrite_var() {
     let mut v = Variables(Vec::new());
     let mut f = Functions(Vec::new());
     assert!(
-        Tokens::infix("let n=2", &mut v, &mut f, &[], false)
+        Tokens::infix("let n=2", &mut v, &mut f, &[], false, 10)
             .unwrap()
             .is_none()
     );
     assert_eq!(v, vars1);
     assert_eq!(f, funs1);
     assert!(
-        Tokens::infix("let n=n2", &mut v, &mut f, &[], false)
+        Tokens::infix("let n=n2", &mut v, &mut f, &[], false, 10)
             .unwrap()
             .is_none()
     );
     assert_eq!(v, vars2);
     assert_eq!(f, funs2);
     assert!(
-        Tokens::infix("let n(k)=2k", &mut v, &mut f, &[], false)
+        Tokens::infix("let n(k)=2k", &mut v, &mut f, &[], false, 10)
             .unwrap()
             .is_none()
     );
     assert_eq!(v, vars3);
     assert_eq!(f, funs3);
     assert!(
-        Tokens::infix("let n(k)=k2", &mut v, &mut f, &[], false)
+        Tokens::infix("let n(k)=k2", &mut v, &mut f, &[], false, 10)
             .unwrap()
             .is_none()
     );
     assert_eq!(v, vars4);
     assert_eq!(f, funs4);
     assert!(
-        Tokens::infix("let n=2n(2)", &mut v, &mut f, &[], false)
+        Tokens::infix("let n=2n(2)", &mut v, &mut f, &[], false, 10)
             .unwrap()
             .is_none()
     );
@@ -1540,35 +1553,35 @@ fn test_overwrite_var() {
     let mut v = Variables(Vec::new());
     let mut f = Functions(Vec::new());
     assert!(
-        Tokens::rpn("let n = 2", &mut v, &mut f, &[], false)
+        Tokens::rpn("let n = 2", &mut v, &mut f, &[], false, 10)
             .unwrap()
             .is_none()
     );
     assert_eq!(v, vars1);
     assert_eq!(f, funs1);
     assert!(
-        Tokens::rpn("let n = n 2 *", &mut v, &mut f, &[], false)
+        Tokens::rpn("let n = n 2 *", &mut v, &mut f, &[], false, 10)
             .unwrap()
             .is_none()
     );
     assert_eq!(v, vars2);
     assert_eq!(f, funs2);
     assert!(
-        Tokens::rpn("let k n = 2 k *", &mut v, &mut f, &[], false)
+        Tokens::rpn("let k n = 2 k *", &mut v, &mut f, &[], false, 10)
             .unwrap()
             .is_none()
     );
     assert_eq!(v, vars3);
     assert_eq!(f, funs3);
     assert!(
-        Tokens::rpn("let k n = k 2 *", &mut v, &mut f, &[], false)
+        Tokens::rpn("let k n = k 2 *", &mut v, &mut f, &[], false, 10)
             .unwrap()
             .is_none()
     );
     assert_eq!(v, vars4);
     assert_eq!(f, funs4);
     assert!(
-        Tokens::rpn("let n = 2 2 n *", &mut v, &mut f, &[], false)
+        Tokens::rpn("let n = 2 2 n *", &mut v, &mut f, &[], false, 10)
             .unwrap()
             .is_none()
     );
@@ -1580,28 +1593,43 @@ fn test_custom_var() {
     let mut vars = Variables(vec![Variable::new("n", res(2))]);
     let mut v = Variables(Vec::new());
     assert!(
-        Tokens::infix("let n=2", &mut v, &mut Functions::default(), &[], false)
+        Tokens::infix("let n=2", &mut v, &mut Functions::default(), &[], false, 10)
             .unwrap()
             .is_none()
     );
     assert_eq!(v, vars);
     let mut v = Variables(Vec::new());
     assert!(
-        Tokens::rpn("let n = 2", &mut v, &mut Functions::default(), &[], false)
-            .unwrap()
-            .is_none()
+        Tokens::rpn(
+            "let n = 2",
+            &mut v,
+            &mut Functions::default(),
+            &[],
+            false,
+            10
+        )
+        .unwrap()
+        .is_none()
     );
     assert_eq!(v, vars);
     assert_correct_with!(
-        Tokens::infix("2*n*2", &mut vars, &mut Functions::default(), &[], false)
-            .unwrap()
-            .unwrap(),
+        Tokens::infix(
+            "2*n*2",
+            &mut vars,
+            &mut Functions::default(),
+            &[],
+            false,
+            10
+        )
+        .unwrap()
+        .unwrap(),
         Tokens::rpn(
             "2 n * 2 *",
             &mut vars,
             &mut Functions::default(),
             &[],
-            false
+            false,
+            10
         )
         .unwrap()
         .unwrap(),
@@ -1622,14 +1650,14 @@ macro_rules! assert_fun {
     ($infix:expr, $rpn:expr, $expected:expr) => {
         let mut f = Functions::default();
         assert!(
-            Tokens::infix($infix, &mut Variables::default(), &mut f, &[], true)
+            Tokens::infix($infix, &mut Variables::default(), &mut f, &[], true, 10)
                 .unwrap()
                 .is_none()
         );
         assert_eq!(f, $expected);
         let mut f = Functions::default();
         assert!(
-            Tokens::rpn($rpn, &mut Variables::default(), &mut f, &[], true)
+            Tokens::rpn($rpn, &mut Variables::default(), &mut f, &[], true, 10)
                 .unwrap()
                 .is_none()
         );
@@ -1663,12 +1691,26 @@ fn test_recursion() {
         funs
     );
     assert_correct_with!(
-        Tokens::infix("fact(5)", &mut Variables::default(), &mut funs, &[], false)
-            .unwrap()
-            .unwrap(),
-        Tokens::rpn("5 fact", &mut Variables::default(), &mut funs, &[], false)
-            .unwrap()
-            .unwrap(),
+        Tokens::infix(
+            "fact(5)",
+            &mut Variables::default(),
+            &mut funs,
+            &[],
+            false,
+            10
+        )
+        .unwrap()
+        .unwrap(),
+        Tokens::rpn(
+            "5 fact",
+            &mut Variables::default(),
+            &mut funs,
+            &[],
+            false,
+            10
+        )
+        .unwrap()
+        .unwrap(),
         Variables::default(),
         &[],
         funs,
@@ -1703,9 +1745,16 @@ fn test_inner_functions() {
     let mut funs = Functions(vec![f1.clone(), f2.clone()]);
     let mut f = Functions::default();
     assert!(
-        Tokens::infix("f(n,k)=n-k", &mut Variables::default(), &mut f, &[], true)
-            .unwrap()
-            .is_none()
+        Tokens::infix(
+            "f(n,k)=n-k",
+            &mut Variables::default(),
+            &mut f,
+            &[],
+            true,
+            10
+        )
+        .unwrap()
+        .is_none()
     );
     assert!(
         Tokens::infix(
@@ -1713,7 +1762,8 @@ fn test_inner_functions() {
             &mut Variables::default(),
             &mut f,
             &[],
-            true
+            true,
+            10
         )
         .unwrap()
         .is_none()
@@ -1726,7 +1776,8 @@ fn test_inner_functions() {
             &mut Variables::default(),
             &mut f,
             &[],
-            true
+            true,
+            10
         )
         .unwrap()
         .is_none()
@@ -1737,7 +1788,8 @@ fn test_inner_functions() {
             &mut Variables::default(),
             &mut f,
             &[],
-            true
+            true,
+            10
         )
         .unwrap()
         .is_none()
@@ -1749,7 +1801,8 @@ fn test_inner_functions() {
             &mut Variables::default(),
             &mut funs,
             &[],
-            false
+            false,
+            10
         )
         .unwrap()
         .unwrap(),
@@ -1758,7 +1811,8 @@ fn test_inner_functions() {
             &mut Variables::default(),
             &mut funs,
             &[],
-            false
+            false,
+            10
         )
         .unwrap()
         .unwrap(),
@@ -1820,7 +1874,8 @@ fn test_composed_functions() {
             &mut Variables::default(),
             &mut funs,
             &[],
-            false
+            false,
+            10
         )
         .unwrap()
         .unwrap(),
@@ -1829,7 +1884,8 @@ fn test_composed_functions() {
             &mut Variables::default(),
             &mut funs,
             &[],
-            false
+            false,
+            10
         )
         .unwrap()
         .unwrap(),
@@ -1869,12 +1925,26 @@ fn test_custom_functions() {
     )]);
     assert_fun!("f(n,k)=n-k", "n k f = n k -", funs);
     assert_correct_with!(
-        Tokens::infix("f(3,4)", &mut Variables::default(), &mut funs, &[], false)
-            .unwrap()
-            .unwrap(),
-        Tokens::rpn("3 4 f", &mut Variables::default(), &mut funs, &[], false)
-            .unwrap()
-            .unwrap(),
+        Tokens::infix(
+            "f(3,4)",
+            &mut Variables::default(),
+            &mut funs,
+            &[],
+            false,
+            10
+        )
+        .unwrap()
+        .unwrap(),
+        Tokens::rpn(
+            "3 4 f",
+            &mut Variables::default(),
+            &mut funs,
+            &[],
+            false,
+            10
+        )
+        .unwrap()
+        .unwrap(),
         Variables::default(),
         &[],
         funs,
@@ -1887,7 +1957,8 @@ fn test_custom_functions() {
             &mut Variables::default(),
             &mut funs,
             &[],
-            false
+            false,
+            10
         )
         .unwrap()
         .unwrap(),
@@ -1896,7 +1967,8 @@ fn test_custom_functions() {
             &mut Variables::default(),
             &mut funs,
             &[],
-            false
+            false,
+            10
         )
         .unwrap()
         .unwrap(),
@@ -2478,7 +2550,8 @@ fn test_err() {
             &mut Variables::default(),
             &mut Functions::default(),
             &[],
-            false
+            false,
+            10
         ),
         Err(ParseError::LeftParenthesisNotFound)
     );
@@ -2488,7 +2561,8 @@ fn test_err() {
             &mut Variables::default(),
             &mut Functions::default(),
             &[],
-            false
+            false,
+            10
         ),
         Err(ParseError::RightParenthesisNotFound)
     );
@@ -2498,14 +2572,16 @@ fn test_err() {
             &mut Variables::default(),
             &mut Functions::default(),
             &[],
-            false
+            false,
+            10
         ),
         Tokens::rpn(
             "2.3.4",
             &mut Variables::default(),
             &mut Functions::default(),
             &[],
-            false
+            false,
+            10
         ),
         Err(ParseError::UnknownToken("2.3.4"))
     );
@@ -2515,7 +2591,8 @@ fn test_err() {
             &mut Variables::default(),
             &mut Functions::default(),
             &[],
-            false
+            false,
+            10
         ),
         Err(ParseError::MissingInput)
     );
@@ -2525,7 +2602,8 @@ fn test_err() {
             &mut Variables::default(),
             &mut Functions::default(),
             &[],
-            false
+            false,
+            10
         ),
         Err(ParseError::AbsoluteBracketFailed)
     );
@@ -2535,7 +2613,8 @@ fn test_err() {
             &mut Variables::default(),
             &mut Functions::default(),
             &[],
-            false
+            false,
+            10
         ),
         Err(ParseError::AbsoluteBracketFailed)
     );
@@ -2545,7 +2624,8 @@ fn test_err() {
             &mut Variables::default(),
             &mut Functions::default(),
             &[],
-            false
+            false,
+            10
         ),
         Err(ParseError::MissingInput)
     );
@@ -2556,6 +2636,7 @@ fn test_err() {
             &mut Functions::default(),
             &[],
             true,
+            10
         ),
         Err(ParseError::VarExpectedName)
     );
@@ -2566,6 +2647,7 @@ fn test_err() {
             &mut Functions::default(),
             &[],
             true,
+            10
         ),
         Err(ParseError::VarExpectedName)
     );
@@ -2576,6 +2658,7 @@ fn test_err() {
             &mut Functions::default(),
             &[],
             true,
+            10
         ),
         Err(ParseError::UnknownToken("=-="))
     );
@@ -2586,12 +2669,8 @@ fn test_err() {
             &mut Functions::default(),
             &[],
             true,
+            10
         ),
         Err(ParseError::UnknownToken("\\"))
     );
-    /*assert_teq!(
-        Tokens::infix("abc(2)", Variables::default(), Functions::default()),
-        Tokens::rpn("2 abc", Variables::default(), Functions::default()),
-        Err(ParseError::UnknownToken("abc"))
-    );*/
 }

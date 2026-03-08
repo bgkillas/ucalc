@@ -131,7 +131,7 @@ pub trait FloatTrait<F>: Sized {
     fn tetration(self, other: &Self) -> Self;
     fn subfactorial_mut(&mut self);
     fn subfactorial(self) -> Self;
-    fn parse_radix(src: &str, _: i32) -> Option<Self>;
+    fn parse_radix(src: &str, base: u32) -> Option<Self>;
 }
 pub trait ComplexTrait<F>: FloatTrait<F> {
     fn imag(&self) -> &F;

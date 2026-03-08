@@ -1,4 +1,5 @@
 use crate::{ComplexTrait, Constant, FloatTrait, NegAssign, Pow, RealTrait};
+use num_traits::Num;
 use std::cmp::Ordering;
 #[cfg(feature = "f16")]
 use std::f16::consts;
@@ -343,9 +344,8 @@ impl FloatTrait<Float> for Float {
         self.subfactorial_mut();
         self
     }
-    fn parse_radix(src: &str, _: i32) -> Option<Self> {
-        //TODO
-        src.parse().map(Self).ok()
+    fn parse_radix(src: &str, base: u32) -> Option<Self> {
+        f64::from_str_radix(src, base).map(Self).ok()
     }
 }
 impl ComplexTrait<Float> for Complex {
@@ -711,9 +711,8 @@ impl FloatTrait<Float> for Complex {
         self.subfactorial_mut();
         self
     }
-    fn parse_radix(src: &str, _: i32) -> Option<Self> {
-        //TODO
-        src.parse()
+    fn parse_radix(src: &str, base: u32) -> Option<Self> {
+        f64::from_str_radix(src, base)
             .map(|real| Self {
                 real: Float(real),
                 imag: Float(0.0),

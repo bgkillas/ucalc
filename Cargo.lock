@@ -384,6 +384,7 @@ name = "ucalc_numbers"
 version = "0.0.2"
 dependencies = [
  "fastnum",
+ "num-traits",
  "rug",
 ]
 
