@@ -24,5 +24,6 @@ mimalloc = ["dep:mimalloc"]
 
 [dependencies]
 ucalc_lib = {workspace = true}
+ucalc_numbers = {workspace = true}
 readchar = {workspace = true}
 mimalloc = {version="0.1.48", features = ["v3"], optional = true}

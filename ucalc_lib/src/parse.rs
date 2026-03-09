@@ -242,7 +242,7 @@ impl Tokens {
         funs: &mut Functions,
         graph_vars: &[&str],
         mut expect_let: bool,
-        base: u32,
+        base: u8,
     ) -> Result<Option<Self>, ParseError<'a>> {
         let mut tokens = Tokens(Vec::with_capacity(value.len()));
         let mut inner_vars: Vec<&str> = Vec::with_capacity(value.len());
@@ -300,7 +300,7 @@ impl Tokens {
         funs: &mut Functions,
         graph_vars: &[&str],
         mut expect_let: bool,
-        base: u32,
+        base: u8,
     ) -> Result<Option<Self>, ParseError<'a>> {
         let mut tokens = Tokens(Vec::with_capacity(value.len()));
         let mut operator_stack: Vec<Operators> = Vec::with_capacity(value.len());

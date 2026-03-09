@@ -270,7 +270,7 @@ impl ReadChar {
     pub(crate) fn new_line<T>(
         &mut self,
         stdout: &mut T,
-        finish: impl FnOnce(&ReadChar, &mut T, &str) -> Return,
+        finish: impl FnOnce(&ReadChar, &mut T, &str) -> io::Result<Return>,
     ) -> io::Result<Return>
     where
         T: Write,
@@ -291,7 +291,7 @@ impl ReadChar {
         self.cursor_row_max = 0;
         self.insert = 0;
         self.line_len = 0;
-        let ret = finish(self, stdout, &self.line);
+        let ret = finish(self, stdout, &self.line)?;
         if ret != Return::Cancel {
             self.carrot(stdout)?;
         }
@@ -579,7 +579,7 @@ impl ReadChar {
         stdout: &mut T,
         string: &mut String,
         run: impl FnOnce(&str, &mut String),
-        finish: impl FnOnce(&ReadChar, &mut T, &str) -> Return,
+        finish: impl FnOnce(&ReadChar, &mut T, &str) -> io::Result<Return>,
         complete: Option<impl FnOnce(&str) -> Vec<String>>,
         event: Event,
     ) -> io::Result<Return>
@@ -698,7 +698,7 @@ impl ReadChar {
         stdout: &mut T,
         string: &mut String,
         run: impl FnOnce(&str, &mut String),
-        finish: impl FnOnce(&ReadChar, &mut T, &str) -> Return,
+        finish: impl FnOnce(&ReadChar, &mut T, &str) -> io::Result<Return>,
         complete: Option<impl FnOnce(&str) -> Vec<String>>,
     ) -> io::Result<Return>
     where

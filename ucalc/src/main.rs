@@ -9,15 +9,24 @@ use std::env::args;
 use std::fmt::Write;
 use std::io::{BufRead, IsTerminal, stdin, stdout};
 use ucalc_lib::{FUNCTION_LIST, Functions, Number, Tokens, Variable, Variables};
+use ucalc_numbers::FloatTrait;
 fn main() {
     let mut vars = Variables::default();
     let mut funs = Functions::default();
     let mut infix = true;
     let mut quit = false;
-    let mut base = 10;
+    let mut base_input = 10;
+    let mut base_output = 10;
     for arg in args().skip(1) {
         quit = true;
-        run_line(arg.as_str(), &mut infix, &mut base, &mut vars, &mut funs)
+        run_line(
+            arg.as_str(),
+            &mut infix,
+            &mut base_input,
+            &mut base_output,
+            &mut vars,
+            &mut funs,
+        )
     }
     let stdin = stdin().lock();
     if !stdin.is_terminal() {
@@ -25,7 +34,8 @@ fn main() {
             run_line(
                 l.unwrap().as_str(),
                 &mut infix,
-                &mut base,
+                &mut base_input,
+                &mut base_output,
                 &mut vars,
                 &mut funs,
             )
@@ -41,19 +51,31 @@ fn main() {
             match readchar.read(
                 &mut stdout,
                 &mut string,
-                |line, string| last = process_line(line, &mut vars, &mut funs, infix, base, string),
-                |readchar, stdout, line| match line {
-                    "exit" => {
-                        readchar.close(stdout).unwrap();
-                        Return::Cancel
-                    }
-                    "clear" => {
-                        stdout.queue(Clear(ClearType::Purge)).unwrap();
-                        stdout.queue(Clear(ClearType::All)).unwrap();
-                        stdout.queue(MoveTo(0, 0)).unwrap();
-                        Return::Finish
-                    }
-                    _ => Return::Finish,
+                |line, string| {
+                    last = process_line(
+                        line,
+                        &mut vars,
+                        &mut funs,
+                        infix,
+                        base_input,
+                        base_output,
+                        string,
+                    )
+                },
+                |readchar, stdout, line| {
+                    Ok(match line {
+                        "exit" => {
+                            readchar.close(stdout)?;
+                            Return::Cancel
+                        }
+                        "clear" => {
+                            stdout.queue(Clear(ClearType::Purge))?;
+                            stdout.queue(Clear(ClearType::All))?;
+                            stdout.queue(MoveTo(0, 0))?;
+                            Return::Finish
+                        }
+                        _ => Return::Finish,
+                    })
                 },
                 Some(complete),
             ) {
@@ -113,7 +135,8 @@ fn process_line(
     vars: &mut Variables,
     funs: &mut Functions,
     infix: bool,
-    base: u32,
+    base_input: u8,
+    base_output: u8,
     str: &mut String,
 ) -> Option<Number> {
     str.clear();
@@ -121,13 +144,17 @@ fn process_line(
         "" | "exit" | "clear" => None,
         _ => {
             match if infix {
-                Tokens::infix(line, vars, funs, &[], false, base)
+                Tokens::infix(line, vars, funs, &[], false, base_input)
             } else {
-                Tokens::rpn(line, vars, funs, &[], false, base)
+                Tokens::rpn(line, vars, funs, &[], false, base_input)
             } {
                 Ok(Some(tokens)) => {
                     let compute = tokens.compute(&[], funs, vars);
-                    write!(str, "{}", compute).unwrap();
+                    if base_output == 10 {
+                        write!(str, "{}", compute).unwrap();
+                    } else {
+                        write!(str, "{}", compute.to_string_radix(base_output)).unwrap();
+                    }
                     Some(compute)
                 }
                 Ok(None) => None,
@@ -142,7 +169,8 @@ fn process_line(
 fn run_line(
     line: &str,
     infix: &mut bool,
-    base: &mut u32,
+    base_input: &mut u8,
+    base_output: &mut u8,
     vars: &mut Variables,
     funs: &mut Functions,
 ) {
@@ -150,14 +178,19 @@ fn run_line(
         *infix = false;
         return;
     }
-    if let Some(s) = line.strip_prefix("--base=") {
-        *base = s.parse().unwrap();
+    if let Some(s) = line.strip_prefix("--base_input=") {
+        *base_input = s.parse().unwrap();
+        return;
+    }
+    if let Some(s) = line.strip_prefix("--base_output=") {
+        *base_output = s.parse().unwrap();
+        return;
     }
     match tmr(|| {
         if *infix {
-            Tokens::infix(line, vars, funs, &[], false, *base)
+            Tokens::infix(line, vars, funs, &[], false, *base_input)
         } else {
-            Tokens::rpn(line, vars, funs, &[], false, *base)
+            Tokens::rpn(line, vars, funs, &[], false, *base_input)
         }
     }) {
         Ok(Some(tokens)) => {
@@ -165,7 +198,11 @@ fn run_line(
             println!("{}", tokens.get_infix(vars, funs, &[]));
             println!("{}", tokens.get_rpn(vars, funs, &[]));
             let compute = tmr(|| tokens.compute(&[], funs, vars));
-            println!("{}", compute);
+            if *base_output == 10 {
+                println!("{}", compute);
+            } else {
+                println!("{}", compute.to_string_radix(*base_output));
+            }
         }
         Ok(None) => {}
         Err(e) => println!("{e:?}"),

@@ -6,7 +6,6 @@
 #![allow(internal_features)]
 #![feature(rustc_attrs)]
 #![feature(ptr_cast_slice)]
-//#![feature(dec2flt)]
 #[cfg(feature = "float")]
 mod float;
 #[cfg(feature = "float")]

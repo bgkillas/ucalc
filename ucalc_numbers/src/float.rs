@@ -1,5 +1,5 @@
 use crate::{ComplexTrait, Constant, FloatTrait, NegAssign, Pow, RealTrait};
-use num_traits::Num;
+use lexical::{NumberFormatBuilder, ParseFloatOptions, WriteFloatOptions};
 use std::cmp::Ordering;
 #[cfg(feature = "f16")]
 use std::f16::consts;
@@ -344,10 +344,149 @@ impl FloatTrait<Float> for Float {
         self.subfactorial_mut();
         self
     }
-    fn parse_radix(src: &str, base: u32) -> Option<Self> {
-        f64::from_str_radix(src, base).map(Self).ok()
+    fn parse_radix(src: &str, base: u8) -> Option<Self> {
+        let options = ParseFloatOptions::from_radix(base);
+        macro_rules! parses {
+            ($($n:ident = $nu:expr),*) => {
+                match base {
+                    $(
+                        $nu => lexical::parse_with_options::<F, _, $n>(src, &options).map(Self).ok(),
+                    )*
+                    _ => unreachable!()
+                }
+            };
+        }
+        parses!(
+            F2 = 2,
+            F3 = 3,
+            F4 = 4,
+            F5 = 5,
+            F6 = 6,
+            F7 = 7,
+            F8 = 8,
+            F9 = 9,
+            F10 = 10,
+            F11 = 11,
+            F12 = 12,
+            F13 = 13,
+            F14 = 14,
+            F15 = 15,
+            F16 = 16,
+            F17 = 17,
+            F18 = 18,
+            F19 = 19,
+            F20 = 20,
+            F21 = 21,
+            F22 = 22,
+            F23 = 23,
+            F24 = 24,
+            F25 = 25,
+            F26 = 26,
+            F27 = 27,
+            F28 = 28,
+            F29 = 29,
+            F30 = 30,
+            F31 = 31,
+            F32 = 32,
+            F33 = 33,
+            F34 = 34,
+            F35 = 35,
+            F36 = 36
+        )
+    }
+    fn to_string_radix(&self, base: u8) -> String {
+        let options = WriteFloatOptions::from_radix(base);
+        macro_rules! strings {
+            ($($n:ident = $nu:expr),*) => {
+                match base {
+                    $(
+                        $nu => lexical::to_string_with_options::<F, $n>(self.0, &options),
+                    )*
+                    _ => unreachable!()
+                }
+            };
+        }
+        strings!(
+            F2 = 2,
+            F3 = 3,
+            F4 = 4,
+            F5 = 5,
+            F6 = 6,
+            F7 = 7,
+            F8 = 8,
+            F9 = 9,
+            F10 = 10,
+            F11 = 11,
+            F12 = 12,
+            F13 = 13,
+            F14 = 14,
+            F15 = 15,
+            F16 = 16,
+            F17 = 17,
+            F18 = 18,
+            F19 = 19,
+            F20 = 20,
+            F21 = 21,
+            F22 = 22,
+            F23 = 23,
+            F24 = 24,
+            F25 = 25,
+            F26 = 26,
+            F27 = 27,
+            F28 = 28,
+            F29 = 29,
+            F30 = 30,
+            F31 = 31,
+            F32 = 32,
+            F33 = 33,
+            F34 = 34,
+            F35 = 35,
+            F36 = 36
+        )
     }
 }
+macro_rules! formats {
+    ($($n:ident = $nu:expr),*) => {
+        $(const $n: u128 = NumberFormatBuilder::new().radix($nu).build_strict();)*
+    };
+}
+formats!(
+    F2 = 2,
+    F3 = 3,
+    F4 = 4,
+    F5 = 5,
+    F6 = 6,
+    F7 = 7,
+    F8 = 8,
+    F9 = 9,
+    F10 = 10,
+    F11 = 11,
+    F12 = 12,
+    F13 = 13,
+    F14 = 14,
+    F15 = 15,
+    F16 = 16,
+    F17 = 17,
+    F18 = 18,
+    F19 = 19,
+    F20 = 20,
+    F21 = 21,
+    F22 = 22,
+    F23 = 23,
+    F24 = 24,
+    F25 = 25,
+    F26 = 26,
+    F27 = 27,
+    F28 = 28,
+    F29 = 29,
+    F30 = 30,
+    F31 = 31,
+    F32 = 32,
+    F33 = 33,
+    F34 = 34,
+    F35 = 35,
+    F36 = 36
+);
 impl ComplexTrait<Float> for Complex {
     fn imag(&self) -> &Float {
         &self.imag
@@ -711,13 +850,23 @@ impl FloatTrait<Float> for Complex {
         self.subfactorial_mut();
         self
     }
-    fn parse_radix(src: &str, base: u32) -> Option<Self> {
-        f64::from_str_radix(src, base)
-            .map(|real| Self {
-                real: Float(real),
-                imag: Float(0.0),
-            })
-            .ok()
+    fn parse_radix(src: &str, base: u8) -> Option<Self> {
+        Some(Self {
+            real: Float::parse_radix(src, base)?,
+            imag: Float(0.0),
+        })
+    }
+    fn to_string_radix(&self, base: u8) -> String {
+        format!(
+            "{:?}{}{:?}i",
+            self.real.to_string_radix(base),
+            if self.imag.is_sign_positive() {
+                "+"
+            } else {
+                ""
+            },
+            self.imag.to_string_radix(base)
+        )
     }
 }
 macro_rules! ops_assign {
