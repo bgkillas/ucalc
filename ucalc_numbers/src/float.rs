@@ -858,7 +858,7 @@ impl FloatTrait<Float> for Complex {
     }
     fn to_string_radix(&self, base: u8) -> String {
         format!(
-            "{:?}{}{:?}i",
+            "{}{}{}i",
             self.real.to_string_radix(base),
             if self.imag.is_sign_positive() {
                 "+"
