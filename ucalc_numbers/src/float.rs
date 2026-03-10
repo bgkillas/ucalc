@@ -11,10 +11,10 @@ use std::f64::consts;
 use std::f128::consts;
 use std::fmt::{Debug, Display, Formatter};
 use std::iter::{Product, Sum};
-use std::mem;
 use std::ops::{
     Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub, SubAssign,
 };
+use std::{fmt, mem};
 #[cfg(feature = "f16")]
 pub type F = f16;
 #[cfg(feature = "f32")]
@@ -115,22 +115,21 @@ impl RealTrait<Float> for Float {
     fn into_usize(self) -> usize {
         self.0 as usize
     }
-    fn closest_fraction(self) -> Option<(bool, usize, usize)> {
+    fn closest_fraction(&self) -> Option<(bool, usize, usize)> {
+        if !self.0.is_finite() {
+            return None;
+        }
         let is_positive = self.is_sign_positive();
-        let mut num = if is_positive {
-            self.0.fract()
-        } else {
-            self.0.abs().fract()
-        };
+        let orig = self.0.abs();
+        let mut num = orig;
         let mut mult = 1.0;
         for _ in 0..64 {
             let recip = num.recip();
             let fract = recip.fract();
             mult *= recip;
-            if fract > 1e-8 {
-                num = fract;
-            } else {
-                let numerator = (self.0 * mult) as usize;
+            num = fract;
+            if fract < 1e-8 {
+                let numerator = (orig * mult) as usize;
                 let denominator = mult as usize;
                 return Some((is_positive, numerator, denominator));
             }
@@ -465,6 +464,18 @@ impl FloatTrait<Float> for Float {
             F35 = 35,
             F36 = 36
         )
+    }
+    fn get_closest_fraction(&self) -> impl Display {
+        fmt::from_fn(move |fmt| {
+            if let Some((sign, num, den)) = self.closest_fraction() {
+                if !sign {
+                    write!(fmt, "-")?;
+                }
+                write!(fmt, "{num}/{den}")
+            } else {
+                write!(fmt, "")
+            }
+        })
     }
 }
 macro_rules! formats {
@@ -889,6 +900,28 @@ impl FloatTrait<Float> for Complex {
             },
             self.imag.to_string_radix(base)
         )
+    }
+    fn get_closest_fraction(&self) -> impl Display {
+        fmt::from_fn(move |fmt| {
+            if let Some((sign, num, den)) = self.real.closest_fraction() {
+                if !sign {
+                    write!(fmt, "-")?;
+                }
+                write!(fmt, "{num}/{den}")?;
+            } else {
+                write!(fmt, "")?;
+            }
+            if let Some((sign, num, den)) = self.imag.closest_fraction() {
+                if sign {
+                    write!(fmt, "+")?;
+                } else {
+                    write!(fmt, "-")?;
+                }
+                write!(fmt, "{num}i/{den}")
+            } else {
+                write!(fmt, "")
+            }
+        })
     }
 }
 macro_rules! ops_assign {

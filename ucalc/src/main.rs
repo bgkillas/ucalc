@@ -9,7 +9,7 @@ use std::env::args;
 use std::fmt::Write;
 use std::io::{BufRead, IsTerminal, stdin, stdout};
 use ucalc_lib::{FUNCTION_LIST, Functions, Number, Tokens, Variable, Variables};
-use ucalc_numbers::{FloatTrait, RealTrait};
+use ucalc_numbers::FloatTrait;
 fn main() {
     let mut vars = Variables::default();
     let mut funs = Functions::default();
@@ -194,9 +194,7 @@ fn run_line(
             println!("{}", tokens.get_infix(vars, funs, &[]));
             println!("{}", tokens.get_rpn(vars, funs, &[]));
             let compute = tmr(|| tokens.compute(&[], funs, vars));
-            if let Some((s, n, d)) = compute.real().clone().closest_fraction() {
-                println!("{}{n}/{d}", if !s { "-" } else { "" },);
-            }
+            println!("{}", compute.get_closest_fraction());
             println!("{}", compute.to_string_radix(*base_output));
         }
         Ok(None) => {}

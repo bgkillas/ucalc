@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::fmt::Display;
 use std::mem;
 use std::ops::Neg;
 pub trait Pow<Rhs> {
@@ -133,6 +134,7 @@ pub trait FloatTrait<F>: Sized {
     fn subfactorial(self) -> Self;
     fn parse_radix(src: &str, base: u8) -> Option<Self>;
     fn to_string_radix(&self, base: u8) -> String;
+    fn get_closest_fraction(&self) -> impl Display;
 }
 pub trait ComplexTrait<F>: FloatTrait<F> {
     fn imag(&self) -> &F;
@@ -153,5 +155,5 @@ pub trait RealTrait<F>: FloatTrait<F> {
     fn hypot_mut(&mut self, other: &Self);
     fn into_isize(self) -> isize;
     fn into_usize(self) -> usize;
-    fn closest_fraction(self) -> Option<(bool, usize, usize)>;
+    fn closest_fraction(&self) -> Option<(bool, usize, usize)>;
 }
