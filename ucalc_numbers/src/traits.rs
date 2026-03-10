@@ -153,4 +153,5 @@ pub trait RealTrait<F>: FloatTrait<F> {
     fn hypot_mut(&mut self, other: &Self);
     fn into_isize(self) -> isize;
     fn into_usize(self) -> usize;
+    fn closest_fraction(self) -> Option<(bool, usize, usize)>;
 }

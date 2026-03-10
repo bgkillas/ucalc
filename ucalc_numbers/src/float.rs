@@ -115,6 +115,28 @@ impl RealTrait<Float> for Float {
     fn into_usize(self) -> usize {
         self.0 as usize
     }
+    fn closest_fraction(self) -> Option<(bool, usize, usize)> {
+        let is_positive = self.is_sign_positive();
+        let mut num = if is_positive {
+            self.0.fract()
+        } else {
+            self.0.abs().fract()
+        };
+        let mut mult = 1.0;
+        for _ in 0..64 {
+            let recip = num.recip();
+            let fract = recip.fract();
+            mult *= recip;
+            if fract > 1e-8 {
+                num = fract;
+            } else {
+                let numerator = (self.0 * mult) as usize;
+                let denominator = mult as usize;
+                return Some((is_positive, numerator, denominator));
+            }
+        }
+        None
+    }
 }
 impl FloatTrait<Float> for Float {
     fn real(&self) -> &Self {

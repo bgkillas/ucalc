@@ -9,7 +9,7 @@ use std::env::args;
 use std::fmt::Write;
 use std::io::{BufRead, IsTerminal, stdin, stdout};
 use ucalc_lib::{FUNCTION_LIST, Functions, Number, Tokens, Variable, Variables};
-use ucalc_numbers::FloatTrait;
+use ucalc_numbers::{FloatTrait, RealTrait};
 fn main() {
     let mut vars = Variables::default();
     let mut funs = Functions::default();
@@ -150,11 +150,7 @@ fn process_line(
             } {
                 Ok(Some(tokens)) => {
                     let compute = tokens.compute(&[], funs, vars);
-                    if base_output == 10 {
-                        write!(str, "{}", compute).unwrap();
-                    } else {
-                        write!(str, "{}", compute.to_string_radix(base_output)).unwrap();
-                    }
+                    write!(str, "{}", compute.to_string_radix(base_output)).unwrap();
                     Some(compute)
                 }
                 Ok(None) => None,
@@ -198,11 +194,10 @@ fn run_line(
             println!("{}", tokens.get_infix(vars, funs, &[]));
             println!("{}", tokens.get_rpn(vars, funs, &[]));
             let compute = tmr(|| tokens.compute(&[], funs, vars));
-            if *base_output == 10 {
-                println!("{}", compute);
-            } else {
-                println!("{}", compute.to_string_radix(*base_output));
+            if let Some((s, n, d)) = compute.real().clone().closest_fraction() {
+                println!("{}{n}/{d}", if !s { "-" } else { "" },);
             }
+            println!("{}", compute.to_string_radix(*base_output));
         }
         Ok(None) => {}
         Err(e) => println!("{e:?}"),
