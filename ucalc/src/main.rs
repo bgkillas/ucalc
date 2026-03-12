@@ -114,7 +114,7 @@ fn complete(mut line: &str) -> Vec<String> {
     if line.ends_with(['(', '{', '[', '|']) {
         line = &line[..line.len() - 1];
     }
-    let word = if let Some(idx) = line.rfind(|c: char| !c.is_ascii_alphabetic()) {
+    let word = if let Some(idx) = line.rfind(|c: char| !c.is_ascii_alphabetic() && c != '_') {
         if idx + 1 == line.len() {
             return Vec::new();
         }

@@ -986,6 +986,7 @@ fn parse_arctan() {
     );
 }
 #[test]
+#[cfg(feature = "complex")]
 fn parse_cubic() {
     assert_correct!(
         infix("cubic(1,-2,0,1)"),
@@ -1002,6 +1003,7 @@ fn parse_cubic() {
     );
 }
 #[test]
+#[cfg(feature = "complex")]
 fn parse_quartic() {
     assert_correct!(
         infix("quartic(1,0,-13,0,36)"),
@@ -1177,6 +1179,24 @@ fn test_set() {
             Function::Set.into(),
         ],
         res(-1)
+    );
+}
+#[test]
+fn test_numerical_differential() {
+    assert_approx_correct!(
+        infix("numerical_differential(0,0,1,x+t)"),
+        rpn("0 0 1 x t x t + numerical_differential"),
+        vec![
+            num(0),
+            num(0),
+            num(1),
+            Token::Skip(3),
+            Token::InnerVar(0).into(),
+            Token::InnerVar(1).into(),
+            Operators::Add.into(),
+            Function::NumericalDifferential.into()
+        ],
+        res(Constant::E) - res(2)
     );
 }
 #[test]

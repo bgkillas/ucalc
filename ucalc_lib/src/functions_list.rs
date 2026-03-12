@@ -69,4 +69,8 @@ pub const FUNCTION_LIST: &[&str] = &[
     "set(value(,x),f(x))",
     "modify(value,x,f(x))",
     "solve((x,)f(x))",
+    "numerical_solve(start(,x),f(x))",
+    "numerical_derivative(point(,x),f(x))",
+    "numerical_integral(start,end(,x),f(x))",
+    "numerical_differential(x_0,t_0,t_1(,x,t),f(x,t))",
 ];

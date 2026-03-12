@@ -80,4 +80,31 @@ impl TokensRef<'_> {
         }
         total
     }
+    #[allow(clippy::too_many_arguments)]
+    pub fn numerical_differential(
+        self,
+        fun_vars: &mut Vec<Number>,
+        vars: &[Number],
+        funs: &Functions,
+        custom_vars: &Variables,
+        stack: &mut Tokens,
+        offset: usize,
+        x_0: &Number,
+        t_0: &Number,
+        t_1: &Number,
+        x_var: usize,
+        t_var: usize,
+    ) -> Number {
+        let n = 1024;
+        let epsilon = (t_1.clone() - t_0) / Float::from(n);
+        fun_vars[x_var] = x_0.clone();
+        fun_vars[t_var] = t_0.clone();
+        for _ in 0..n {
+            let delta = self.compute_buffer_with(fun_vars, vars, funs, custom_vars, stack, offset)
+                * &epsilon;
+            fun_vars[x_var] += delta;
+            fun_vars[t_var] += &epsilon;
+        }
+        fun_vars[x_var].clone()
+    }
 }

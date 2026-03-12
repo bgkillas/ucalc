@@ -85,6 +85,7 @@ pub enum Function {
     Modify,
     Solve,
     NumericalDerivative,
+    NumericalDifferential,
     NumericalIntegral,
     NumericalSolve,
     Custom(u16),
@@ -149,6 +150,7 @@ impl TryFrom<&str> for Function {
             "mul" => Self::Mul,
             "div" => Self::Div,
             "pow" => Self::Pow,
+            "numerical_differential" => Self::NumericalDifferential,
             "numerical_derivative" => Self::NumericalDerivative,
             "numerical_integral" => Self::NumericalIntegral,
             "numerical_solve" => Self::NumericalSolve,
@@ -219,6 +221,7 @@ impl Display for Function {
                 Self::Round => "round",
                 Self::Trunc => "trunc",
                 Self::Fract => "fract",
+                Self::NumericalDifferential => "numerical_differential",
                 Self::NumericalDerivative => "numerical_derivative",
                 Self::NumericalIntegral => "numerical_integral",
                 Self::NumericalSolve => "numerical_solve",
@@ -330,7 +333,7 @@ impl Function {
             | Self::If
             | Self::Modify
             | Self::NumericalIntegral => 3,
-            Self::Fold => 4,
+            Self::Fold | Self::NumericalDifferential => 4,
             #[cfg(feature = "complex")]
             Self::Cubic => 4,
             #[cfg(feature = "complex")]
@@ -465,7 +468,8 @@ impl Function {
             | Self::Solve
             | Self::NumericalDerivative
             | Self::NumericalIntegral
-            | Self::NumericalSolve => unreachable!(),
+            | Self::NumericalSolve
+            | Self::NumericalDifferential => unreachable!(),
         }
     }
     pub fn compact(self) -> usize {
@@ -478,7 +482,8 @@ impl Function {
             | Self::Solve
             | Self::NumericalSolve
             | Self::NumericalIntegral
-            | Self::NumericalDerivative => 1,
+            | Self::NumericalDerivative
+            | Self::NumericalDifferential => 1,
             Self::If | Self::Modify => 2,
             _ => 0,
         }
@@ -493,7 +498,7 @@ impl Function {
             | Self::NumericalDerivative
             | Self::NumericalSolve
             | Self::NumericalIntegral => 1,
-            Self::Fold => 2,
+            Self::Fold | Self::NumericalDifferential => 2,
             _ => 0,
         }
     }
@@ -502,7 +507,7 @@ impl Function {
             Self::Solve => n == 1,
             Self::Set | Self::NumericalDerivative | Self::NumericalSolve => n == 2,
             Self::Sum | Self::Prod | Self::Iter | Self::NumericalIntegral => n == 3,
-            Self::Fold => n == 4 || n == 5,
+            Self::Fold | Self::NumericalDifferential => n == 4 || n == 5,
             _ => false,
         }
     }
@@ -511,7 +516,7 @@ impl Function {
             Self::Solve => n == 1,
             Self::Set | Self::NumericalDerivative | Self::NumericalSolve => n == 2,
             Self::Sum | Self::Prod | Self::Iter | Self::NumericalIntegral => n == 3,
-            Self::Fold => n == 4,
+            Self::Fold | Self::NumericalDifferential => n == 4,
             _ => false,
         }
     }
@@ -526,6 +531,7 @@ impl Function {
                 | Self::Solve
                 | Self::NumericalIntegral
                 | Self::NumericalDerivative
+                | Self::NumericalDifferential
                 | Self::NumericalSolve
         )
     }
@@ -542,6 +548,7 @@ impl Function {
                 | Self::Modify
                 | Self::NumericalIntegral
                 | Self::NumericalDerivative
+                | Self::NumericalDifferential
                 | Self::NumericalSolve
         )
     }
@@ -698,6 +705,28 @@ impl Function {
                     fun_vars.len() - 1,
                 );
                 stack.drain(len - 2..);
+                fun_vars.pop().unwrap();
+            }
+            Self::NumericalDifferential => {
+                let ([x_0, t_0, t_1], [tokens]) = stack.get_skip(tokens);
+                fun_vars.push(Number::default());
+                fun_vars.push(Number::default());
+                let mut stck = Tokens(Vec::with_capacity(tokens.len()));
+                *stack[len - 3].num_mut() = tokens.numerical_differential(
+                    fun_vars,
+                    vars,
+                    funs,
+                    custom_vars,
+                    &mut stck,
+                    offset,
+                    x_0.num_ref(),
+                    t_0.num_ref(),
+                    t_1.num_ref(),
+                    fun_vars.len() - 2,
+                    fun_vars.len() - 1,
+                );
+                stack.drain(len - 2..);
+                fun_vars.pop().unwrap();
                 fun_vars.pop().unwrap();
             }
             Self::NumericalSolve => {
