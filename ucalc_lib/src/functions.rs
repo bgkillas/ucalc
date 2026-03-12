@@ -298,8 +298,7 @@ impl Function {
             | Self::Round
             | Self::Trunc
             | Self::Fract
-            | Self::Solve
-            | Self::NumericalSolve => 1,
+            | Self::Solve => 1,
             #[cfg(feature = "complex")]
             Self::Arg | Self::Conj | Self::Real | Self::Imag => 1,
             Self::Tetration
@@ -322,7 +321,8 @@ impl Function {
             | Self::Max
             | Self::Min
             | Self::Set
-            | Self::NumericalDerivative => 2,
+            | Self::NumericalDerivative
+            | Self::NumericalSolve => 2,
             Self::Quadratic
             | Self::Sum
             | Self::Prod
@@ -667,57 +667,54 @@ impl Function {
             }
             Self::NumericalDerivative => {
                 let ([point], [tokens]) = stack.get_skip(tokens);
-                let epsilon = Float::from(2.0f64.powi(-32));
-                fun_vars.push(point.num_ref().clone());
+                fun_vars.push(Number::default());
                 let mut stck = Tokens(Vec::with_capacity(tokens.len()));
-                let start = tokens.compute_buffer_with(
+                *stack[len - 2].num_mut() = tokens.numerical_derivative(
                     fun_vars,
                     vars,
                     funs,
                     custom_vars,
                     &mut stck,
                     offset,
-                );
-                *fun_vars.last_mut().unwrap() = point.num_ref().clone() + &epsilon;
-                let end = tokens.compute_buffer_with(
-                    fun_vars,
-                    vars,
-                    funs,
-                    custom_vars,
-                    &mut stck,
-                    offset,
+                    point.num_ref(),
+                    fun_vars.len() - 1,
                 );
                 stack.drain(len - 1..);
                 fun_vars.pop().unwrap();
-                *stack[len - 2].num_mut() = (end - start) / epsilon;
             }
             Self::NumericalIntegral => {
                 let ([start, end], [tokens]) = stack.get_skip(tokens);
-                let [start, end] = [start.num_ref(), end.num_ref()];
-                let n = 1024;
-                let epsilon = (end.clone() - start) / Float::from(n);
-                fun_vars.push(start.clone());
-                let mut total = Number::from(0);
+                fun_vars.push(Number::default());
                 let mut stck = Tokens(Vec::with_capacity(tokens.len()));
-                for _ in 0..n {
-                    total += tokens.compute_buffer_with(
-                        fun_vars,
-                        vars,
-                        funs,
-                        custom_vars,
-                        &mut stck,
-                        offset,
-                    ) * &epsilon;
-                    *fun_vars.last_mut().unwrap() += &epsilon;
-                }
+                *stack[len - 3].num_mut() = tokens.numerical_integral(
+                    fun_vars,
+                    vars,
+                    funs,
+                    custom_vars,
+                    &mut stck,
+                    offset,
+                    start.num_ref(),
+                    end.num_ref(),
+                    fun_vars.len() - 1,
+                );
                 stack.drain(len - 2..);
                 fun_vars.pop().unwrap();
-                *stack[len - 3].num_mut() = total;
             }
             Self::NumericalSolve => {
                 let ([point], [tokens]) = stack.get_skip(tokens);
-                fun_vars.push(point.num_ref().clone());
-                stack.drain(len - 2..);
+                fun_vars.push(Number::default());
+                let mut stck = Tokens(Vec::with_capacity(tokens.len()));
+                *stack[len - 2].num_mut() = tokens.numerical_solve(
+                    fun_vars,
+                    vars,
+                    funs,
+                    custom_vars,
+                    &mut stck,
+                    offset,
+                    point.num_ref(),
+                    fun_vars.len() - 1,
+                );
+                stack.drain(len - 1..);
                 fun_vars.pop().unwrap();
             }
             _ => {}

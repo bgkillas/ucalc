@@ -5,6 +5,7 @@ mod compute;
 mod functions;
 mod functions_list;
 mod inverse;
+mod math;
 mod operators;
 mod parse;
 mod polynomial;
