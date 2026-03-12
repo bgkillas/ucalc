@@ -341,7 +341,8 @@ impl Tokens {
                             t.is_ascii_alphanumeric() || t == '.'
                         } else {
                             t.is_ascii_alphabetic()
-                        } {
+                        } || t == '_'
+                        {
                             l += t.len_utf8();
                             count += 1;
                         } else {

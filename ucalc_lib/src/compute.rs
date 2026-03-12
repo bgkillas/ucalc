@@ -27,7 +27,7 @@ impl Tokens {
     ) -> Number {
         TokensRef(self).compute_buffer_with(fun_vars, vars, funs, custom_vars, stack, offset)
     }
-    pub fn get_skip<'a, 'b, 'c: 'a, const N: usize, const K: usize>(
+    pub fn get_skip<'a, 'b, const N: usize, const K: usize>(
         &'b self,
         tokens: TokensRef<'a>,
     ) -> ([&'b Token; K], [TokensRef<'a>; N]) {
@@ -39,10 +39,7 @@ impl Tokens {
         let end = self.len() - (end + 1);
         array::from_fn(|i| &self[end - (N - (i + 1))])
     }
-    pub fn get_skip_tokens<'a, 'b: 'a, const N: usize>(
-        &self,
-        tokens: TokensRef<'a>,
-    ) -> [TokensRef<'a>; N] {
+    pub fn get_skip_tokens<'a, const N: usize>(&self, tokens: TokensRef<'a>) -> [TokensRef<'a>; N] {
         let len = tokens.len();
         let mut t = len - 1;
         let mut l = 0;

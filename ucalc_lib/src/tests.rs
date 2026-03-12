@@ -4,7 +4,7 @@ use crate::parse::ParseError;
 use crate::parse::{Token, Tokens};
 use crate::polynomial::Poly;
 use crate::variable::{Functions, Variables};
-use crate::{FunctionVar, Number, Variable};
+use crate::{FUNCTION_LIST, FunctionVar, Number, Variable};
 use ucalc_numbers::*;
 macro_rules! assert_approx_eq {
     ($a:expr, $b:expr) => {
@@ -2673,4 +2673,16 @@ fn test_err() {
         ),
         Err(ParseError::UnknownToken("\\"))
     );
+}
+#[test]
+fn function_exists() {
+    for f in [Function::Add] {
+        assert_eq!(Function::try_from(f.to_string().as_str()).unwrap(), f);
+        assert!(
+            FUNCTION_LIST
+                .iter()
+                .any(|l| l.starts_with(format!("{f}(").as_str())),
+            "{f}"
+        );
+    }
 }

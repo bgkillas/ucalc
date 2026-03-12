@@ -84,6 +84,9 @@ pub enum Function {
     Set,
     Modify,
     Solve,
+    NumericalDerivative,
+    NumericalIntegral,
+    NumericalSolve,
     Custom(u16),
 }
 impl TryFrom<&str> for Function {
@@ -146,6 +149,9 @@ impl TryFrom<&str> for Function {
             "mul" => Self::Mul,
             "div" => Self::Div,
             "pow" => Self::Pow,
+            "numerical_derivative" => Self::NumericalDerivative,
+            "numerical_integral" => Self::NumericalIntegral,
+            "numerical_solve" => Self::NumericalSolve,
             "tetration" => Self::Tetration,
             "root" => Self::Root,
             "rem" => Self::Rem,
@@ -213,6 +219,9 @@ impl Display for Function {
                 Self::Round => "round",
                 Self::Trunc => "trunc",
                 Self::Fract => "fract",
+                Self::NumericalDerivative => "numerical_derivative",
+                Self::NumericalIntegral => "numerical_integral",
+                Self::NumericalSolve => "numerical_solve",
                 #[cfg(feature = "complex")]
                 Self::Real => "real",
                 #[cfg(feature = "complex")]
@@ -248,7 +257,6 @@ impl Display for Function {
     }
 }
 impl Function {
-    pub const MAX_INPUT: usize = 3;
     pub fn set_inputs(&mut self, inputs: u8) {
         #[allow(clippy::single_match)]
         match self {
@@ -290,7 +298,8 @@ impl Function {
             | Self::Round
             | Self::Trunc
             | Self::Fract
-            | Self::Solve => 1,
+            | Self::Solve
+            | Self::NumericalSolve => 1,
             #[cfg(feature = "complex")]
             Self::Arg | Self::Conj | Self::Real | Self::Imag => 1,
             Self::Tetration
@@ -312,8 +321,15 @@ impl Function {
             | Self::Atan(Inputs::Two)
             | Self::Max
             | Self::Min
-            | Self::Set => 2,
-            Self::Quadratic | Self::Sum | Self::Prod | Self::Iter | Self::If | Self::Modify => 3,
+            | Self::Set
+            | Self::NumericalDerivative => 2,
+            Self::Quadratic
+            | Self::Sum
+            | Self::Prod
+            | Self::Iter
+            | Self::If
+            | Self::Modify
+            | Self::NumericalIntegral => 3,
             Self::Fold => 4,
             #[cfg(feature = "complex")]
             Self::Cubic => 4,
@@ -322,6 +338,10 @@ impl Function {
             Self::Custom(_) => unreachable!(),
         }
     }
+    #[cfg(not(feature = "complex"))]
+    pub const MAX_INPUT: usize = 4;
+    #[cfg(feature = "complex")]
+    pub const MAX_INPUT: usize = 5;
     pub fn is_chainable(self) -> bool {
         matches!(
             self,
@@ -442,19 +462,37 @@ impl Function {
             | Self::Fold
             | Self::Set
             | Self::Modify
-            | Self::Solve => unreachable!(),
+            | Self::Solve
+            | Self::NumericalDerivative
+            | Self::NumericalIntegral
+            | Self::NumericalSolve => unreachable!(),
         }
     }
     pub fn compact(self) -> usize {
         match self {
-            Self::Sum | Self::Prod | Self::Iter | Self::Fold | Self::Set | Self::Solve => 1,
+            Self::Sum
+            | Self::Prod
+            | Self::Iter
+            | Self::Fold
+            | Self::Set
+            | Self::Solve
+            | Self::NumericalSolve
+            | Self::NumericalIntegral
+            | Self::NumericalDerivative => 1,
             Self::If | Self::Modify => 2,
             _ => 0,
         }
     }
     pub fn inner_vars(self) -> u8 {
         match self {
-            Self::Sum | Self::Prod | Self::Iter | Self::Set | Self::Solve => 1,
+            Self::Sum
+            | Self::Prod
+            | Self::Iter
+            | Self::Set
+            | Self::Solve
+            | Self::NumericalDerivative
+            | Self::NumericalSolve
+            | Self::NumericalIntegral => 1,
             Self::Fold => 2,
             _ => 0,
         }
@@ -462,8 +500,8 @@ impl Function {
     pub fn expected_var(self, n: u8) -> bool {
         match self {
             Self::Solve => n == 1,
-            Self::Set => n == 2,
-            Self::Sum | Self::Prod | Self::Iter => n == 3,
+            Self::Set | Self::NumericalDerivative | Self::NumericalSolve => n == 2,
+            Self::Sum | Self::Prod | Self::Iter | Self::NumericalIntegral => n == 3,
             Self::Fold => n == 4 || n == 5,
             _ => false,
         }
@@ -471,8 +509,8 @@ impl Function {
     pub fn first_expected_var(self, n: u8) -> bool {
         match self {
             Self::Solve => n == 1,
-            Self::Set => n == 2,
-            Self::Sum | Self::Prod | Self::Iter => n == 3,
+            Self::Set | Self::NumericalDerivative | Self::NumericalSolve => n == 2,
+            Self::Sum | Self::Prod | Self::Iter | Self::NumericalIntegral => n == 3,
             Self::Fold => n == 4,
             _ => false,
         }
@@ -480,7 +518,15 @@ impl Function {
     pub fn has_var(self) -> bool {
         matches!(
             self,
-            Self::Sum | Self::Prod | Self::Iter | Self::Fold | Self::Set | Self::Solve
+            Self::Sum
+                | Self::Prod
+                | Self::Iter
+                | Self::Fold
+                | Self::Set
+                | Self::Solve
+                | Self::NumericalIntegral
+                | Self::NumericalDerivative
+                | Self::NumericalSolve
         )
     }
     pub fn has_inner_fn(self) -> bool {
@@ -494,6 +540,9 @@ impl Function {
                 | Self::Solve
                 | Self::If
                 | Self::Modify
+                | Self::NumericalIntegral
+                | Self::NumericalDerivative
+                | Self::NumericalSolve
         )
     }
     #[allow(clippy::too_many_arguments)]
@@ -615,6 +664,61 @@ impl Function {
                         )
                     });
                 stack.drain(len - 2..);
+            }
+            Self::NumericalDerivative => {
+                let ([point], [tokens]) = stack.get_skip(tokens);
+                let epsilon = Float::from(2.0f64.powi(-32));
+                fun_vars.push(point.num_ref().clone());
+                let mut stck = Tokens(Vec::with_capacity(tokens.len()));
+                let start = tokens.compute_buffer_with(
+                    fun_vars,
+                    vars,
+                    funs,
+                    custom_vars,
+                    &mut stck,
+                    offset,
+                );
+                *fun_vars.last_mut().unwrap() = point.num_ref().clone() + &epsilon;
+                let end = tokens.compute_buffer_with(
+                    fun_vars,
+                    vars,
+                    funs,
+                    custom_vars,
+                    &mut stck,
+                    offset,
+                );
+                stack.drain(len - 1..);
+                fun_vars.pop().unwrap();
+                *stack[len - 2].num_mut() = (end - start) / epsilon;
+            }
+            Self::NumericalIntegral => {
+                let ([start, end], [tokens]) = stack.get_skip(tokens);
+                let [start, end] = [start.num_ref(), end.num_ref()];
+                let n = 1024;
+                let epsilon = (end.clone() - start) / Float::from(n);
+                fun_vars.push(start.clone());
+                let mut total = Number::from(0);
+                let mut stck = Tokens(Vec::with_capacity(tokens.len()));
+                for _ in 0..n {
+                    total += tokens.compute_buffer_with(
+                        fun_vars,
+                        vars,
+                        funs,
+                        custom_vars,
+                        &mut stck,
+                        offset,
+                    ) * &epsilon;
+                    *fun_vars.last_mut().unwrap() += &epsilon;
+                }
+                stack.drain(len - 2..);
+                fun_vars.pop().unwrap();
+                *stack[len - 3].num_mut() = total;
+            }
+            Self::NumericalSolve => {
+                let ([point], [tokens]) = stack.get_skip(tokens);
+                fun_vars.push(point.num_ref().clone());
+                stack.drain(len - 2..);
+                fun_vars.pop().unwrap();
             }
             _ => {}
         }
