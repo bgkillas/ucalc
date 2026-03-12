@@ -424,7 +424,7 @@ impl Function {
             Self::Imag => a.zero_real(),
             Self::Quadratic => {
                 let mut poly =
-                    PolyRef(&[a.clone(), b[0].num_ref().clone(), b[1].num_ref().clone()])
+                    PolyRef(&[b[1].num_ref().clone(), b[0].num_ref().clone(), a.clone()])
                         .quadratic()
                         .into_iter();
                 *a = poly.next().unwrap()
@@ -432,10 +432,10 @@ impl Function {
             #[cfg(feature = "complex")]
             Self::Cubic => {
                 let mut poly = PolyRef(&[
-                    a.clone(),
-                    b[0].num_ref().clone(),
-                    b[1].num_ref().clone(),
                     b[2].num_ref().clone(),
+                    b[1].num_ref().clone(),
+                    b[0].num_ref().clone(),
+                    a.clone(),
                 ])
                 .cubic()
                 .into_iter();
@@ -444,11 +444,11 @@ impl Function {
             #[cfg(feature = "complex")]
             Self::Quartic => {
                 let mut poly = PolyRef(&[
-                    a.clone(),
-                    b[0].num_ref().clone(),
-                    b[1].num_ref().clone(),
-                    b[2].num_ref().clone(),
                     b[3].num_ref().clone(),
+                    b[2].num_ref().clone(),
+                    b[1].num_ref().clone(),
+                    b[0].num_ref().clone(),
+                    a.clone(),
                 ])
                 .quartic()
                 .into_iter();

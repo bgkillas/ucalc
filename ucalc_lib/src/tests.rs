@@ -986,6 +986,39 @@ fn parse_arctan() {
     );
 }
 #[test]
+fn parse_cubic() {
+    assert_correct!(
+        infix("cubic(1,-2,0,1)"),
+        rpn("1 2 _ 0 1 cubic"),
+        vec![
+            num(1),
+            num(2),
+            Operators::Negate.into(),
+            num(0),
+            num(1),
+            Function::Cubic.into()
+        ],
+        (res(1) + res(5).sqrt()) / res(2)
+    );
+}
+#[test]
+fn parse_quartic() {
+    assert_correct!(
+        infix("quartic(1,0,-13,0,36)"),
+        rpn("1 0 13 _ 0 36 quartic"),
+        vec![
+            num(1),
+            num(0),
+            num(13),
+            Operators::Negate.into(),
+            num(0),
+            num(36),
+            Function::Quartic.into()
+        ],
+        res(3)
+    );
+}
+#[test]
 fn parse_quadratic() {
     assert_correct!(
         infix("quadratic(1,-2,-1)"),
@@ -998,7 +1031,7 @@ fn parse_quadratic() {
             Operators::Negate.into(),
             Function::Quadratic.into()
         ],
-        -(res(2).sqrt() + Float::from(1))
+        res(2).sqrt() + Float::from(1)
     );
     assert_correct!(
         infix("quadratic((4-2)/2,3-2-3,-ln(e))"),
@@ -1019,7 +1052,7 @@ fn parse_quadratic() {
             Operators::Negate.into(),
             Function::Quadratic.into()
         ],
-        -(res(2).sqrt() + Float::from(1))
+        res(2).sqrt() + Float::from(1)
     );
 }
 #[test]
@@ -1144,6 +1177,61 @@ fn test_set() {
             Function::Set.into(),
         ],
         res(-1)
+    );
+}
+#[test]
+fn test_numerical_integral() {
+    assert_approx_correct!(
+        infix("numerical_integral(2,3,x,x^2-2)"),
+        rpn("2 3 x x 2 ^ 2 - numerical_integral"),
+        vec![
+            num(2),
+            num(3),
+            Token::Skip(5),
+            Token::InnerVar(0).into(),
+            num(2),
+            Operators::Pow.into(),
+            num(2),
+            Operators::Sub.into(),
+            Function::NumericalIntegral.into()
+        ],
+        res(13) / res(3)
+    );
+}
+#[test]
+fn test_numerical_derivative() {
+    assert_approx_correct!(
+        infix("numerical_derivative(2,x,x^2-2)"),
+        rpn("2 x x 2 ^ 2 - numerical_derivative"),
+        vec![
+            num(2),
+            Token::Skip(5),
+            Token::InnerVar(0).into(),
+            num(2),
+            Operators::Pow.into(),
+            num(2),
+            Operators::Sub.into(),
+            Function::NumericalDerivative.into()
+        ],
+        res(4)
+    );
+}
+#[test]
+fn test_numerical_solve() {
+    assert_approx_correct!(
+        infix("numerical_solve(2,x,x^2-2)"),
+        rpn("2 x x 2 ^ 2 - numerical_solve"),
+        vec![
+            num(2),
+            Token::Skip(5),
+            Token::InnerVar(0).into(),
+            num(2),
+            Operators::Pow.into(),
+            num(2),
+            Operators::Sub.into(),
+            Function::NumericalSolve.into()
+        ],
+        res(2).sqrt()
     );
 }
 #[test]
