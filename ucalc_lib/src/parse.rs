@@ -11,7 +11,7 @@ use ucalc_numbers::FloatTrait;
 #[derive(Default, PartialEq, Debug, Clone)]
 pub struct Tokens(pub Vec<Token>);
 #[derive(Debug, Clone, Copy)]
-pub struct TokensRef<'a>(pub &'a [Token]);
+pub(crate) struct TokensRef<'a>(pub &'a [Token]);
 impl<'a> From<&'a Tokens> for TokensRef<'a> {
     fn from(value: &'a Tokens) -> Self {
         Self(value)
