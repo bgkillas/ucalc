@@ -3,11 +3,11 @@ use crate::{Functions, Number, Variables};
 use std::array;
 use ucalc_numbers::{Constant, Float, FloatTrait, RealTrait};
 #[derive(Copy, Clone)]
-pub(crate) struct Compute<'a, 'b, 'c, 'd> {
+pub(crate) struct Compute<'a> {
     pub(crate) tokens: TokensRef<'a>,
-    pub(crate) vars: &'b [Number],
-    pub(crate) funs: &'c Functions,
-    pub(crate) custom_vars: &'d Variables,
+    pub(crate) vars: &'a [Number],
+    pub(crate) funs: &'a Functions,
+    pub(crate) custom_vars: &'a Variables,
     pub(crate) offset: usize,
 }
 impl Tokens {
@@ -92,7 +92,7 @@ impl Tokens {
         self.drain(len - 2..);
     }
 }
-impl<'a, 'b, 'c, 'd> Compute<'a, 'b, 'c, 'd> {
+impl<'a> Compute<'a> {
     pub fn offset(self, offset: usize) -> Self {
         Self {
             tokens: self.tokens,
@@ -102,7 +102,7 @@ impl<'a, 'b, 'c, 'd> Compute<'a, 'b, 'c, 'd> {
             offset,
         }
     }
-    pub fn tokens(self, tokens: TokensRef<'a>) -> Self {
+    pub fn tokens<'b: 'a>(self, tokens: TokensRef<'b>) -> Self {
         Self {
             tokens,
             vars: self.vars,
@@ -113,9 +113,9 @@ impl<'a, 'b, 'c, 'd> Compute<'a, 'b, 'c, 'd> {
     }
     pub fn new(
         tokens: TokensRef<'a>,
-        vars: &'b [Number],
-        funs: &'c Functions,
-        custom_vars: &'d Variables,
+        vars: &'a [Number],
+        funs: &'a Functions,
+        custom_vars: &'a Variables,
         offset: usize,
     ) -> Self {
         Self {

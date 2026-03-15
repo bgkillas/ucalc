@@ -3,7 +3,7 @@ use crate::inverse::Inverse;
 use crate::parse::{Token, TokensRef};
 use crate::{Number, Tokens};
 use std::ops::Deref;
-impl Compute<'_, '_, '_, '_> {
+impl Compute<'_> {
     pub(crate) fn get_inverse(self, fun_vars: &mut Vec<Number>) -> Option<Number> {
         let mut ret = Number::from(0);
         let mut inner_stack = Tokens(Vec::with_capacity(self.tokens.len()));

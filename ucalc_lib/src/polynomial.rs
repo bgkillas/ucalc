@@ -392,7 +392,7 @@ impl Polynomial {
         })
     }
 }
-impl Compute<'_, '_, '_, '_> {
+impl Compute<'_> {
     pub fn compute_polynomial(
         self,
         fun_vars: &mut Vec<Number>,

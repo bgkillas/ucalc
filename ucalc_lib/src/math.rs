@@ -1,7 +1,7 @@
 use crate::compute::Compute;
 use crate::{Number, Tokens};
 use ucalc_numbers::{Float, FloatTrait};
-impl Compute<'_, '_, '_, '_> {
+impl Compute<'_> {
     pub fn numerical_solve(
         self,
         fun_vars: &mut Vec<Number>,

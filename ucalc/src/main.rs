@@ -182,26 +182,24 @@ fn run_line(
         *base_output = s.parse().unwrap();
         return;
     }
-    match tmr(|| {
-        if *infix {
-            Tokens::infix(line, vars, funs, &[], false, *base_input)
-        } else {
-            Tokens::rpn(line, vars, funs, &[], false, *base_input)
-        }
-    }) {
+    match if *infix {
+        Tokens::infix(line, vars, funs, &[], false, *base_input)
+    } else {
+        Tokens::rpn(line, vars, funs, &[], false, *base_input)
+    } {
         Ok(Some(tokens)) => {
-            println!("{tokens:?}");
-            println!("{}", tokens.get_infix(vars, funs, &[]));
-            println!("{}", tokens.get_rpn(vars, funs, &[]));
-            let compute = tmr(|| tokens.compute(&[], funs, vars));
-            println!("{}", compute.get_closest_fraction());
+            //println!("{tokens:?}");
+            //println!("{}", tokens.get_infix(vars, funs, &[]));
+            //println!("{}", tokens.get_rpn(vars, funs, &[]));
+            let compute = tokens.compute(&[], funs, vars);
+            //println!("{}", compute.get_closest_fraction());
             println!("{}", compute.to_string_radix(*base_output));
         }
         Ok(None) => {}
         Err(e) => println!("{e:?}"),
     }
 }
-fn tmr<T, W>(fun: T) -> W
+/*fn tmr<T, W>(fun: T) -> W
 where
     T: FnOnce() -> W,
 {
@@ -209,4 +207,4 @@ where
     let ret = fun();
     println!("{}", tmr.elapsed().as_nanos());
     ret
-}
+}*/
