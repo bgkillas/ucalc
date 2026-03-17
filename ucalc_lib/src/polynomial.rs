@@ -177,7 +177,7 @@ impl PolyRef<'_> {
             let b = self[3].clone() / &self[4];
             let p = c.clone() - b.clone() * &b * Float::from(0.375);
             let q = b.clone()
-                * (b.clone() * &b * Float::from(0.125) - Float::from(0.5) * c.clone())
+                * (b.clone() * &b * Float::from(0.125) - c.clone() * Float::from(0.5))
                 + &d;
             let r = b.clone()
                 * (b.clone()
@@ -267,7 +267,7 @@ fn depressed_cubic(p: Number, q: Number) -> [Number; 3] {
     } else {
         c1.cbrt()
     };
-    let v = -p / (Float::from(3) * &u);
+    let v = -p / (u.clone() * Float::from(3));
     [
         u.clone() + v.clone(),
         omega.clone() * &u + omega_conj.clone() * &v,

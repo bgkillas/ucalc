@@ -67,7 +67,6 @@ primative_float!(f16, f32, f64, f128);
 pub trait FloatTrait<F>: Sized {
     fn real(&self) -> &F;
     fn real_mut(&mut self) -> &mut F;
-    fn sin_cos(self) -> (Self, Self);
     fn is_zero(&self) -> bool;
     fn sin_mut(&mut self);
     fn sin(self) -> Self;

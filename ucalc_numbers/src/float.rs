@@ -144,10 +144,6 @@ impl FloatTrait<Float> for Float {
     fn real_mut(&mut self) -> &mut Self {
         self
     }
-    fn sin_cos(self) -> (Self, Self) {
-        let (sin, cos) = self.0.sin_cos();
-        (Self(sin), Self(cos))
-    }
     fn is_zero(&self) -> bool {
         self.0 == 0.0
     }
@@ -566,9 +562,6 @@ impl FloatTrait<Float> for Complex {
     fn real_mut(&mut self) -> &mut Float {
         &mut self.real
     }
-    fn sin_cos(self) -> (Self, Self) {
-        (self.clone().sin(), self.cos())
-    }
     fn is_zero(&self) -> bool {
         self.real.is_zero() && self.imag.is_zero()
     }
@@ -687,7 +680,8 @@ impl FloatTrait<Float> for Complex {
         self
     }
     fn exp_mut(&mut self) {
-        let (imag, real) = self.imag.clone().sin_cos();
+        let (imag, real) = self.imag.clone().0.sin_cos();
+        let (imag, real) = (Float(imag), Float(real));
         *self = Self { real, imag } * self.real.clone().exp();
     }
     fn exp(mut self) -> Self {
@@ -773,9 +767,9 @@ impl FloatTrait<Float> for Complex {
         } else {
             let r = self.clone().abs().cbrt();
             let theta = self.clone().arg() / Float::from(3);
-            let (sin, cos) = theta.sin_cos();
-            self.real = cos * &r;
-            self.imag = sin * r;
+            let (sin, cos) = theta.0.sin_cos();
+            self.real = Float(cos) * &r;
+            self.imag = Float(sin) * r;
         }
     }
     fn cbrt(mut self) -> Self {
@@ -1209,6 +1203,15 @@ impl RemAssign<Self> for Complex {
         *self = self.clone() % rhs;
     }
 }
+impl Rem<Float> for Complex {
+    type Output = Self;
+    fn rem(self, rhs: Float) -> Self::Output {
+        Self {
+            real: self.real % rhs.clone(),
+            imag: self.imag % rhs,
+        }
+    }
+}
 impl Neg for Complex {
     type Output = Self;
     fn neg(self) -> Self::Output {
@@ -1274,12 +1277,12 @@ impl SubAssign<Float> for Complex {
         *self = self.clone() - rhs;
     }
 }
-impl Rem<Float> for Complex {
-    type Output = Self;
-    fn rem(self, rhs: Float) -> Self::Output {
-        Self {
-            real: self.real % rhs.clone(),
-            imag: self.imag % rhs,
+impl Rem<Complex> for Float {
+    type Output = Complex;
+    fn rem(self, rhs: Complex) -> Self::Output {
+        Complex {
+            real: self.clone() % rhs.real,
+            imag: self % rhs.imag,
         }
     }
 }

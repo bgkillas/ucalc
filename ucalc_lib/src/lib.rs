@@ -17,6 +17,7 @@ pub use functions::Function;
 pub use functions_list::FUNCTION_LIST;
 pub use operators::Operators;
 pub use parse::{Token, Tokens};
+use ucalc_numbers::Quantity;
 pub use variable::{FunctionVar, Functions, Variable, Variables};
 #[cfg(not(feature = "complex"))]
 pub type NBase = ucalc_numbers::Float;
@@ -26,17 +27,7 @@ pub type NBase = ucalc_numbers::Complex;
 pub type NumberBase = NBase;
 #[cfg(feature = "units")]
 pub type NumberBase = Quantity<NBase, f32, 8>;
-#[cfg(any(
-    feature = "list",
-    feature = "vector",
-    feature = "matrix",
-    feature = "units"
-))]
+#[cfg(any(feature = "list", feature = "vector", feature = "matrix",))]
 pub type Number = ucalc_numbers::Number<NumberBase>;
-#[cfg(not(any(
-    feature = "list",
-    feature = "vector",
-    feature = "matrix",
-    feature = "units"
-)))]
+#[cfg(not(any(feature = "list", feature = "vector", feature = "matrix",)))]
 pub type Number = NumberBase;

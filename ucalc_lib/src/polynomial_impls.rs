@@ -4,6 +4,8 @@ use std::mem;
 use std::ops::{
     Add, AddAssign, Deref, DerefMut, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign,
 };
+#[cfg(feature = "complex")]
+use ucalc_numbers::ComplexTrait;
 use ucalc_numbers::{FloatTrait, NegAssign, Pow, PowAssign, RealTrait};
 impl<'a> From<&'a Poly> for PolyRef<'a> {
     fn from(value: &'a Poly) -> Self {
@@ -56,7 +58,7 @@ impl Pow<Number> for Polynomial {
         if {
             #[cfg(feature = "complex")]
             {
-                !rhs.imag.is_zero()
+                !rhs.imag().is_zero()
             }
             #[cfg(not(feature = "complex"))]
             {

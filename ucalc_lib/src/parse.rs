@@ -790,11 +790,6 @@ impl From<Number> for Token {
     feature = "matrix",
     feature = "units"
 ))]
-impl From<NumberBase> for Token {
-    fn from(value: NumberBase) -> Self {
-        Self::Num(value.into())
-    }
-}
 impl From<Operators> for Token {
     fn from(value: Operators) -> Self {
         Self::Function(value.into())
