@@ -3,13 +3,30 @@ use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
 use std::iter::{Product, Sum};
 use std::ops::{
-    Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub, SubAssign,
+    Add, AddAssign, Deref, DerefMut, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub,
+    SubAssign,
 };
+impl<N, const K: usize> Default for Units<N, K> {
+    fn default() -> Self {
+        Units(None)
+    }
+}
+impl<T, const N: usize> Deref for Units<T, N> {
+    type Target = Option<Box<[T; N]>>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl<T, const N: usize> DerefMut for Units<T, N> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
 impl<T: Default, N, const K: usize> Default for Quantity<T, N, K> {
     fn default() -> Self {
         Self {
             num: T::default(),
-            units: Units(None),
+            units: Units::default(),
         }
     }
 }
@@ -20,7 +37,7 @@ where
     fn from(num: T) -> Self {
         Self {
             num: num.into(),
-            units: Units(None),
+            units: Units::default(),
         }
     }
 }
@@ -31,7 +48,7 @@ where
     fn from(num: T) -> Self {
         Self {
             num: num.into(),
-            units: Units(None),
+            units: Units::default(),
         }
     }
 }
@@ -165,6 +182,60 @@ impl<T: for<'a> PowAssign<&'a Float>, N, const K: usize> Pow<&Float> for Quantit
     fn pow(mut self, rhs: &Float) -> Self::Output {
         self.num.pow_assign(rhs);
         self
+    }
+}
+impl<T: PartialEq, const N: usize> Add<Units<T, N>> for Units<T, N> {
+    type Output = Self;
+    fn add(self, rhs: Units<T, N>) -> Self::Output {
+        if self == rhs { self } else { Self::default() }
+    }
+}
+impl<T: PartialEq, const N: usize> Sub<Units<T, N>> for Units<T, N> {
+    type Output = Self;
+    fn sub(self, rhs: Units<T, N>) -> Self::Output {
+        if self == rhs { self } else { Self::default() }
+    }
+}
+impl<T: AddAssign<T>, const N: usize> Mul<Units<T, N>> for Units<T, N> {
+    type Output = Self;
+    fn mul(self, rhs: Units<T, N>) -> Self::Output {
+        Self(match (self.0, rhs.0) {
+            (Some(mut a), Some(b)) => {
+                a.iter_mut().zip(*b).for_each(|(a, b)| *a += b);
+                Some(a)
+            }
+            (a, None) | (None, a) => a,
+        })
+    }
+}
+impl<T: SubAssign<T> + NegAssign, const N: usize> Div<Units<T, N>> for Units<T, N> {
+    type Output = Self;
+    fn div(self, rhs: Units<T, N>) -> Self::Output {
+        Self(match (self.0, rhs.0) {
+            (Some(mut a), Some(b)) => {
+                a.iter_mut().zip(*b).for_each(|(a, b)| *a -= b);
+                Some(a)
+            }
+            (None, Some(mut b)) => {
+                b.iter_mut().for_each(|b| b.neg_assign());
+                Some(b)
+            }
+            (a, None) => a,
+        })
+    }
+}
+impl<T: for<'a> MulAssign<&'a T> + TryFrom<K>, K, const N: usize> Pow<Quantity<K, T, N>>
+    for Units<T, N>
+{
+    type Output = Self;
+    fn pow(self, rhs: Quantity<K, T, N>) -> Self::Output {
+        Self(match (self.0, rhs.units.0) {
+            (Some(mut a), None) if let Ok(b) = rhs.num.try_into() => {
+                a.iter_mut().for_each(|a| *a *= &b);
+                Some(a)
+            }
+            _ => None,
+        })
     }
 }
 impl<F, T: FloatTrait<F>, N, const K: usize> FloatTrait<F> for Quantity<T, N, K> {
@@ -399,7 +470,7 @@ impl<F, T: FloatTrait<F>, N, const K: usize> FloatTrait<F> for Quantity<T, N, K>
     fn parse_radix(src: &str, base: u8) -> Option<Self> {
         T::parse_radix(src, base).map(|num| Self {
             num,
-            units: Units(None),
+            units: Units::default(),
         })
     }
     fn to_string_radix(&self, base: u8) -> String {
