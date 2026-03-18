@@ -17,6 +17,7 @@ pub use functions::Function;
 pub use functions_list::FUNCTION_LIST;
 pub use operators::Operators;
 pub use parse::{Token, Tokens};
+#[cfg(feature = "units")]
 use ucalc_numbers::Quantity;
 pub use variable::{FunctionVar, Functions, Variable, Variables};
 #[cfg(not(feature = "complex"))]

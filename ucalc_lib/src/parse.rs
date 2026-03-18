@@ -784,12 +784,6 @@ impl From<Number> for Token {
         Self::Num(value)
     }
 }
-#[cfg(any(
-    feature = "list",
-    feature = "vector",
-    feature = "matrix",
-    feature = "units"
-))]
 impl From<Operators> for Token {
     fn from(value: Operators) -> Self {
         Self::Function(value.into())

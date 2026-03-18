@@ -1,4 +1,5 @@
 use crate::{Complex, ComplexTrait, Float, FloatTrait, NegAssign, Pow, PowAssign, Quantity, Units};
+use std::array;
 use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
 use std::iter::{Product, Sum};
@@ -20,6 +21,19 @@ impl<T, const N: usize> Deref for Units<T, N> {
 impl<T, const N: usize> DerefMut for Units<T, N> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
+    }
+}
+pub trait One {
+    fn one() -> Self;
+}
+impl<T: Default + One, const N: usize> Units<T, N> {
+    pub fn from(set: [&'static str; N], str: &str) -> Self {
+        if let Some(n) = set.into_iter().position(|s| str == s) {
+            let s = array::from_fn(|i| if i == n { T::one() } else { T::default() });
+            Self(Some(Box::new(s)))
+        } else {
+            Self(None)
+        }
     }
 }
 impl<T: Default, N, const K: usize> Default for Quantity<T, N, K> {
