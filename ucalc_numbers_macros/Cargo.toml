@@ -8,7 +8,7 @@ homepage.workspace = true
 description.workspace = true
 
 [features]
-default = ["list", "units"]
+default = ["list"]
 units = []
 vector = []
 matrix = []
