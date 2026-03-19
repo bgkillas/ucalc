@@ -6,7 +6,7 @@ use std::ops::{
 };
 #[cfg(feature = "complex")]
 use ucalc_numbers::ComplexTrait;
-use ucalc_numbers::{FloatTrait, NegAssign, Pow, PowAssign, RealTrait};
+use ucalc_numbers::{FloatFunctions, FloatTrait, NegAssign, Pow, PowAssign, RealTrait};
 impl<'a> From<&'a Poly> for PolyRef<'a> {
     fn from(value: &'a Poly) -> Self {
         Self(value)

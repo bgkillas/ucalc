@@ -21,6 +21,19 @@ pub struct Quantity<T, K, const N: usize> {
     pub num: T,
     pub units: Units<K, N>,
 }
+#[cfg(feature = "units")]
+#[derive(Debug, PartialEq, Clone)]
+pub enum Number<T, K, const N: usize> {
+    Value(T),
+    #[cfg(feature = "vector")]
+    Vector(Vector<T>),
+    #[cfg(feature = "matrix")]
+    Matrix(Matrix<T>),
+    #[cfg(feature = "list")]
+    List(Vec<Number<T, K, N>>),
+    Units(Units<K, N>),
+}
+#[cfg(not(feature = "units"))]
 #[derive(Debug, PartialEq, Clone)]
 pub enum Number<T> {
     Value(T),

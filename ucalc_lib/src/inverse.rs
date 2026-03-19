@@ -1,6 +1,6 @@
 use crate::functions::Inputs;
 use crate::{Function, Number};
-use ucalc_numbers::{FloatTrait, Pow, PowAssign};
+use ucalc_numbers::{FloatFunctions, FloatFunctionsMut, Pow, PowAssign};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Inverse {
     Add,

@@ -1,0 +1,22 @@
+[package]
+name = "ucalc_numbers_macros"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description.workspace = true
+
+[features]
+default = ["list", "units"]
+units = []
+vector = []
+matrix = []
+list = []
+
+[lib]
+proc-macro = true
+
+[dependencies]
+quote = "1.0.45"
+proc-macro2 = "1.0.106"

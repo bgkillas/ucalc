@@ -65,94 +65,216 @@ macro_rules! primative_float {
 }
 primative_float!(f16, f32, f64, f128);
 pub trait FloatTrait<F>: Sized {
+    fn to_real(self) -> F;
     fn real(&self) -> &F;
     fn real_mut(&mut self) -> &mut F;
     fn is_zero(&self) -> bool;
-    fn sin_mut(&mut self);
-    fn sin(self) -> Self;
-    fn cos_mut(&mut self);
-    fn cos(self) -> Self;
-    fn asin_mut(&mut self);
-    fn asin(self) -> Self;
-    fn acos_mut(&mut self);
-    fn acos(self) -> Self;
-    fn sinh_mut(&mut self);
-    fn sinh(self) -> Self;
-    fn cosh_mut(&mut self);
-    fn cosh(self) -> Self;
-    fn asinh_mut(&mut self);
-    fn asinh(self) -> Self;
-    fn acosh_mut(&mut self);
-    fn acosh(self) -> Self;
-    fn tan_mut(&mut self);
-    fn tan(self) -> Self;
-    fn tanh_mut(&mut self);
-    fn tanh(self) -> Self;
-    fn atan_mut(&mut self);
-    fn atan(self) -> Self;
-    fn atanh_mut(&mut self);
-    fn atanh(self) -> Self;
-    fn ln_mut(&mut self);
-    fn ln(self) -> Self;
-    fn exp_mut(&mut self);
-    fn exp(self) -> Self;
-    fn atan2_mut(&mut self, other: &Self);
-    fn atan2(self, other: &Self) -> Self;
-    fn min_mut(&mut self, other: &Self);
-    fn min(self, other: &Self) -> Self;
-    fn max_mut(&mut self, other: &Self);
-    fn max(self, other: &Self) -> Self;
-    fn recip_mut(&mut self);
-    fn recip(self) -> Self;
-    fn sqrt_mut(&mut self);
-    fn sqrt(self) -> Self;
-    fn cbrt_mut(&mut self);
-    fn cbrt(self) -> Self;
-    fn abs_mut(&mut self);
-    fn abs(self) -> F;
-    fn gamma_mut(&mut self);
-    fn gamma(self) -> Self;
-    fn erf_mut(&mut self);
-    fn erf(self) -> Self;
-    fn erfc_mut(&mut self);
-    fn erfc(self) -> Self;
-    fn total_cmp(&self, other: &Self) -> Ordering;
-    fn round_mut(&mut self);
-    fn round(self) -> Self;
-    fn ceil_mut(&mut self);
-    fn ceil(self) -> Self;
-    fn floor_mut(&mut self);
-    fn floor(self) -> Self;
-    fn trunc_mut(&mut self);
-    fn trunc(self) -> Self;
-    fn fract_mut(&mut self);
-    fn fract(self) -> Self;
-    fn tetration_mut(&mut self, other: &Self);
-    fn tetration(self, other: &Self) -> Self;
-    fn subfactorial_mut(&mut self);
-    fn subfactorial(self) -> Self;
     fn parse_radix(src: &str, base: u8) -> Option<Self>;
     fn to_string_radix(&self, base: u8) -> String;
     fn get_closest_fraction(&self) -> impl Display;
+    fn total_cmp(&self, other: &Self) -> Ordering;
+}
+pub trait FloatFunctions<F>: FloatFunctionsMut<F> + FloatTrait<F> {
+    fn sin(mut self) -> Self {
+        self.sin_mut();
+        self
+    }
+    fn cos(mut self) -> Self {
+        self.cos_mut();
+        self
+    }
+    fn asin(mut self) -> Self {
+        self.asin_mut();
+        self
+    }
+    fn acos(mut self) -> Self {
+        self.acos_mut();
+        self
+    }
+    fn sinh(mut self) -> Self {
+        self.sinh_mut();
+        self
+    }
+    fn cosh(mut self) -> Self {
+        self.cosh_mut();
+        self
+    }
+    fn asinh(mut self) -> Self {
+        self.asinh_mut();
+        self
+    }
+    fn acosh(mut self) -> Self {
+        self.acosh_mut();
+        self
+    }
+    fn tan(mut self) -> Self {
+        self.tan_mut();
+        self
+    }
+    fn tanh(mut self) -> Self {
+        self.tanh_mut();
+        self
+    }
+    fn atan(mut self) -> Self {
+        self.atan_mut();
+        self
+    }
+    fn atanh(mut self) -> Self {
+        self.atanh_mut();
+        self
+    }
+    fn ln(mut self) -> Self {
+        self.ln_mut();
+        self
+    }
+    fn exp(mut self) -> Self {
+        self.exp_mut();
+        self
+    }
+    fn atan2(mut self, other: &Self) -> Self {
+        self.atan2_mut(other);
+        self
+    }
+    fn min(mut self, other: &Self) -> Self {
+        self.min_mut(other);
+        self
+    }
+    fn max(mut self, other: &Self) -> Self {
+        self.max_mut(other);
+        self
+    }
+    fn recip(mut self) -> Self {
+        self.recip_mut();
+        self
+    }
+    fn sqrt(mut self) -> Self {
+        self.sqrt_mut();
+        self
+    }
+    fn cbrt(mut self) -> Self {
+        self.cbrt_mut();
+        self
+    }
+    fn abs(mut self) -> F {
+        self.abs_mut();
+        self.to_real()
+    }
+    fn gamma(mut self) -> Self {
+        self.gamma_mut();
+        self
+    }
+    fn erf(mut self) -> Self {
+        self.erf_mut();
+        self
+    }
+    fn erfc(mut self) -> Self {
+        self.erfc_mut();
+        self
+    }
+    fn round(mut self) -> Self {
+        self.round_mut();
+        self
+    }
+    fn ceil(mut self) -> Self {
+        self.ceil_mut();
+        self
+    }
+    fn floor(mut self) -> Self {
+        self.floor_mut();
+        self
+    }
+    fn trunc(mut self) -> Self {
+        self.trunc_mut();
+        self
+    }
+    fn fract(mut self) -> Self {
+        self.fract_mut();
+        self
+    }
+    fn tetration(mut self, other: &Self) -> Self {
+        self.tetration_mut(other);
+        self
+    }
+    fn subfactorial(mut self) -> Self {
+        self.subfactorial_mut();
+        self
+    }
+    fn hypot(mut self, other: &Self) -> Self {
+        self.hypot_mut(other);
+        self
+    }
+}
+pub trait FloatFunctionsMut<F>: Sized {
+    fn sin_mut(&mut self);
+    fn cos_mut(&mut self);
+    fn asin_mut(&mut self);
+    fn acos_mut(&mut self);
+    fn sinh_mut(&mut self);
+    fn cosh_mut(&mut self);
+    fn asinh_mut(&mut self);
+    fn acosh_mut(&mut self);
+    fn tan_mut(&mut self);
+    fn tanh_mut(&mut self);
+    fn atan_mut(&mut self);
+    fn atanh_mut(&mut self);
+    fn ln_mut(&mut self);
+    fn exp_mut(&mut self);
+    fn hypot_mut(&mut self, other: &Self);
+    fn atan2_mut(&mut self, other: &Self);
+    fn min_mut(&mut self, other: &Self);
+    fn max_mut(&mut self, other: &Self);
+    fn recip_mut(&mut self);
+    fn sqrt_mut(&mut self);
+    fn cbrt_mut(&mut self);
+    fn abs_mut(&mut self);
+    fn gamma_mut(&mut self);
+    fn erf_mut(&mut self);
+    fn erfc_mut(&mut self);
+    fn round_mut(&mut self);
+    fn ceil_mut(&mut self);
+    fn floor_mut(&mut self);
+    fn trunc_mut(&mut self);
+    fn fract_mut(&mut self);
+    fn tetration_mut(&mut self, other: &Self);
+    fn subfactorial_mut(&mut self);
+}
+pub trait ComplexFunctions<F>: ComplexFunctionsMut<F> + FloatTrait<F> {
+    fn arg(mut self) -> F {
+        self.arg_mut();
+        self.to_real()
+    }
+    fn mul_i(mut self, negative: bool) -> Self {
+        self.mul_i_mut(negative);
+        self
+    }
+    fn conj(mut self) -> Self {
+        self.conj_mut();
+        self
+    }
+    fn norm(mut self) -> F {
+        self.norm_mut();
+        self.to_real()
+    }
+}
+pub trait ComplexFunctionsMut<F>: Sized {
+    fn arg_mut(&mut self);
+    fn mul_i_mut(&mut self, negative: bool);
+    fn conj_mut(&mut self);
+    fn norm_mut(&mut self);
 }
 pub trait ComplexTrait<F>: FloatTrait<F> {
+    fn to_imag(self) -> F;
     fn imag(&self) -> &F;
     fn imag_mut(&mut self) -> &mut F;
     fn zero_real(&mut self);
     fn zero_imag(&mut self);
-    fn norm(self) -> F;
-    fn arg_mut(&mut self);
-    fn arg(self) -> F;
-    fn mul_i_mut(&mut self, negative: bool);
-    fn mul_i(self, negative: bool) -> Self;
-    fn conj_mut(&mut self);
-    fn conj(self) -> Self;
 }
 pub trait RealTrait<F>: FloatTrait<F> {
     fn is_sign_negative(&self) -> bool;
     fn is_sign_positive(&self) -> bool;
-    fn hypot_mut(&mut self, other: &Self);
     fn into_isize(self) -> isize;
     fn into_usize(self) -> usize;
     fn closest_fraction(&self) -> Option<(bool, usize, usize)>;
 }
+impl<T: FloatFunctionsMut<F> + FloatTrait<F>, F> FloatFunctions<F> for T {}
+impl<T: ComplexFunctionsMut<F> + FloatTrait<F>, F> ComplexFunctions<F> for T {}

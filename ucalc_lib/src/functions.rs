@@ -5,8 +5,10 @@ use crate::{Number, Tokens};
 use std::fmt::{Display, Formatter};
 use std::ops::Deref;
 #[cfg(feature = "complex")]
-use ucalc_numbers::ComplexTrait;
-use ucalc_numbers::{Constant, Float, FloatTrait, NegAssign, PowAssign, RealTrait};
+use ucalc_numbers::{ComplexFunctionsMut, ComplexTrait};
+use ucalc_numbers::{
+    Constant, Float, FloatFunctions, FloatFunctionsMut, FloatTrait, NegAssign, PowAssign, RealTrait,
+};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Inputs {
     One,

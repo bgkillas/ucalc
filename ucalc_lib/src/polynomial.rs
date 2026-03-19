@@ -4,8 +4,8 @@ use crate::parse::TokensRef;
 use crate::{Function, Number, Token, Tokens};
 use std::mem;
 #[cfg(feature = "complex")]
-use ucalc_numbers::ComplexTrait;
-use ucalc_numbers::{Float, FloatTrait, NegAssign, Pow};
+use ucalc_numbers::ComplexFunctions;
+use ucalc_numbers::{Float, FloatFunctions, FloatTrait, NegAssign, Pow};
 #[derive(Debug, PartialEq, Clone, Default)]
 pub struct Poly(pub Vec<Number>);
 #[derive(Debug, Clone, Copy)]

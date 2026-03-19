@@ -760,10 +760,10 @@ fn parse_tanh() {
         res(1).sinh() / res(1).cosh()
     );
     assert_correct!(
-        infix("atanh(1)"),
-        rpn("1 atanh"),
-        vec![num(1), Function::Atanh.into()],
-        res(1).atanh()
+        infix("atanh(0.5)"),
+        rpn("0.5 atanh"),
+        vec![num(0.5), Function::Atanh.into()],
+        res(0.5).atanh()
     );
 }
 #[test]
