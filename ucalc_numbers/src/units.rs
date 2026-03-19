@@ -207,6 +207,13 @@ impl<T: PartialEq, const N: usize> Add<Units<T, N>> for Units<T, N> {
         if self == rhs { self } else { Self::default() }
     }
 }
+impl<'a, T: PartialEq, const N: usize> AddAssign<&'a Self> for Units<T, N> {
+    fn add_assign(&mut self, rhs: &'a Self) {
+        if self != rhs {
+            self.0 = None;
+        }
+    }
+}
 impl<T: PartialEq, const N: usize> Sub<Units<T, N>> for Units<T, N> {
     type Output = Self;
     fn sub(self, rhs: Units<T, N>) -> Self::Output {
@@ -255,82 +262,130 @@ impl<T: for<'a> MulAssign<&'a T> + TryFrom<K>, K, const N: usize> Pow<Quantity<K
         })
     }
 }
-impl<F, T: FloatTrait<F> + FloatFunctionsMut<F>, N, const K: usize> FloatFunctionsMut<F>
-    for Quantity<T, N, K>
+impl<T: Neg<Output = T> + Clone, const N: usize> Units<T, N> {
+    pub fn recip_mut(&mut self) {
+        if let Some(inner) = self.as_mut() {
+            inner.iter_mut().for_each(|a| *a = a.clone().neg())
+        }
+    }
+}
+impl<T, const N: usize> Units<T, N> {
+    pub fn clear(&mut self) {
+        self.0 = None;
+    }
+}
+impl<T: From<f32> + DivAssign<T> + Clone, const N: usize> Units<T, N> {
+    pub fn root_mut(&mut self, n: f32) {
+        if let Some(inner) = self.as_mut() {
+            let n = T::from(n);
+            inner.iter_mut().for_each(|a| *a /= n.clone())
+        }
+    }
+}
+impl<
+    F,
+    T: FloatTrait<F> + FloatFunctionsMut<F> + PowAssign<T>,
+    N: Neg<Output = N> + Clone + From<f32> + DivAssign<N> + PartialEq,
+    const K: usize,
+> FloatFunctionsMut<F> for Quantity<T, N, K>
 {
     fn sin_mut(&mut self) {
+        self.units.clear();
         self.num.sin_mut()
     }
     fn cos_mut(&mut self) {
+        self.units.clear();
         self.num.cos_mut()
     }
     fn asin_mut(&mut self) {
+        self.units.clear();
         self.num.asin_mut()
     }
     fn acos_mut(&mut self) {
+        self.units.clear();
         self.num.acos_mut()
     }
     fn sinh_mut(&mut self) {
+        self.units.clear();
         self.num.sinh_mut()
     }
     fn cosh_mut(&mut self) {
+        self.units.clear();
         self.num.cosh_mut()
     }
     fn asinh_mut(&mut self) {
+        self.units.clear();
         self.num.asinh_mut()
     }
     fn acosh_mut(&mut self) {
+        self.units.clear();
         self.num.acosh_mut()
     }
     fn tan_mut(&mut self) {
+        self.units.clear();
         self.num.tan_mut()
     }
     fn tanh_mut(&mut self) {
+        self.units.clear();
         self.num.tanh_mut()
     }
     fn atan_mut(&mut self) {
+        self.units.clear();
         self.num.atan_mut()
     }
     fn atanh_mut(&mut self) {
+        self.units.clear();
         self.num.atanh_mut()
     }
     fn ln_mut(&mut self) {
+        self.units.clear();
         self.num.ln_mut()
     }
     fn exp_mut(&mut self) {
+        self.units.clear();
         self.num.exp_mut()
     }
     fn hypot_mut(&mut self, other: &Self) {
+        self.units += &other.units;
         self.num.hypot_mut(&other.num)
     }
     fn atan2_mut(&mut self, other: &Self) {
+        self.units.clear();
         self.num.atan2_mut(&other.num)
     }
     fn min_mut(&mut self, other: &Self) {
+        //TODO
         self.num.min_mut(&other.num)
     }
     fn max_mut(&mut self, other: &Self) {
+        //TODO
         self.num.max_mut(&other.num)
     }
     fn recip_mut(&mut self) {
-        self.num.recip_mut()
+        self.num.recip_mut();
+        self.units.recip_mut();
     }
     fn sqrt_mut(&mut self) {
+        self.units.root_mut(2.0);
         self.num.sqrt_mut()
     }
     fn cbrt_mut(&mut self) {
+        self.units.root_mut(3.0);
         self.num.cbrt_mut()
     }
     fn abs_mut(&mut self) {
         self.num.abs_mut()
     }
     fn gamma_mut(&mut self) {
+        self.units.clear();
         self.num.gamma_mut()
     }
     fn erf_mut(&mut self) {
+        self.units.clear();
         self.num.erf_mut()
     }
     fn erfc_mut(&mut self) {
+        self.units.clear();
         self.num.erfc_mut()
     }
     fn round_mut(&mut self) {
@@ -349,9 +404,11 @@ impl<F, T: FloatTrait<F> + FloatFunctionsMut<F>, N, const K: usize> FloatFunctio
         self.num.fract_mut()
     }
     fn tetration_mut(&mut self, other: &Self) {
+        self.units.clear();
         self.num.tetration_mut(&other.num)
     }
     fn subfactorial_mut(&mut self) {
+        self.units.clear();
         self.num.subfactorial_mut()
     }
 }
@@ -388,12 +445,14 @@ impl<F, T: ComplexTrait<F> + ComplexFunctionsMut<F>, N, const K: usize> ComplexF
     for Quantity<T, N, K>
 {
     fn arg_mut(&mut self) {
+        self.units.clear();
         self.num.arg_mut();
     }
     fn mul_i_mut(&mut self, negative: bool) {
         self.num.mul_i_mut(negative);
     }
     fn conj_mut(&mut self) {
+        self.units.clear();
         self.num.conj_mut()
     }
     fn norm_mut(&mut self) {
