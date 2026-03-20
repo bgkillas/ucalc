@@ -1,7 +1,10 @@
+use crate::Constant;
 use std::cmp::Ordering;
+use std::fmt::Debug;
 use std::fmt::Display;
 use std::mem;
-use std::ops::Neg;
+use std::ops::*;
+use ucalc_numbers_macros::generate_traits;
 pub trait Pow<Rhs> {
     type Output;
     fn pow(self, rhs: Rhs) -> Self::Output;
@@ -44,7 +47,7 @@ macro_rules! primative {
     }
 }
 primative!(
-    i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f16, f32, f64, f128
+    i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f16, f32, f64, f128, bool
 );
 macro_rules! primative_integer {
     ($($ty:ty),*) => {
@@ -278,3 +281,4 @@ pub trait RealTrait<F>: FloatTrait<F> {
 }
 impl<T: FloatFunctionsMut<F> + FloatTrait<F>, F> FloatFunctions<F> for T {}
 impl<T: ComplexFunctionsMut<F> + FloatTrait<F>, F> ComplexFunctions<F> for T {}
+generate_traits!();

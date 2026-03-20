@@ -27,8 +27,33 @@ pub type NBase = ucalc_numbers::Complex;
 #[cfg(not(feature = "units"))]
 pub type NumberBase = NBase;
 #[cfg(feature = "units")]
-pub type NumberBase = Quantity<NBase, f32, 8>;
-#[cfg(any(feature = "list", feature = "vector", feature = "matrix",))]
+const UNIT_COUNT: usize = 8;
+#[cfg(feature = "units")]
+type UnitType = f32;
+#[cfg(feature = "units")]
+pub type NumberBase = Quantity<NBase, UnitType, UNIT_COUNT>;
+#[cfg(any(
+    feature = "list",
+    feature = "vector",
+    feature = "matrix",
+    feature = "units"
+))]
+#[cfg(not(feature = "units"))]
 pub type Number = ucalc_numbers::Number<NumberBase>;
-#[cfg(not(any(feature = "list", feature = "vector", feature = "matrix",)))]
+#[cfg(any(
+    feature = "list",
+    feature = "vector",
+    feature = "matrix",
+    feature = "units"
+))]
+#[cfg(feature = "units")]
+pub type Number = ucalc_numbers::Number<NumberBase, UnitType, UNIT_COUNT>;
+#[cfg(not(any(
+    feature = "list",
+    feature = "vector",
+    feature = "matrix",
+    feature = "units"
+)))]
 pub type Number = NumberBase;
+#[cfg(feature = "units")]
+pub const UNITS: [&str; UNIT_COUNT] = ["s", "m", "g", "A", "K", "mol", "cd", "USD"];

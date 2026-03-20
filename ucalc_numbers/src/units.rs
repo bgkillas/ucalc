@@ -27,13 +27,9 @@ impl<T, const N: usize> DerefMut for Units<T, N> {
     }
 }
 impl<T: Default + From<f32>, const N: usize> Units<T, N> {
-    pub fn from(set: [&'static str; N], str: &str) -> Self {
-        if let Some(n) = set.into_iter().position(|s| str == s) {
-            let s = array::from_fn(|i| if i == n { T::from(1.0) } else { T::default() });
-            Self(Some(Box::new(s)))
-        } else {
-            Self(None)
-        }
+    pub fn from(n: usize) -> Self {
+        let s = array::from_fn(|i| if i == n { T::from(1.0) } else { T::default() });
+        Self(Some(Box::new(s)))
     }
 }
 impl<T: Default, N, const K: usize> Default for Quantity<T, N, K> {

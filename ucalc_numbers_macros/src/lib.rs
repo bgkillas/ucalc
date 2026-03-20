@@ -292,3 +292,135 @@ pub fn generate_types(ty: proc_macro::TokenStream) -> proc_macro::TokenStream {
     }
     .into()
 }
+fn ops() -> [TokenStream; 6] {
+    [
+        quote! {Add},
+        quote! {Sub},
+        quote! {Mul},
+        quote! {Div},
+        quote! {Pow},
+        quote! {Rem},
+    ]
+}
+fn ops_assign() -> [TokenStream; 6] {
+    [
+        quote! {AddAssign},
+        quote! {SubAssign},
+        quote! {MulAssign},
+        quote! {DivAssign},
+        quote! {PowAssign},
+        quote! {RemAssign},
+    ]
+}
+fn primatives() -> [TokenStream; 17] {
+    [
+        quote! {i8},
+        quote! {i16},
+        quote! {i32},
+        quote! {i64},
+        quote! {i128},
+        quote! {isize},
+        quote! {u8},
+        quote! {u16},
+        quote! {u32},
+        quote! {u64},
+        quote! {u128},
+        quote! {usize},
+        quote! {f16},
+        quote! {f32},
+        quote! {f64},
+        quote! {f128},
+        quote! {bool},
+    ]
+}
+fn float_trait() -> TokenStream {
+    let primatives = primatives();
+    let ops = ops();
+    let ops_assign = ops_assign();
+    let req = quote! {
+        FloatFunctions<F> +
+        FloatFunctionsMut<F> +
+        FloatTrait<F> +
+        From<F> +
+        From<Constant> +
+        #(From<#primatives> +)*
+        #(#ops<Self, Output = Self> +)*
+        #(for<'a> #ops<&'a Self, Output = Self> +)*
+        #(#ops_assign<Self> +)*
+        PartialEq +
+        Neg<Output = Self> +
+        Clone +
+        Send +
+        Sync +
+        Sized +
+        Debug +
+        Display +
+        'static +
+    };
+    quote! {
+        pub trait FloatType<F>: #req {}
+        impl<T: #req, F> FloatType<F> for T {}
+    }
+}
+fn real_trait() -> TokenStream {
+    let req = quote! {
+        FloatType<Self> +
+        RealTrait<Self> +
+        PartialOrd<Self> +
+    };
+    quote! {
+        pub trait RealType: #req {}
+        impl<T: #req> RealType for T {}
+    }
+}
+fn complex_trait() -> TokenStream {
+    let primatives = primatives();
+    let f = [quote! {F}, quote! {Constant}];
+    let prim_prim = primatives.iter().chain(f.iter()).flat_map(|a| {
+        primatives.iter().chain(f.iter()).map(move |b| {
+            quote! {
+                From<(#a, #b)>
+            }
+        })
+    });
+    let prim_ref = primatives.iter().chain(f.iter()).map(move |b| {
+        quote! {
+            for<'a> From<(&'a F, #b)>
+        }
+    });
+    let ref_prim = primatives.iter().chain(f.iter()).map(move |a| {
+        quote! {
+            for<'a> From<(#a, &'a F)>
+        }
+    });
+    let ops = ops();
+    let ops_assign = ops_assign();
+    let req = quote! {
+        ComplexFunctions<F> +
+        ComplexFunctionsMut<F> +
+        FloatType<F> +
+        ComplexTrait<F> +
+        #(#prim_prim +)*
+        #(#prim_ref +)*
+        #(#ref_prim +)*
+        #(#ops<F, Output = Self> +)*
+        #(for<'a> #ops<&'a F, Output = Self> +)*
+        #(#ops_assign<F> +)*
+    };
+    quote! {
+        pub trait ComplexType<F>: #req {}
+        impl<T: #req, F> ComplexType<F> for T {}
+    }
+}
+#[proc_macro]
+pub fn generate_traits(_: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let real = real_trait();
+    let float = float_trait();
+    let complex = complex_trait();
+    quote! {
+        #real
+        #float
+        #complex
+    }
+    .into()
+}

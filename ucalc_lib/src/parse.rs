@@ -1,3 +1,5 @@
+#[cfg(feature = "units")]
+use crate::UNITS;
 use crate::functions::Function;
 use crate::operators::{Bracket, Operators};
 use crate::polynomial::Polynomial;
@@ -8,6 +10,8 @@ use std::fmt::{Display, Formatter};
 use std::ops::{Deref, DerefMut};
 use std::{fmt, iter};
 use ucalc_numbers::FloatTrait;
+#[cfg(feature = "units")]
+use ucalc_numbers::Units;
 #[derive(Default, PartialEq, Debug, Clone)]
 pub struct Tokens(pub Vec<Token>);
 #[derive(Debug, Clone, Copy)]
@@ -288,6 +292,10 @@ impl Tokens {
                     tokens.push(fun.into());
                 }
                 _ if token.chars().all(|c| c.is_ascii_alphabetic()) => inner_vars.push(token),
+                #[cfg(feature = "units")]
+                _ if let Some(i) = UNITS.iter().position(|s| *s == token) => {
+                    tokens.push(Units::from(i).into())
+                }
                 _ if let Some(n) = NumberBase::parse_radix(token, base) => tokens.push(n.into()),
                 _ => return Err(ParseError::UnknownToken(token)),
             }
@@ -371,7 +379,7 @@ impl Tokens {
                             tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
                             tokens.push(Token::Var(i));
                             open_input = true;
-                        } else if let Some(i) = graph_vars.iter().position(|v| v == &s) {
+                        } else if let Some(i) = graph_vars.iter().position(|v| *v == s) {
                             tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
                             tokens.push(Token::GraphVar(i as u8));
                             open_input = true;
@@ -400,6 +408,18 @@ impl Tokens {
                             tokens.push(Token::InnerVar(n as u16));
                             inner_vars[n] = s;
                             open_input = true;
+                        } else if let Some(_i) = {
+                            #[cfg(feature = "units")]
+                            {
+                                UNITS.iter().position(|v| *v == s)
+                            }
+                            #[cfg(not(feature = "units"))]
+                            {
+                                None::<()>
+                            }
+                        } {
+                            #[cfg(feature = "units")]
+                            tokens.push(Units::from(_i).into())
                         } else if let Some(f) = NumberBase::parse_radix(s, base) {
                             tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
                             tokens.push(f.into());
