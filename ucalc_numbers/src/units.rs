@@ -26,13 +26,10 @@ impl<T, const N: usize> DerefMut for Units<T, N> {
         &mut self.0
     }
 }
-pub trait One {
-    fn one() -> Self;
-}
-impl<T: Default + One, const N: usize> Units<T, N> {
+impl<T: Default + From<f32>, const N: usize> Units<T, N> {
     pub fn from(set: [&'static str; N], str: &str) -> Self {
         if let Some(n) = set.into_iter().position(|s| str == s) {
-            let s = array::from_fn(|i| if i == n { T::one() } else { T::default() });
+            let s = array::from_fn(|i| if i == n { T::from(1.0) } else { T::default() });
             Self(Some(Box::new(s)))
         } else {
             Self(None)
@@ -69,17 +66,17 @@ where
         }
     }
 }
-impl<T: AddAssign + Default, N, const K: usize> Sum for Quantity<T, N, K> {
+impl<T: AddAssign + Default, N: PartialEq, const K: usize> Sum for Quantity<T, N, K> {
     fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
         iter.fold(Self::default(), |sum, s| sum + s)
     }
 }
-impl<N, const K: usize> Product for Quantity<Float, N, K> {
+impl<N: AddAssign + Clone, const K: usize> Product for Quantity<Float, N, K> {
     fn product<I: Iterator<Item = Self>>(iter: I) -> Self {
         iter.fold(Self::from(1), |sum, s| sum * s)
     }
 }
-impl<N, const K: usize> Product for Quantity<Complex, N, K> {
+impl<N: AddAssign + Clone, const K: usize> Product for Quantity<Complex, N, K> {
     fn product<I: Iterator<Item = Self>>(iter: I) -> Self {
         iter.fold(Self::from(1), |sum, s| sum * s)
     }
@@ -97,31 +94,33 @@ impl<T: Display, N, const K: usize> Display for Quantity<T, N, K> {
     }
 }
 macro_rules! impl_ops {
-    ($op:ident,$op_assign:ident,$fun:ident,$fun_assign:ident) => {
-        impl<T: $op_assign<T>, N, const K: usize> $op<Self> for Quantity<T, N, K> {
+    ($op:ident,$op_assign:ident,$fun:ident,$fun_assign:ident,$tr:ident $(+$re:path)*) => {
+        impl<T: $op_assign<T>, N:$tr$(+$re)*, const K: usize> $op<Self> for Quantity<T, N, K> {
             type Output = Self;
             fn $fun(mut self, rhs: Self) -> Self::Output {
                 $op_assign::$fun_assign(&mut self, rhs);
                 self
             }
         }
-        impl<T: $op_assign<T>, N, const K: usize> $op_assign<Self> for Quantity<T, N, K> {
+        impl<T: $op_assign<T>, N:$tr$(+$re)*, const K: usize> $op_assign<Self> for Quantity<T, N, K> {
             fn $fun_assign(&mut self, rhs: Self) {
                 $op_assign::$fun_assign(&mut self.num, rhs.num);
+                $op_assign::$fun_assign(&mut self.units, rhs.units);
             }
         }
-        impl<T: for<'a> $op_assign<&'a T>, N, const K: usize> $op<&Self> for Quantity<T, N, K> {
+        impl<T: for<'a> $op_assign<&'a T>, N:$tr$(+$re)* + for<'a> AddAssign<&'a N>  + for<'a> SubAssign<&'a N>, const K: usize> $op<&Self> for Quantity<T, N, K> {
             type Output = Self;
             fn $fun(mut self, rhs: &Self) -> Self::Output {
                 $op_assign::$fun_assign(&mut self, rhs);
                 self
             }
         }
-        impl<T: for<'a> $op_assign<&'a T>, N, const K: usize> $op_assign<&Self>
+        impl<T: for<'a> $op_assign<&'a T>, N:$tr$(+$re)* + for<'a> AddAssign<&'a N>  + for<'a> SubAssign<&'a N>, const K: usize> $op_assign<&Self>
             for Quantity<T, N, K>
         {
             fn $fun_assign(&mut self, rhs: &Self) {
                 $op_assign::$fun_assign(&mut self.num, &rhs.num);
+                $op_assign::$fun_assign(&mut self.units, &rhs.units);
             }
         }
         impl<T: $op_assign<Float>, N, const K: usize> $op<Float> for Quantity<T, N, K> {
@@ -168,11 +167,95 @@ macro_rules! impl_ops {
         }
     };
 }
-impl_ops!(Add, AddAssign, add, add_assign);
-impl_ops!(Sub, SubAssign, sub, sub_assign);
-impl_ops!(Mul, MulAssign, mul, mul_assign);
-impl_ops!(Div, DivAssign, div, div_assign);
-impl_ops!(Rem, RemAssign, rem, rem_assign);
+impl_ops!(Add, AddAssign, add, add_assign, PartialEq);
+impl_ops!(Sub, SubAssign, sub, sub_assign, PartialEq);
+impl_ops!(Mul, MulAssign, mul, mul_assign, AddAssign + Clone);
+impl_ops!(
+    Div,
+    DivAssign,
+    div,
+    div_assign,
+    SubAssign + NegAssign + Clone
+);
+macro_rules! impl_ops_simple {
+    ($op:ident,$op_assign:ident,$fun:ident,$fun_assign:ident) => {
+        impl<T: $op_assign<T>, N, const K: usize> $op<Self> for Quantity<T, N, K> {
+            type Output = Self;
+            fn $fun(mut self, rhs: Self) -> Self::Output {
+                $op_assign::$fun_assign(&mut self, rhs);
+                self
+            }
+        }
+        impl<T: $op_assign<T>, N, const K: usize> $op_assign<Self> for Quantity<T, N, K> {
+            fn $fun_assign(&mut self, rhs: Self) {
+                self.units.clear();
+                $op_assign::$fun_assign(&mut self.num, rhs.num);
+            }
+        }
+        impl<T: for<'a> $op_assign<&'a T>, N, const K: usize> $op<&Self> for Quantity<T, N, K> {
+            type Output = Self;
+            fn $fun(mut self, rhs: &Self) -> Self::Output {
+                $op_assign::$fun_assign(&mut self, rhs);
+                self
+            }
+        }
+        impl<T: for<'a> $op_assign<&'a T>, N, const K: usize> $op_assign<&Self>
+            for Quantity<T, N, K>
+        {
+            fn $fun_assign(&mut self, rhs: &Self) {
+                self.units.clear();
+                $op_assign::$fun_assign(&mut self.num, &rhs.num);
+            }
+        }
+        impl<T: $op_assign<Float>, N, const K: usize> $op<Float> for Quantity<T, N, K> {
+            type Output = Self;
+            fn $fun(mut self, rhs: Float) -> Self::Output {
+                $op_assign::$fun_assign(&mut self, rhs);
+                self
+            }
+        }
+        impl<T: $op_assign<Float>, N, const K: usize> $op_assign<Float> for Quantity<T, N, K> {
+            fn $fun_assign(&mut self, rhs: Float) {
+                self.units.clear();
+                $op_assign::$fun_assign(&mut self.num, rhs);
+            }
+        }
+        impl<T: for<'a> $op_assign<&'a Float>, N, const K: usize> $op<&Float>
+            for Quantity<T, N, K>
+        {
+            type Output = Self;
+            fn $fun(mut self, rhs: &Float) -> Self::Output {
+                $op_assign::$fun_assign(&mut self, rhs);
+                self
+            }
+        }
+        impl<T: for<'a> $op_assign<&'a Float>, N, const K: usize> $op_assign<&Float>
+            for Quantity<T, N, K>
+        {
+            fn $fun_assign(&mut self, rhs: &Float) {
+                self.units.clear();
+                $op_assign::$fun_assign(&mut self.num, &rhs);
+            }
+        }
+        impl<N, const K: usize> $op<Quantity<Float, N, K>> for Float {
+            type Output = Quantity<Float, N, K>;
+            fn $fun(self, mut rhs: Quantity<Float, N, K>) -> Self::Output {
+                rhs.units.clear();
+                rhs.num = $op::$fun(self, rhs.num);
+                rhs
+            }
+        }
+        impl<N, const K: usize> $op<Quantity<Complex, N, K>> for Float {
+            type Output = Quantity<Complex, N, K>;
+            fn $fun(self, mut rhs: Quantity<Complex, N, K>) -> Self::Output {
+                rhs.units.clear();
+                rhs.num = $op::$fun(self, rhs.num);
+                rhs
+            }
+        }
+    };
+}
+impl_ops_simple!(Rem, RemAssign, rem, rem_assign);
 impl<T: PowAssign<T>, N, const K: usize> Pow<Self> for Quantity<T, N, K> {
     type Output = Self;
     fn pow(mut self, rhs: Self) -> Self::Output {
@@ -211,6 +294,78 @@ impl<'a, T: PartialEq, const N: usize> AddAssign<&'a Self> for Units<T, N> {
     fn add_assign(&mut self, rhs: &'a Self) {
         if self != rhs {
             self.0 = None;
+        }
+    }
+}
+impl<T: PartialEq, const N: usize> AddAssign<Self> for Units<T, N> {
+    fn add_assign(&mut self, rhs: Self) {
+        self.add_assign(&rhs)
+    }
+}
+impl<'a, T: PartialEq, const N: usize> SubAssign<&'a Self> for Units<T, N> {
+    fn sub_assign(&mut self, rhs: &'a Self) {
+        if self != rhs {
+            self.0 = None;
+        }
+    }
+}
+impl<T: PartialEq, const N: usize> SubAssign<Self> for Units<T, N> {
+    fn sub_assign(&mut self, rhs: Self) {
+        self.sub_assign(&rhs)
+    }
+}
+impl<T: AddAssign, const N: usize> MulAssign<Self> for Units<T, N> {
+    fn mul_assign(&mut self, rhs: Self) {
+        match (&mut self.0, rhs.0) {
+            (Some(a), Some(b)) => a.iter_mut().zip(*b).for_each(|(a, b)| a.add_assign(b)),
+            (Some(_), None) => {}
+            (a, Some(b)) => *a = Some(b),
+            (None, None) => {}
+        }
+    }
+}
+impl<T: SubAssign + NegAssign, const N: usize> DivAssign<Self> for Units<T, N> {
+    fn div_assign(&mut self, rhs: Self) {
+        match (&mut self.0, rhs.0) {
+            (Some(a), Some(b)) => a.iter_mut().zip(*b).for_each(|(a, b)| a.sub_assign(b)),
+            (Some(_), None) => {}
+            (a, Some(mut b)) => {
+                b.iter_mut().for_each(|a| a.neg_assign());
+                *a = Some(b);
+            }
+            (None, None) => {}
+        }
+    }
+}
+impl<T: for<'a> AddAssign<&'a T> + Clone, const N: usize> MulAssign<&Self> for Units<T, N> {
+    fn mul_assign(&mut self, rhs: &Self) {
+        match (&mut self.0, &rhs.0) {
+            (Some(a), Some(b)) => a
+                .iter_mut()
+                .zip(b.iter())
+                .for_each(|(a, b)| a.add_assign(b)),
+            (Some(_), None) => {}
+            (a, Some(b)) => *a = Some(b.clone()),
+            (None, None) => {}
+        }
+    }
+}
+impl<T: for<'a> SubAssign<&'a T> + NegAssign + Clone, const N: usize> DivAssign<&Self>
+    for Units<T, N>
+{
+    fn div_assign(&mut self, rhs: &Self) {
+        match (&mut self.0, &rhs.0) {
+            (Some(a), Some(b)) => a
+                .iter_mut()
+                .zip(b.iter())
+                .for_each(|(a, b)| a.sub_assign(b)),
+            (Some(_), None) => {}
+            (a, Some(b)) => {
+                let mut b = b.clone();
+                b.iter_mut().for_each(|a| a.neg_assign());
+                *a = Some(b);
+            }
+            (None, None) => {}
         }
     }
 }
