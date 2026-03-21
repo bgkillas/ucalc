@@ -780,6 +780,11 @@ impl From<Constant> for Float {
         }
     }
 }
+impl<'a> From<&'a Float> for Float {
+    fn from(value: &'a Float) -> Self {
+        value.clone()
+    }
+}
 impl<T> From<T> for Complex
 where
     Float: From<T>,

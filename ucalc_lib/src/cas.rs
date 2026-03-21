@@ -68,7 +68,7 @@ impl Compute<'_> {
                         return None;
                     }
                     if let Some(inv) = inverse.get_inverse() {
-                        inv.compute_on(ret, &[]);
+                        inv.compute_on_1(ret);
                     } else {
                         let right_tokens = TokensRef(&self.tokens[start..i]);
                         let (right_tokens, last) = right_tokens.get_from_last(self.funs);

@@ -1,5 +1,4 @@
 use crate::compute::Compute;
-use crate::parse::Token;
 use crate::polynomial::PolyRef;
 use crate::{Number, Tokens};
 use std::fmt::{Display, Formatter};
@@ -359,35 +358,48 @@ impl Function {
                 | Self::GreaterEqual
         )
     }
-    pub fn compute(self, a: &mut [Token]) {
-        let ([a], b) = a.split_first_chunk_mut().unwrap();
-        let a = a.num_mut();
-        self.compute_on(a, b)
+    pub fn compute(self, v: &mut Tokens, inputs: usize) {
+        match inputs {
+            1 => self.compute_on_1(v.last_mut().unwrap().num_mut()),
+            2 => {
+                let b = v.pop().unwrap();
+                self.compute_on_2(v.last_mut().unwrap().num_mut(), b.num())
+            }
+            3 => {
+                let c = v.pop().unwrap();
+                let b = v.pop().unwrap();
+                self.compute_on_3(v.last_mut().unwrap().num_mut(), b.num(), c.num())
+            }
+            4 => {
+                let d = v.pop().unwrap();
+                let c = v.pop().unwrap();
+                let b = v.pop().unwrap();
+                self.compute_on_4(v.last_mut().unwrap().num_mut(), b.num(), c.num(), d.num())
+            }
+            5 => {
+                let e = v.pop().unwrap();
+                let d = v.pop().unwrap();
+                let c = v.pop().unwrap();
+                let b = v.pop().unwrap();
+                self.compute_on_5(
+                    v.last_mut().unwrap().num_mut(),
+                    b.num(),
+                    c.num(),
+                    d.num(),
+                    e.num(),
+                )
+            }
+            _ => unreachable!(),
+        }
     }
-    pub fn compute_on(self, a: &mut Number, b: &[Token]) {
+    pub fn compute_on_1(self, a: &mut Number) {
         match self {
-            Self::Add => *a += b[0].num_ref(),
-            Self::Sub => *a -= b[0].num_ref(),
-            Self::Mul => *a *= b[0].num_ref(),
-            Self::Div => *a /= b[0].num_ref(),
-            Self::Rem => *a %= b[0].num_ref(),
             Self::Factorial => {
                 *a += Float::from(1);
                 a.gamma_mut()
             }
-            Self::Pow => a.pow_assign(b[0].num_ref()),
-            Self::Root => a.pow_assign(b[0].num_ref().clone().recip()),
             Self::Negate => a.neg_assign(),
-            Self::Tetration => a.tetration_mut(b[0].num_ref()),
             Self::SubFactorial => a.subfactorial_mut(),
-            Self::Equal => *a = Number::from(a == b[0].num_ref()),
-            Self::NotEqual => *a = Number::from(a != b[0].num_ref()),
-            Self::Greater => *a = Number::from(a.total_cmp(b[0].num_ref()).is_gt()),
-            Self::Less => *a = Number::from(a.total_cmp(b[0].num_ref()).is_lt()),
-            Self::GreaterEqual => *a = Number::from(a.total_cmp(b[0].num_ref()).is_ge()),
-            Self::LessEqual => *a = Number::from(a.total_cmp(b[0].num_ref()).is_le()),
-            Self::And => *a = Number::from(!a.is_zero() && !b[0].num_ref().is_zero()),
-            Self::Or => *a = Number::from(!a.is_zero() || !b[0].num_ref().is_zero()),
             Self::Not => *a = Number::from(a.is_zero()),
             Self::Sin => a.sin_mut(),
             Self::Ln => a.ln_mut(),
@@ -416,9 +428,6 @@ impl Function {
             Self::Sq => *a *= a.clone(),
             Self::Cb => *a = a.clone() * a.deref() * a.deref(),
             Self::Atan(Inputs::One) => a.atan_mut(),
-            Self::Atan(Inputs::Two) => a.atan2_mut(b[0].num_ref()),
-            Self::Max => a.max_mut(b[0].num_ref()),
-            Self::Min => a.min_mut(b[0].num_ref()),
             Self::Ceil => a.ceil_mut(),
             Self::Floor => a.floor_mut(),
             Self::Round => a.round_mut(),
@@ -428,51 +437,66 @@ impl Function {
             Self::Real => a.zero_imag(),
             #[cfg(feature = "complex")]
             Self::Imag => a.zero_real(),
+            _ => unreachable!(),
+        }
+    }
+    pub fn compute_on_2(self, a: &mut Number, b: Number) {
+        match self {
+            Self::Add => *a += b,
+            Self::Sub => *a -= b,
+            Self::Mul => *a *= b,
+            Self::Div => *a /= b,
+            Self::Rem => *a %= b,
+            Self::Pow => a.pow_assign(b),
+            Self::Root => a.pow_assign(b.clone().recip()),
+            Self::Tetration => a.tetration_mut(&b),
+            Self::Equal => *a = Number::from(a == &b),
+            Self::NotEqual => *a = Number::from(a != &b),
+            Self::Greater => *a = Number::from(a.total_cmp(&b).is_gt()),
+            Self::Less => *a = Number::from(a.total_cmp(&b).is_lt()),
+            Self::GreaterEqual => *a = Number::from(a.total_cmp(&b).is_ge()),
+            Self::LessEqual => *a = Number::from(a.total_cmp(&b).is_le()),
+            Self::And => *a = Number::from(!a.is_zero() && !b.is_zero()),
+            Self::Or => *a = Number::from(!a.is_zero() || !b.is_zero()),
+            Self::Atan(Inputs::Two) => a.atan2_mut(&b),
+            Self::Max => a.max_mut(&b),
+            Self::Min => a.min_mut(&b),
+            _ => unreachable!(),
+        }
+    }
+    pub fn compute_on_3(self, a: &mut Number, b: Number, c: Number) {
+        match self {
             Self::Quadratic => {
-                let mut poly =
-                    PolyRef(&[b[1].num_ref().clone(), b[0].num_ref().clone(), a.clone()])
-                        .quadratic()
-                        .into_iter();
+                let mut poly = PolyRef(&[c.clone(), b.clone(), a.clone()])
+                    .quadratic()
+                    .into_iter();
                 *a = poly.next().unwrap()
             }
+            _ => unreachable!(),
+        }
+    }
+    pub fn compute_on_4(self, a: &mut Number, b: Number, c: Number, d: Number) {
+        match self {
             #[cfg(feature = "complex")]
             Self::Cubic => {
-                let mut poly = PolyRef(&[
-                    b[2].num_ref().clone(),
-                    b[1].num_ref().clone(),
-                    b[0].num_ref().clone(),
-                    a.clone(),
-                ])
-                .cubic()
-                .into_iter();
+                let mut poly = PolyRef(&[d.clone(), c.clone(), b.clone(), a.clone()])
+                    .cubic()
+                    .into_iter();
                 *a = poly.next().unwrap()
             }
+            _ => unreachable!(),
+        }
+    }
+    pub fn compute_on_5(self, a: &mut Number, b: Number, c: Number, d: Number, e: Number) {
+        match self {
             #[cfg(feature = "complex")]
             Self::Quartic => {
-                let mut poly = PolyRef(&[
-                    b[3].num_ref().clone(),
-                    b[2].num_ref().clone(),
-                    b[1].num_ref().clone(),
-                    b[0].num_ref().clone(),
-                    a.clone(),
-                ])
-                .quartic()
-                .into_iter();
+                let mut poly = PolyRef(&[e.clone(), d.clone(), c.clone(), b.clone(), a.clone()])
+                    .quartic()
+                    .into_iter();
                 *a = poly.next().unwrap()
             }
-            Self::Custom(_)
-            | Self::Sum
-            | Self::Prod
-            | Self::Iter
-            | Self::If
-            | Self::Fold
-            | Self::Set
-            | Self::Modify
-            | Self::Solve
-            | Self::NumericalDerivative
-            | Self::NumericalIntegral
-            | Self::NumericalSolve
-            | Self::NumericalDifferential => unreachable!(),
+            _ => unreachable!(),
         }
     }
     pub fn compact(self) -> usize {

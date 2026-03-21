@@ -151,7 +151,7 @@ impl<'a> Compute<'a> {
                         } else {
                             None
                         };
-                        operator.compute(&mut stack[len - inputs..]);
+                        operator.compute(stack, inputs);
                         if let Some(b) = chain {
                             let a = stack[len - inputs].num_mut();
                             *a = if a.is_zero() {
@@ -160,10 +160,8 @@ impl<'a> Compute<'a> {
                                 b.clone()
                             };
                         }
-                        stack.drain(len + 1 - inputs..);
                     } else {
-                        operator.compute(&mut stack[len - inputs..]);
-                        stack.drain(len + 1 - inputs..);
+                        operator.compute(stack, inputs);
                     }
                 }
                 Token::Var(index) => {

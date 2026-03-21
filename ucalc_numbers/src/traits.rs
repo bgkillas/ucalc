@@ -282,3 +282,8 @@ pub trait RealTrait<F>: FloatTrait<F> {
 impl<T: FloatFunctionsMut<F> + FloatTrait<F>, F> FloatFunctions<F> for T {}
 impl<T: ComplexFunctionsMut<F> + FloatTrait<F>, F> ComplexFunctions<F> for T {}
 generate_traits!();
+//impl FloatType<crate::Float> for crate::Quantity<crate::Complex, f32, 8> {}
+//impl ComplexType<crate::Float> for crate::Quantity<crate::Complex, f32, 8> {}
+//impl FloatType<crate::Float> for crate::Quantity<crate::Float, f32, 8> {}
+//impl RealType<crate::Float> for crate::Quantity<crate::Float, f32, 8> {}
+//impl FloatType<crate::Float> for crate::Number<crate::Float> {}

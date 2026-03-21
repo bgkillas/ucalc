@@ -297,7 +297,7 @@ impl Polynomial {
         };
         ret.iter_mut().for_each(|a| {
             self.functions.iter().rev().for_each(|f| match f {
-                Func::Function(f) => Inverse::from(*f).get_inverse().unwrap().compute_on(a, &[]),
+                Func::Function(f) => Inverse::from(*f).get_inverse().unwrap().compute_on_1(a),
                 Func::Power(p) => Inverse::pow_assign(a, p.clone().recip()),
             })
         });
@@ -485,7 +485,8 @@ impl Function {
                 }
             }
         } else if let Token::Num(_) = b[0] {
-            self.compute_on(a.num_mut(), b)
+            assert_eq!(self.inputs(), 2);
+            self.compute_on_2(a.num_mut(), b[0].clone().num())
         } else if let Token::Num(c) = a {
             *a = self.num_poly(c, mem::take(b[0].poly_mut()))?.into()
         }
