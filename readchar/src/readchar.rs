@@ -68,7 +68,7 @@ impl ReadChar {
         let hook = std::panic::take_hook();
         #[cfg(debug_assertions)]
         std::panic::set_hook(Box::new(move |info| {
-            stdout().execute(DisableBracketedPaste).unwrap();
+            _ = stdout().execute(DisableBracketedPaste);
             _ = terminal::disable_raw_mode();
             println!();
             hook(info);
@@ -216,11 +216,23 @@ impl ReadChar {
             write!(stdout, "{}", self.carrot)
         }
     }
-    pub(crate) fn move_history(
+    pub(crate) fn print_line<J: Display>(
+        &self,
+        stdout: &mut impl Write,
+        color: Option<impl FnOnce(&str) -> J>,
+    ) -> io::Result<()> {
+        if let Some(color) = color {
+            write!(stdout, "{}", color(&self.line))
+        } else {
+            write!(stdout, "{}", self.line)
+        }
+    }
+    pub(crate) fn move_history<J: Display>(
         &mut self,
         stdout: &mut impl Write,
         string: &mut String,
         run: impl FnOnce(&str, &mut String),
+        color: Option<impl FnOnce(&str) -> J>,
         up: bool,
     ) -> io::Result<()> {
         if self.cursor_row != 0 {
@@ -241,7 +253,7 @@ impl ReadChar {
         } % self.col;
         self.cursor_row_max = (self.line_len + self.carrot.len() as u16) / self.col;
         stdout.queue(Clear(ClearType::FromCursorDown))?;
-        write!(stdout, "{}", self.line)?;
+        self.print_line(stdout, color)?;
         self.print_result(string, stdout, run)?;
         stdout.flush()?;
         Ok(())
@@ -298,11 +310,12 @@ impl ReadChar {
         self.line.clear();
         Ok(ret)
     }
-    pub(crate) fn put_str(
+    pub(crate) fn put_str<J: Display>(
         &mut self,
         stdout: &mut impl Write,
         string: &mut String,
         run: impl FnOnce(&str, &mut String),
+        color: Option<impl FnOnce(&str) -> J>,
         s: &str,
     ) -> io::Result<()> {
         self.line.insert_str(self.insert as usize, s);
@@ -317,13 +330,13 @@ impl ReadChar {
         if rows != 0 {
             self.cursor_row_max += rows;
             stdout.queue(Clear(ClearType::FromCursorDown))?;
-            write!(stdout, "{}", self.line)?;
+            self.print_line(stdout, color)?;
             let rem = (self.line_len + self.carrot.len() as u16) % self.col;
             if rem == 0 {
                 writeln!(stdout)?;
             }
         } else {
-            write!(stdout, "{}", self.line)?;
+            self.print_line(stdout, color)?;
         }
         self.print_result(string, stdout, run)?;
         stdout.flush()?;
@@ -460,11 +473,12 @@ impl ReadChar {
         stdout.flush()?;
         Ok(())
     }
-    pub(crate) fn backspace(
+    pub(crate) fn backspace<J: Display>(
         &mut self,
         stdout: &mut impl Write,
         string: &mut String,
         run: impl FnOnce(&str, &mut String),
+        color: Option<impl FnOnce(&str) -> J>,
         n: u16,
     ) -> io::Result<()> {
         for _ in 0..n {
@@ -481,7 +495,7 @@ impl ReadChar {
         self.left(n)?;
         self.cursor_row_max = (self.line_len + self.carrot.len() as u16) / self.col;
         stdout.queue(Clear(ClearType::FromCursorDown))?;
-        write!(stdout, "{}", self.line)?;
+        self.print_line(stdout, color)?;
         if (self.line_len + self.carrot.len() as u16).is_multiple_of(self.col) {
             writeln!(stdout)?;
         }
@@ -489,11 +503,12 @@ impl ReadChar {
         stdout.flush()?;
         Ok(())
     }
-    pub(crate) fn delete(
+    pub(crate) fn delete<J: Display>(
         &mut self,
         stdout: &mut impl Write,
         string: &mut String,
         run: impl FnOnce(&str, &mut String),
+        color: Option<impl FnOnce(&str) -> J>,
         n: u16,
     ) -> io::Result<()> {
         for _ in 0..n {
@@ -506,7 +521,7 @@ impl ReadChar {
         stdout.queue(MoveToColumn(self.carrot.len() as u16))?;
         self.cursor_row_max = (self.line_len + self.carrot.len() as u16) / self.col;
         stdout.queue(Clear(ClearType::FromCursorDown))?;
-        write!(stdout, "{}", self.line)?;
+        self.print_line(stdout, color)?;
         if (self.line_len + self.carrot.len() as u16).is_multiple_of(self.col) {
             writeln!(stdout)?;
         }
@@ -514,11 +529,12 @@ impl ReadChar {
         stdout.flush()?;
         Ok(())
     }
-    pub(crate) fn put_char(
+    pub(crate) fn put_char<J: Display>(
         &mut self,
         stdout: &mut impl Write,
         string: &mut String,
         run: impl FnOnce(&str, &mut String),
+        color: Option<impl FnOnce(&str) -> J>,
         c: char,
     ) -> io::Result<()> {
         self.line.insert(self.insert as usize, c);
@@ -534,7 +550,7 @@ impl ReadChar {
             stdout.queue(Clear(ClearType::FromCursorDown))?;
             writeln!(stdout, "{}", self.line)?;
         } else {
-            write!(stdout, "{}", self.line)?;
+            self.print_line(stdout, color)?;
         }
         self.print_result(string, stdout, run)?;
         stdout.flush()?;
@@ -575,17 +591,19 @@ impl ReadChar {
         }
         Ok(())
     }
-    pub(crate) fn event<T: Write, K: Display>(
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn event<T: Write, K: Display, J: Display>(
         &mut self,
         stdout: &mut T,
         string: &mut String,
         run: impl FnOnce(&str, &mut String),
+        color: Option<impl FnOnce(&str) -> J>,
         finish: impl FnOnce(&ReadChar, &mut T, &str) -> io::Result<Return>,
         complete: Option<impl FnOnce(&str) -> Vec<(K, usize)>>,
         event: Event,
     ) -> io::Result<Return> {
         match event {
-            Event::Paste(s) => self.put_str(stdout, string, run, &s)?,
+            Event::Paste(s) => self.put_str(stdout, string, run, color, &s)?,
             Event::Resize(col, row) => self.resize(col, row, string),
             Event::Key(KeyEvent {
                 code: KeyCode::Enter,
@@ -633,12 +651,14 @@ impl ReadChar {
                 code: KeyCode::Up,
                 modifiers: KeyModifiers::NONE,
                 ..
-            }) if !self.history.at_start() => self.move_history(stdout, string, run, true)?,
+            }) if !self.history.at_start() => {
+                self.move_history(stdout, string, run, color, true)?
+            }
             Event::Key(KeyEvent {
                 code: KeyCode::Down,
                 modifiers: KeyModifiers::NONE,
                 ..
-            }) if !self.history.at_end() => self.move_history(stdout, string, run, false)?,
+            }) if !self.history.at_end() => self.move_history(stdout, string, run, color, false)?,
             Event::Key(KeyEvent {
                 code: KeyCode::Up,
                 modifiers: KeyModifiers::CONTROL,
@@ -663,12 +683,12 @@ impl ReadChar {
                 code: KeyCode::Backspace,
                 modifiers: KeyModifiers::NONE,
                 ..
-            }) if self.cursor != 0 => self.backspace(stdout, string, run, 1)?,
+            }) if self.cursor != 0 => self.backspace(stdout, string, run, color, 1)?,
             Event::Key(KeyEvent {
                 code: KeyCode::Delete,
                 modifiers: KeyModifiers::NONE,
                 ..
-            }) if self.cursor != self.line_len => self.delete(stdout, string, run, 1)?,
+            }) if self.cursor != self.line_len => self.delete(stdout, string, run, color, 1)?,
             Event::Key(KeyEvent {
                 code: KeyCode::Char(c),
                 modifiers: KeyModifiers::NONE,
@@ -678,7 +698,7 @@ impl ReadChar {
                 code: KeyCode::Char(c),
                 modifiers: KeyModifiers::SHIFT,
                 ..
-            }) => self.put_char(stdout, string, run, c)?,
+            }) => self.put_char(stdout, string, run, color, c)?,
             _ => {}
         }
         Ok(Return::None)
@@ -691,15 +711,24 @@ impl ReadChar {
     ///   contents of the string buffer passed into it, expected to have no trailing newlines
     /// # Returns
     /// returns if the line has been completed or not by the enter key
-    pub fn read_with_complete<T: Write, K: Display>(
+    pub fn read_with_complete<T: Write, K: Display, J: Display>(
         &mut self,
         stdout: &mut T,
         string: &mut String,
         run: impl FnOnce(&str, &mut String),
+        color: Option<impl FnOnce(&str) -> J>,
         finish: impl FnOnce(&ReadChar, &mut T, &str) -> io::Result<Return>,
         complete: impl FnOnce(&str) -> Vec<(K, usize)>,
     ) -> io::Result<Return> {
-        self.event(stdout, string, run, finish, Some(complete), event::read()?)
+        self.event(
+            stdout,
+            string,
+            run,
+            color,
+            finish,
+            Some(complete),
+            event::read()?,
+        )
     }
     /// reads the next user input and reacts accordingly
     /// # Arguments
@@ -709,17 +738,19 @@ impl ReadChar {
     ///   contents of the string buffer passed into it, expected to have no trailing newlines
     /// # Returns
     /// returns if the line has been completed or not by the enter key
-    pub fn read<T: Write>(
+    pub fn read<T: Write, J: Display>(
         &mut self,
         stdout: &mut T,
         string: &mut String,
         run: impl FnOnce(&str, &mut String),
+        color: Option<impl FnOnce(&str) -> J>,
         finish: impl FnOnce(&ReadChar, &mut T, &str) -> io::Result<Return>,
     ) -> io::Result<Return> {
         self.event(
             stdout,
             string,
             run,
+            color,
             finish,
             None::<fn(&str) -> Vec<(String, usize)>>,
             event::read()?,

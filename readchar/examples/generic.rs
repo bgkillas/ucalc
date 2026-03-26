@@ -22,6 +22,7 @@ fn main() {
                 }
                 ()
             },
+            None::<fn(&str) -> String>,
             |_, _, _| Ok(Return::Finish),
         ) {
             Ok(Return::Finish) => {}

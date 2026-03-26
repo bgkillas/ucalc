@@ -66,6 +66,7 @@ fn main() {
                         &colors,
                     )
                 },
+                Some(|s: &str| color_brackets(s, &colors).to_string()),
                 |readchar, stdout, line| {
                     Ok(match line {
                         "exit" => {
