@@ -11,6 +11,15 @@ pub enum Color {
     Cyan(bool),
     White(bool),
 }
+pub struct ToColor<'a>(pub &'a Colors);
+impl<'b> readchar::ToColor<'b> for ToColor<'b> {
+    fn run<'a>(self, str: &'a str) -> impl Display + 'a
+    where
+        'b: 'a,
+    {
+        color_brackets(str, self.0)
+    }
+}
 impl Display for Color {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "\x1b[{}m", usize::from(*self))
@@ -81,7 +90,7 @@ impl From<Color> for usize {
         }
     }
 }
-pub fn color_brackets(line: &str, colors: &Colors) -> impl Display {
+pub fn color_brackets<'a, 'b: 'a>(line: &'a str, colors: &'b Colors) -> impl Display + 'a {
     fmt::from_fn(|f| {
         let mut bracket = 0;
         for c in line.chars() {

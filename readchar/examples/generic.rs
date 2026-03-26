@@ -1,4 +1,4 @@
-use readchar::{ReadChar, Return};
+use readchar::{NoColor, ReadChar, Return};
 use std::env::args;
 use std::io::stdout;
 use std::process::Command;
@@ -22,7 +22,7 @@ fn main() {
                 }
                 ()
             },
-            None::<fn(&str) -> String>,
+            NoColor,
             |_, _, _| Ok(Return::Finish),
         ) {
             Ok(Return::Finish) => {}

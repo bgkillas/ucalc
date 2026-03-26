@@ -34,6 +34,20 @@ pub enum Return {
     Cancel,
     None,
 }
+pub trait ToColor<'b> {
+    fn run<'a>(self, str: &'a str) -> impl Display + 'a
+    where
+        'b: 'a;
+}
+pub struct NoColor;
+impl ToColor<'static> for NoColor {
+    fn run<'a>(self, str: &'a str) -> impl Display + 'a
+    where
+        'static: 'a,
+    {
+        str
+    }
+}
 impl Default for ReadChar {
     fn default() -> Self {
         Self::new(History::new(None).unwrap())
@@ -216,23 +230,19 @@ impl ReadChar {
             write!(stdout, "{}", self.carrot)
         }
     }
-    pub(crate) fn print_line<J: Display>(
+    pub(crate) fn print_line<'a>(
         &self,
         stdout: &mut impl Write,
-        color: Option<impl FnOnce(&str) -> J>,
+        color: impl ToColor<'a>,
     ) -> io::Result<()> {
-        if let Some(color) = color {
-            write!(stdout, "{}", color(&self.line))
-        } else {
-            write!(stdout, "{}", self.line)
-        }
+        write!(stdout, "{}", color.run(&self.line))
     }
-    pub(crate) fn move_history<J: Display>(
+    pub(crate) fn move_history<'a>(
         &mut self,
         stdout: &mut impl Write,
         string: &mut String,
         run: impl FnOnce(&str, &mut String),
-        color: Option<impl FnOnce(&str) -> J>,
+        color: impl ToColor<'a>,
         up: bool,
     ) -> io::Result<()> {
         if self.cursor_row != 0 {
@@ -310,12 +320,12 @@ impl ReadChar {
         self.line.clear();
         Ok(ret)
     }
-    pub(crate) fn put_str<J: Display>(
+    pub(crate) fn put_str<'a>(
         &mut self,
         stdout: &mut impl Write,
         string: &mut String,
         run: impl FnOnce(&str, &mut String),
-        color: Option<impl FnOnce(&str) -> J>,
+        color: impl ToColor<'a>,
         s: &str,
     ) -> io::Result<()> {
         self.line.insert_str(self.insert as usize, s);
@@ -473,12 +483,12 @@ impl ReadChar {
         stdout.flush()?;
         Ok(())
     }
-    pub(crate) fn backspace<J: Display>(
+    pub(crate) fn backspace<'a>(
         &mut self,
         stdout: &mut impl Write,
         string: &mut String,
         run: impl FnOnce(&str, &mut String),
-        color: Option<impl FnOnce(&str) -> J>,
+        color: impl ToColor<'a>,
         n: u16,
     ) -> io::Result<()> {
         for _ in 0..n {
@@ -503,12 +513,12 @@ impl ReadChar {
         stdout.flush()?;
         Ok(())
     }
-    pub(crate) fn delete<J: Display>(
+    pub(crate) fn delete<'a>(
         &mut self,
         stdout: &mut impl Write,
         string: &mut String,
         run: impl FnOnce(&str, &mut String),
-        color: Option<impl FnOnce(&str) -> J>,
+        color: impl ToColor<'a>,
         n: u16,
     ) -> io::Result<()> {
         for _ in 0..n {
@@ -529,12 +539,12 @@ impl ReadChar {
         stdout.flush()?;
         Ok(())
     }
-    pub(crate) fn put_char<J: Display>(
+    pub(crate) fn put_char<'a>(
         &mut self,
         stdout: &mut impl Write,
         string: &mut String,
         run: impl FnOnce(&str, &mut String),
-        color: Option<impl FnOnce(&str) -> J>,
+        color: impl ToColor<'a>,
         c: char,
     ) -> io::Result<()> {
         self.line.insert(self.insert as usize, c);
@@ -592,12 +602,12 @@ impl ReadChar {
         Ok(())
     }
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn event<T: Write, K: Display, J: Display>(
+    pub(crate) fn event<'a, T: Write, K: Display>(
         &mut self,
         stdout: &mut T,
         string: &mut String,
         run: impl FnOnce(&str, &mut String),
-        color: Option<impl FnOnce(&str) -> J>,
+        color: impl ToColor<'a>,
         finish: impl FnOnce(&ReadChar, &mut T, &str) -> io::Result<Return>,
         complete: Option<impl FnOnce(&str) -> Vec<(K, usize)>>,
         event: Event,
@@ -711,12 +721,12 @@ impl ReadChar {
     ///   contents of the string buffer passed into it, expected to have no trailing newlines
     /// # Returns
     /// returns if the line has been completed or not by the enter key
-    pub fn read_with_complete<T: Write, K: Display, J: Display>(
+    pub fn read_with_complete<'a, T: Write, K: Display>(
         &mut self,
         stdout: &mut T,
         string: &mut String,
         run: impl FnOnce(&str, &mut String),
-        color: Option<impl FnOnce(&str) -> J>,
+        color: impl ToColor<'a>,
         finish: impl FnOnce(&ReadChar, &mut T, &str) -> io::Result<Return>,
         complete: impl FnOnce(&str) -> Vec<(K, usize)>,
     ) -> io::Result<Return> {
@@ -738,12 +748,12 @@ impl ReadChar {
     ///   contents of the string buffer passed into it, expected to have no trailing newlines
     /// # Returns
     /// returns if the line has been completed or not by the enter key
-    pub fn read<T: Write, J: Display>(
+    pub fn read<'a, T: Write>(
         &mut self,
         stdout: &mut T,
         string: &mut String,
         run: impl FnOnce(&str, &mut String),
-        color: Option<impl FnOnce(&str) -> J>,
+        color: impl ToColor<'a>,
         finish: impl FnOnce(&ReadChar, &mut T, &str) -> io::Result<Return>,
     ) -> io::Result<Return> {
         self.event(

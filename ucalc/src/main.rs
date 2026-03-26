@@ -2,7 +2,7 @@ mod colors;
 #[cfg(feature = "mimalloc")]
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
-use crate::colors::{Colors, color_brackets};
+use crate::colors::{Colors, ToColor, color_brackets};
 use readchar::crossterm::QueueableCommand;
 use readchar::crossterm::cursor::MoveTo;
 use readchar::crossterm::terminal::{Clear, ClearType};
@@ -66,7 +66,7 @@ fn main() {
                         &colors,
                     )
                 },
-                Some(|s: &str| color_brackets(s, &colors).to_string()),
+                ToColor(&colors),
                 |readchar, stdout, line| {
                     Ok(match line {
                         "exit" => {

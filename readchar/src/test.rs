@@ -1,5 +1,6 @@
 //use std::array;
 //use crate::Return;
+use crate::NoColor;
 use crate::history::History;
 use crate::readchar::ReadChar;
 //use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
@@ -225,20 +226,14 @@ fn test_print() {
     assert_eq!(str::from_utf8(&s).unwrap(), "> ");
     let alpha = "abcdefghijklmnopqrstuvwxyz";
     readchar
-        .put_str(
-            &mut s,
-            &mut o,
-            |_, s| s.push_str("res"),
-            None::<fn(&str) -> String>,
-            alpha,
-        )
+        .put_str(&mut s, &mut o, |_, s| s.push_str("res"), NoColor, alpha)
         .unwrap();
     assert_eq!(
         get_str(str::from_utf8(&s).unwrap()).as_str(),
         format!("> {alpha}\nres")
     );
     readchar
-        .put_str(&mut s, &mut o, |_, _| (), None::<fn(&str) -> String>, alpha)
+        .put_str(&mut s, &mut o, |_, _| (), NoColor, alpha)
         .unwrap();
     assert_eq!(
         get_str(str::from_utf8(&s).unwrap()).as_str(),
@@ -252,7 +247,7 @@ fn test_print() {
     assert_eq!(readchar.cursor_col, 12);
     assert_eq!(readchar.cursor_row, 1);
     readchar
-        .put_str(&mut s, &mut o, |_, _| (), None::<fn(&str) -> String>, alpha)
+        .put_str(&mut s, &mut o, |_, _| (), NoColor, alpha)
         .unwrap();
     assert_eq!(
         get_str(str::from_utf8(&s).unwrap()).as_str(),
