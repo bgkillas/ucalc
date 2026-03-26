@@ -48,6 +48,21 @@ impl ToColor<'static> for NoColor {
         str
     }
 }
+pub trait Complete<'b> {
+    fn run<'a>(self, str: &'a str) -> Vec<(impl Display + 'a, usize)>
+    where
+        'b: 'a;
+}
+pub struct NoComplete;
+impl Complete<'static> for NoComplete {
+    #[allow(refining_impl_trait)]
+    fn run<'a>(self, _: &'a str) -> Vec<(String, usize)>
+    where
+        'static: 'a,
+    {
+        Vec::new()
+    }
+}
 impl Default for ReadChar {
     fn default() -> Self {
         Self::new(History::new(None).unwrap())
@@ -566,12 +581,12 @@ impl ReadChar {
         stdout.flush()?;
         Ok(())
     }
-    pub(crate) fn complete<T: Display>(
+    pub(crate) fn complete<'a>(
         &mut self,
         stdout: &mut impl Write,
-        complete: impl FnOnce(&str) -> Vec<(T, usize)>,
+        complete: impl Complete<'a>,
     ) -> io::Result<()> {
-        let list = complete(&self.line[..self.cursor as usize]);
+        let list = complete.run(&self.line[..self.cursor as usize]);
         if !list.is_empty() {
             if self.cursor_row_max != self.cursor_row {
                 stdout.queue(MoveToNextLine(self.cursor_row_max - self.cursor_row))?;
@@ -602,14 +617,14 @@ impl ReadChar {
         Ok(())
     }
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn event<'a, T: Write, K: Display>(
+    pub(crate) fn event<'a, T: Write>(
         &mut self,
         stdout: &mut T,
         string: &mut String,
         run: impl FnOnce(&str, &mut String),
         color: impl ToColor<'a>,
         finish: impl FnOnce(&ReadChar, &mut T, &str) -> io::Result<Return>,
-        complete: Option<impl FnOnce(&str) -> Vec<(K, usize)>>,
+        complete: impl Complete<'a>,
         event: Event,
     ) -> io::Result<Return> {
         match event {
@@ -632,11 +647,7 @@ impl ReadChar {
                 code: KeyCode::Tab,
                 modifiers: KeyModifiers::NONE,
                 ..
-            }) => {
-                if let Some(complete) = complete {
-                    self.complete(stdout, complete)?
-                }
-            }
+            }) => self.complete(stdout, complete)?,
             Event::Key(KeyEvent {
                 code: KeyCode::Home,
                 modifiers: KeyModifiers::NONE,
@@ -721,33 +732,6 @@ impl ReadChar {
     ///   contents of the string buffer passed into it, expected to have no trailing newlines
     /// # Returns
     /// returns if the line has been completed or not by the enter key
-    pub fn read_with_complete<'a, T: Write, K: Display>(
-        &mut self,
-        stdout: &mut T,
-        string: &mut String,
-        run: impl FnOnce(&str, &mut String),
-        color: impl ToColor<'a>,
-        finish: impl FnOnce(&ReadChar, &mut T, &str) -> io::Result<Return>,
-        complete: impl FnOnce(&str) -> Vec<(K, usize)>,
-    ) -> io::Result<Return> {
-        self.event(
-            stdout,
-            string,
-            run,
-            color,
-            finish,
-            Some(complete),
-            event::read()?,
-        )
-    }
-    /// reads the next user input and reacts accordingly
-    /// # Arguments
-    /// - `stdout` the output which you are writing to
-    /// - `string` your string buffer used in run
-    /// - `run` runs when the input line has changed contents, then prints
-    ///   contents of the string buffer passed into it, expected to have no trailing newlines
-    /// # Returns
-    /// returns if the line has been completed or not by the enter key
     pub fn read<'a, T: Write>(
         &mut self,
         stdout: &mut T,
@@ -755,15 +739,8 @@ impl ReadChar {
         run: impl FnOnce(&str, &mut String),
         color: impl ToColor<'a>,
         finish: impl FnOnce(&ReadChar, &mut T, &str) -> io::Result<Return>,
+        complete: impl Complete<'a>,
     ) -> io::Result<Return> {
-        self.event(
-            stdout,
-            string,
-            run,
-            color,
-            finish,
-            None::<fn(&str) -> Vec<(String, usize)>>,
-            event::read()?,
-        )
+        self.event(stdout, string, run, color, finish, complete, event::read()?)
     }
 }

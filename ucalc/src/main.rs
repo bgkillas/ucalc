@@ -1,8 +1,10 @@
 mod colors;
+mod complete;
 #[cfg(feature = "mimalloc")]
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 use crate::colors::{Colors, ToColor, color_brackets};
+use crate::complete::Complete;
 use readchar::crossterm::QueueableCommand;
 use readchar::crossterm::cursor::MoveTo;
 use readchar::crossterm::terminal::{Clear, ClearType};
@@ -10,7 +12,7 @@ use readchar::{ReadChar, Return};
 use std::env::args;
 use std::fmt::Write;
 use std::io::{BufRead, IsTerminal, stdin, stdout};
-use ucalc_lib::{FUNCTION_LIST, Functions, Number, Tokens, Variable, Variables, get_help};
+use ucalc_lib::{Functions, Number, Tokens, Variable, Variables, get_help};
 use ucalc_numbers::FloatTrait;
 fn main() {
     let colors = Colors::default();
@@ -51,7 +53,7 @@ fn main() {
         let mut string = String::with_capacity(64);
         let mut last = None;
         loop {
-            match readchar.read_with_complete(
+            match readchar.read(
                 &mut stdout,
                 &mut string,
                 |line, string| {
@@ -82,7 +84,7 @@ fn main() {
                         _ => Return::Finish,
                     })
                 },
-                |l| complete(l, &colors),
+                Complete(&colors),
             ) {
                 Ok(Return::Finish) => {
                     if let Some(n) = last.take() {
@@ -99,41 +101,6 @@ fn main() {
             }
         }
     }
-}
-fn complete(mut line: &str, colors: &Colors) -> Vec<(String, usize)> {
-    if line.ends_with(',') {
-        let mut bracket = 0;
-        for (i, c) in line.char_indices().rev() {
-            if c == ')' {
-                bracket += 1;
-            } else if c == '(' {
-                if bracket == 0 {
-                    line = &line[..i];
-                    break;
-                } else {
-                    bracket -= 1;
-                }
-            }
-        }
-    }
-    if line.ends_with(['(', '{', '[', '|']) {
-        line = &line[..line.len() - 1];
-    }
-    let word = if let Some(idx) = line.rfind(|c: char| !c.is_ascii_alphabetic() && c != '_') {
-        if idx + 1 == line.len() {
-            return Vec::new();
-        }
-        &line[idx + 1..]
-    } else {
-        line
-    };
-    let mut ret = Vec::new();
-    for w in FUNCTION_LIST {
-        if w.starts_with(word) {
-            ret.push((color_brackets(w, colors).to_string(), w.len()))
-        }
-    }
-    ret
 }
 #[allow(clippy::too_many_arguments)]
 fn process_line(

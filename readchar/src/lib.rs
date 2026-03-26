@@ -1,6 +1,6 @@
 mod history;
 pub use history::History;
-pub use readchar::{NoColor, ReadChar, Return, ToColor};
+pub use readchar::{Complete, NoColor, NoComplete, ReadChar, Return, ToColor};
 mod readchar;
 #[cfg(test)]
 mod test;
