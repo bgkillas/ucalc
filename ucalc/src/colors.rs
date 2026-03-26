@@ -1,5 +1,6 @@
 use std::fmt;
-use std::fmt::{Display, Formatter};
+use std::fmt::{Display, Formatter, Write};
+use ucalc_lib::Operators;
 #[derive(Clone, Copy)]
 pub enum Color {
     Black(bool),
@@ -90,33 +91,69 @@ impl From<Color> for usize {
         }
     }
 }
+fn write_bracket(f: &mut impl Write, colors: &Colors, bracket: usize, c: char) -> fmt::Result {
+    write!(
+        f,
+        "{}",
+        colors.bracket_colors[bracket % colors.bracket_colors.len()]
+    )?;
+    write!(f, "{c}")?;
+    write!(f, "{}", colors.default_color)?;
+    Ok(())
+}
 pub fn color_brackets<'a, 'b: 'a>(line: &'a str, colors: &'b Colors) -> impl Display + 'a {
     fmt::from_fn(|f| {
         let mut bracket = 0;
-        for c in line.chars() {
+        let mut abs = 0;
+        let mut last_abs = false;
+        let mut req_input = false;
+        let mut chars = line.char_indices();
+        while let Some((i, c)) = chars.next() {
             match c {
-                '(' => {
-                    write!(
-                        f,
-                        "{}",
-                        colors.bracket_colors[bracket % colors.bracket_colors.len()]
-                    )?;
-                    write!(f, "{c}")?;
-                    write!(f, "{}", colors.default_color)?;
-                    bracket += 1;
+                '|' => {
+                    if abs == 0 || last_abs || req_input {
+                        write_bracket(f, colors, bracket, c)?;
+                        bracket += 1;
+                        abs += 1;
+                        last_abs = true;
+                        req_input = false;
+                    } else {
+                        bracket -= 1;
+                        write_bracket(f, colors, bracket, c)?;
+                        abs -= 1;
+                        last_abs = false;
+                    }
                 }
-                ')' => {
+                '(' | '[' | '{' => {
+                    write_bracket(f, colors, bracket, c)?;
+                    bracket += 1;
+                    last_abs = false;
+                    req_input = false;
+                }
+                ')' | ']' | '}' => {
                     bracket -= 1;
-                    write!(
-                        f,
-                        "{}",
-                        colors.bracket_colors[bracket % colors.bracket_colors.len()]
-                    )?;
-                    write!(f, "{c}")?;
-                    write!(f, "{}", colors.default_color)?;
+                    write_bracket(f, colors, bracket, c)?;
+                    last_abs = false;
                 }
                 c => {
                     write!(f, "{c}")?;
+                    let mut l = c.len_utf8();
+                    if let Some(next) = line[i + l..].chars().next()
+                        && Operators::try_from(&line[i..i + l + next.len_utf8()]).is_ok()
+                    {
+                        chars.next();
+                        write!(f, "{next}")?;
+                        l += next.len_utf8();
+                    }
+                    let s = &line[i..i + l];
+                    if let Ok(operator) = Operators::try_from(s)
+                        && (operator.inputs() == 2 || operator.unary_left())
+                    {
+                        req_input = true;
+                    } else {
+                        req_input = false;
+                    }
+                    last_abs = false;
                 }
             }
         }

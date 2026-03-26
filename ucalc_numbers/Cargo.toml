@@ -22,7 +22,7 @@ matrix = ["ucalc_numbers_macros/matrix"]
 list = ["ucalc_numbers_macros/list"]
 
 [dependencies]
-rug = {version="1.28.1",optional=true, default-features=false, features=["complex","float","integer","rand","std"]}
+rug = {version="1.29.0",optional=true, default-features=false, features=["complex","float","integer","rand","std"]}
 fastnum = {version = "0.7.4",optional=true}
 lexical = {version = "7.0.5", default-features = false, features = ["radix", "parse-floats", "std", "write-floats"]}
 ucalc_numbers_macros={workspace = true}
