@@ -29,8 +29,10 @@ pub type F = f128;
 #[cfg(feature = "fastnum")]
 pub type F = fastnum::D1024;
 #[derive(Clone, Default, PartialEq, PartialOrd)]
+#[repr(transparent)]
 pub struct Integer(pub isize);
 #[derive(Clone, Default, PartialEq, PartialOrd)]
+#[repr(transparent)]
 pub struct Float(pub F);
 #[derive(Clone, Default, PartialEq)]
 pub struct Complex {

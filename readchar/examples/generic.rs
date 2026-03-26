@@ -20,9 +20,9 @@ fn main() {
                     let out = Command::new(&cmd).args(&args).arg(line).output().unwrap();
                     string.push_str(str::from_utf8(&out.stdout).unwrap().trim_end_matches("\n"));
                 }
+                ()
             },
             |_, _, _| Ok(Return::Finish),
-            None::<fn(&str) -> Vec<String>>,
         ) {
             Ok(Return::Finish) => {}
             Ok(Return::Cancel) => return,

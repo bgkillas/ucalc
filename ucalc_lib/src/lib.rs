@@ -14,7 +14,7 @@ mod polynomial_impls;
 mod tests;
 mod variable;
 pub use functions::Function;
-pub use functions_list::FUNCTION_LIST;
+pub use functions_list::{FUNCTION_LIST, get_help};
 pub use operators::Operators;
 pub use parse::{Token, Tokens};
 #[cfg(feature = "units")]

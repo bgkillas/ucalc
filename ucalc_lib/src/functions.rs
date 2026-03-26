@@ -370,12 +370,14 @@ impl Function {
                 let b = v.pop().unwrap();
                 self.compute_on_3(v.last_mut().unwrap().num_mut(), b.num(), c.num())
             }
+            #[cfg(feature = "complex")]
             4 => {
                 let d = v.pop().unwrap();
                 let c = v.pop().unwrap();
                 let b = v.pop().unwrap();
                 self.compute_on_4(v.last_mut().unwrap().num_mut(), b.num(), c.num(), d.num())
             }
+            #[cfg(feature = "complex")]
             5 => {
                 let e = v.pop().unwrap();
                 let d = v.pop().unwrap();
@@ -475,6 +477,7 @@ impl Function {
             _ => unreachable!(),
         }
     }
+    #[cfg(feature = "complex")]
     pub fn compute_on_4(self, a: &mut Number, b: Number, c: Number, d: Number) {
         match self {
             #[cfg(feature = "complex")]
@@ -487,6 +490,7 @@ impl Function {
             _ => unreachable!(),
         }
     }
+    #[cfg(feature = "complex")]
     pub fn compute_on_5(self, a: &mut Number, b: Number, c: Number, d: Number, e: Number) {
         match self {
             #[cfg(feature = "complex")]

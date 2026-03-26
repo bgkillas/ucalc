@@ -1,6 +1,8 @@
+mod colors;
 #[cfg(feature = "mimalloc")]
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+use crate::colors::{Colors, color_brackets};
 use readchar::crossterm::QueueableCommand;
 use readchar::crossterm::cursor::MoveTo;
 use readchar::crossterm::terminal::{Clear, ClearType};
@@ -8,9 +10,10 @@ use readchar::{ReadChar, Return};
 use std::env::args;
 use std::fmt::Write;
 use std::io::{BufRead, IsTerminal, stdin, stdout};
-use ucalc_lib::{FUNCTION_LIST, Functions, Number, Tokens, Variable, Variables};
+use ucalc_lib::{FUNCTION_LIST, Functions, Number, Tokens, Variable, Variables, get_help};
 use ucalc_numbers::FloatTrait;
 fn main() {
+    let colors = Colors::default();
     let mut vars = Variables::default();
     let mut funs = Functions::default();
     let mut infix = true;
@@ -48,7 +51,7 @@ fn main() {
         let mut string = String::with_capacity(64);
         let mut last = None;
         loop {
-            match readchar.read(
+            match readchar.read_with_complete(
                 &mut stdout,
                 &mut string,
                 |line, string| {
@@ -60,6 +63,7 @@ fn main() {
                         base_input,
                         base_output,
                         string,
+                        &colors,
                     )
                 },
                 |readchar, stdout, line| {
@@ -77,7 +81,7 @@ fn main() {
                         _ => Return::Finish,
                     })
                 },
-                Some(complete),
+                |l| complete(l, &colors),
             ) {
                 Ok(Return::Finish) => {
                     if let Some(n) = last.take() {
@@ -95,7 +99,7 @@ fn main() {
         }
     }
 }
-fn complete(mut line: &str) -> Vec<String> {
+fn complete(mut line: &str, colors: &Colors) -> Vec<(String, usize)> {
     if line.ends_with(',') {
         let mut bracket = 0;
         for (i, c) in line.char_indices().rev() {
@@ -125,11 +129,12 @@ fn complete(mut line: &str) -> Vec<String> {
     let mut ret = Vec::new();
     for w in FUNCTION_LIST {
         if w.starts_with(word) {
-            ret.push(w.to_string())
+            ret.push((color_brackets(w, colors).to_string(), w.len()))
         }
     }
     ret
 }
+#[allow(clippy::too_many_arguments)]
 fn process_line(
     line: &str,
     vars: &mut Variables,
@@ -138,10 +143,16 @@ fn process_line(
     base_input: u8,
     base_output: u8,
     str: &mut String,
+    colors: &Colors,
 ) -> Option<Number> {
     str.clear();
     match line {
         "" | "exit" | "clear" => None,
+        _ if line.starts_with("help") => {
+            let arg = line.split_once(' ').map(|(_, a)| a).unwrap_or("");
+            write!(str, "{}", color_brackets(get_help(arg), colors)).unwrap();
+            None
+        }
         _ => {
             match if infix {
                 Tokens::infix(line, vars, funs, &[], false, base_input)
@@ -191,7 +202,8 @@ fn run_line(
             //println!("{tokens:?}");
             //println!("{}", tokens.get_infix(vars, funs, &[]));
             //println!("{}", tokens.get_rpn(vars, funs, &[]));
-            let compute = tokens.compute(&[], funs, vars);
+            let compute = tmr(|| tokens.compute(&[], funs, vars));
+            //let compute = tokens.compute(&[], funs, vars);
             //println!("{}", compute.get_closest_fraction());
             println!("{}", compute.to_string_radix(*base_output));
         }
@@ -199,7 +211,8 @@ fn run_line(
         Err(e) => println!("{e:?}"),
     }
 }
-/*fn tmr<T, W>(fun: T) -> W
+#[allow(dead_code)]
+fn tmr<T, W>(fun: T) -> W
 where
     T: FnOnce() -> W,
 {
@@ -207,4 +220,4 @@ where
     let ret = fun();
     println!("{}", tmr.elapsed().as_nanos());
     ret
-}*/
+}

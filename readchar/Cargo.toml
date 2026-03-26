@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 homepage.workspace = true
-description.workspace = true
+description = "a readline implementation which prints output while you type"
 
 [dependencies]
 crossterm = {version = "0.29.0", default-features=false, features=["events", "windows", "bracketed-paste"]}

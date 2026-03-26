@@ -74,3 +74,11 @@ pub const FUNCTION_LIST: &[&str] = &[
     "numerical_integral(start,end(,x),f(x))",
     "numerical_differential(x_0,t_0,t_1(,x,t),f(x,t))",
 ];
+pub fn get_help(str: &str) -> &str {
+    match str {
+        "add" => "add(a,b), outputs the sum of a and b",
+        "" => "add",
+        _ => "unknown",
+    }
+    //TODO
+}

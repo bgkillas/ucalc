@@ -6,6 +6,7 @@ use crossterm::event::{
 use crossterm::style::{Color, ResetColor, SetForegroundColor};
 use crossterm::terminal::{Clear, ClearType};
 use crossterm::{ExecutableCommand, QueueableCommand, event, terminal};
+use std::fmt::Display;
 use std::io;
 use std::io::{Write, stdout};
 /// the ReadChar struct, see `read` for usage
@@ -247,7 +248,7 @@ impl ReadChar {
     }
     pub(crate) fn exit(&mut self, stdout: &mut impl Write) -> io::Result<()> {
         if self.cursor_row_max != self.cursor_row {
-            stdout.execute(MoveToNextLine(self.cursor_row_max - self.cursor_row))?;
+            stdout.queue(MoveToNextLine(self.cursor_row_max - self.cursor_row))?;
         }
         for _ in 0..=self.new_lines {
             writeln!(stdout)?;
@@ -267,19 +268,16 @@ impl ReadChar {
         stdout.queue(MoveTo(0, 0))?;
         Ok(())
     }
-    pub(crate) fn new_line<T>(
+    pub(crate) fn new_line<T: Write>(
         &mut self,
         stdout: &mut T,
         finish: impl FnOnce(&ReadChar, &mut T, &str) -> io::Result<Return>,
-    ) -> io::Result<Return>
-    where
-        T: Write,
-    {
+    ) -> io::Result<Return> {
         if !self.line.is_empty() {
             self.history.push(&self.line)?;
         }
         if self.cursor_row_max != self.cursor_row {
-            stdout.execute(MoveToNextLine(self.cursor_row_max - self.cursor_row))?;
+            stdout.queue(MoveToNextLine(self.cursor_row_max - self.cursor_row))?;
         }
         for _ in 0..=self.new_lines {
             writeln!(stdout)?;
@@ -542,22 +540,25 @@ impl ReadChar {
         stdout.flush()?;
         Ok(())
     }
-    pub(crate) fn complete(
+    pub(crate) fn complete<T: Display>(
         &mut self,
         stdout: &mut impl Write,
-        complete: impl FnOnce(&str) -> Vec<String>,
+        complete: impl FnOnce(&str) -> Vec<(T, usize)>,
     ) -> io::Result<()> {
         let list = complete(&self.line[..self.cursor as usize]);
         if !list.is_empty() {
-            stdout.queue(MoveToNextLine(self.cursor_row_max - self.cursor_row + 1))?;
+            if self.cursor_row_max != self.cursor_row {
+                stdout.queue(MoveToNextLine(self.cursor_row_max - self.cursor_row))?;
+            }
+            writeln!(stdout)?;
             stdout.queue(MoveToColumn(0))?;
             stdout.queue(Clear(ClearType::FromCursorDown))?;
-            let longest = list.iter().map(|s| s.len()).max().unwrap() + 4;
+            let longest = list.iter().map(|s| s.1).max().unwrap() + 4;
             self.new_lines = 1;
             let words = self.col / longest as u16;
             for (i, s) in list.iter().enumerate() {
-                write!(stdout, "{s}")?;
-                for _ in s.len()..longest {
+                write!(stdout, "{}", s.0)?;
+                for _ in s.1..longest {
                     write!(stdout, " ")?;
                 }
                 if i + 1 != list.len() && (i + 1) % words as usize == 0 {
@@ -574,18 +575,15 @@ impl ReadChar {
         }
         Ok(())
     }
-    pub(crate) fn event<T>(
+    pub(crate) fn event<T: Write, K: Display>(
         &mut self,
         stdout: &mut T,
         string: &mut String,
         run: impl FnOnce(&str, &mut String),
         finish: impl FnOnce(&ReadChar, &mut T, &str) -> io::Result<Return>,
-        complete: Option<impl FnOnce(&str) -> Vec<String>>,
+        complete: Option<impl FnOnce(&str) -> Vec<(K, usize)>>,
         event: Event,
-    ) -> io::Result<Return>
-    where
-        T: Write,
-    {
+    ) -> io::Result<Return> {
         match event {
             Event::Paste(s) => self.put_str(stdout, string, run, &s)?,
             Event::Resize(col, row) => self.resize(col, row, string),
@@ -693,17 +691,38 @@ impl ReadChar {
     ///   contents of the string buffer passed into it, expected to have no trailing newlines
     /// # Returns
     /// returns if the line has been completed or not by the enter key
-    pub fn read<T>(
+    pub fn read_with_complete<T: Write, K: Display>(
         &mut self,
         stdout: &mut T,
         string: &mut String,
         run: impl FnOnce(&str, &mut String),
         finish: impl FnOnce(&ReadChar, &mut T, &str) -> io::Result<Return>,
-        complete: Option<impl FnOnce(&str) -> Vec<String>>,
-    ) -> io::Result<Return>
-    where
-        T: Write,
-    {
-        self.event(stdout, string, run, finish, complete, event::read()?)
+        complete: impl FnOnce(&str) -> Vec<(K, usize)>,
+    ) -> io::Result<Return> {
+        self.event(stdout, string, run, finish, Some(complete), event::read()?)
+    }
+    /// reads the next user input and reacts accordingly
+    /// # Arguments
+    /// - `stdout` the output which you are writing to
+    /// - `string` your string buffer used in run
+    /// - `run` runs when the input line has changed contents, then prints
+    ///   contents of the string buffer passed into it, expected to have no trailing newlines
+    /// # Returns
+    /// returns if the line has been completed or not by the enter key
+    pub fn read<T: Write>(
+        &mut self,
+        stdout: &mut T,
+        string: &mut String,
+        run: impl FnOnce(&str, &mut String),
+        finish: impl FnOnce(&ReadChar, &mut T, &str) -> io::Result<Return>,
+    ) -> io::Result<Return> {
+        self.event(
+            stdout,
+            string,
+            run,
+            finish,
+            None::<fn(&str) -> Vec<(String, usize)>>,
+            event::read()?,
+        )
     }
 }
