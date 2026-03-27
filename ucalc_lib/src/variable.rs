@@ -1,5 +1,6 @@
 use crate::Number;
 use crate::parse::Tokens;
+use std::num::NonZeroU8;
 use std::ops::{Deref, DerefMut};
 use ucalc_numbers::Constant;
 #[derive(Debug, Clone, PartialEq)]
@@ -11,17 +12,17 @@ pub struct Variable {
 pub struct FunctionVar {
     pub name: Option<Box<str>>,
     pub tokens: Tokens,
-    pub inputs: u8,
+    pub inputs: NonZeroU8,
 }
 impl FunctionVar {
-    pub fn new(name: impl Into<Box<str>>, inputs: u8, tokens: Tokens) -> Self {
+    pub fn new(name: impl Into<Box<str>>, inputs: NonZeroU8, tokens: Tokens) -> Self {
         Self {
             name: Some(name.into()),
             inputs,
             tokens,
         }
     }
-    pub fn null(inputs: u8, tokens: Tokens) -> Self {
+    pub fn null(inputs: NonZeroU8, tokens: Tokens) -> Self {
         Self {
             name: None,
             inputs,
@@ -64,7 +65,7 @@ impl Functions {
             .position(|v| v.name.as_ref().is_some_and(|n| n.as_ref() == name))
             .map(|i| i as u16)
     }
-    pub fn add(&mut self, vars: &mut Variables, name: &str, inputs: u8) {
+    pub fn add(&mut self, vars: &mut Variables, name: &str, inputs: NonZeroU8) {
         vars.iter_mut().for_each(|v| {
             if v.name.as_ref().is_some_and(|n| n.as_ref() == name) {
                 v.name = None;

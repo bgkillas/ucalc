@@ -1,4 +1,4 @@
-use crate::functions::Inputs;
+use crate::functions::AtanInputs;
 use crate::{Function, Number};
 use ucalc_numbers::{FloatFunctions, FloatFunctionsMut, Pow, PowAssign};
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -54,7 +54,7 @@ impl Inverse {
             Self::Acosh => Function::Cosh,
             Self::Tanh => Function::Atanh,
             Self::Atanh => Function::Tanh,
-            Self::Tan => Function::Atan(Inputs::One),
+            Self::Tan => Function::Atan(AtanInputs::One),
             Self::Atan => Function::Tan,
             Self::Sqrt => Function::Sq,
             Self::Sq => Function::Sqrt,
@@ -134,7 +134,7 @@ impl From<Function> for Inverse {
             Function::Tanh => Self::Tanh,
             Function::Atanh => Self::Atanh,
             Function::Tan => Self::Tan,
-            Function::Atan(Inputs::One) => Self::Atan,
+            Function::Atan(AtanInputs::One) => Self::Atan,
             Function::Sqrt => Self::Sqrt,
             Function::Sq => Self::Sq,
             Function::Cbrt => Self::Cbrt,
@@ -162,7 +162,7 @@ impl From<Function> for Inverse {
             | Function::Erfc
             | Function::Abs
             | Function::Iter
-            | Function::Atan(Inputs::Two)
+            | Function::Atan(AtanInputs::Two)
             | Function::Ceil
             | Function::Floor
             | Function::Round
@@ -173,7 +173,9 @@ impl From<Function> for Inverse {
             | Function::Set
             | Function::Solve
             | Function::Custom(_)
-            | Function::Modify
+            | Function::Modify(_)
+            | Function::While(_)
+            | Function::Exprs(_)
             | Function::NumericalIntegral
             | Function::NumericalSolve
             | Function::NumericalDerivative

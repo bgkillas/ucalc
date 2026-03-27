@@ -407,7 +407,7 @@ impl Compute<'_> {
             let len = stack.len();
             match &self.tokens[i] {
                 Token::Function(operator) => {
-                    let inputs = operator.inputs() as usize;
+                    let inputs = operator.inputs().get() as usize;
                     operator.compute_poly(&mut stack[len - inputs..], &mut poly)?;
                     stack.drain(len + 1 - inputs..);
                 }
@@ -415,7 +415,7 @@ impl Compute<'_> {
                     stack.push(Token::Num(self.custom_vars[*index as usize].value.clone()))
                 }
                 Token::Fun(index) => {
-                    let inputs = self.funs[*index as usize].inputs as usize;
+                    let inputs = self.funs[*index as usize].inputs.get() as usize;
                     let end = fun_vars.len();
                     fun_vars.push(stack[len - inputs].num_ref().clone());
                     fun_vars.extend(stack.drain(len + 1 - inputs..).map(|n| n.num()));
@@ -439,9 +439,6 @@ impl Compute<'_> {
                 Token::Skip(to) => {
                     stack.push(Token::Skip(i + 1));
                     i += to;
-                }
-                Token::Pop => {
-                    stack.pop();
                 }
                 Token::Polynomial(_) => unreachable!(),
             }
@@ -480,7 +477,7 @@ impl Function {
                 }
             }
         } else if let Token::Num(_) = b[0] {
-            assert_eq!(self.inputs(), 2);
+            assert_eq!(self.inputs().get(), 2);
             self.compute_on_2(a.num_mut(), b[0].num_ref().clone())
         } else if let Token::Num(c) = a {
             *a = self.num_poly(c, mem::take(b[0].poly_mut()))?.into()

@@ -148,7 +148,7 @@ pub fn color_brackets<'a, 'b: 'a>(line: &'a str, colors: &'b Colors) -> impl Dis
                     }
                     let s = &line[i..i + l];
                     if let Ok(operator) = Operators::try_from(s)
-                        && (operator.inputs() == 2 || operator.unary_left())
+                        && (operator.inputs().get() == 2 || operator.unary_left())
                     {
                         req_input = true;
                     } else {

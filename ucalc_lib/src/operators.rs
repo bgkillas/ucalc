@@ -1,5 +1,6 @@
 use crate::functions::Function;
 use std::fmt::{Display, Formatter};
+use std::num::{NonZero, NonZeroU8};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Operators {
     Add,
@@ -127,8 +128,8 @@ impl TryFrom<&str> for Operators {
 }
 impl Operators {
     pub const MAX_INPUT: usize = Function::MAX_INPUT;
-    pub fn inputs(self) -> u8 {
-        match self {
+    pub fn inputs(self) -> NonZeroU8 {
+        NonZero::new(match self {
             Self::Mul
             | Self::Div
             | Self::Add
@@ -146,9 +147,10 @@ impl Operators {
             | Self::Or
             | Self::Tetration => 2,
             Self::Negate | Self::Factorial | Self::Not | Self::SubFactorial => 1,
-            Self::Function(fun) => fun.inputs(),
+            Self::Function(fun) => return fun.inputs(),
             Self::Bracket(_) => unreachable!(),
-        }
+        })
+        .unwrap()
     }
     pub fn unary_left(self) -> bool {
         match self {

@@ -1,8 +1,8 @@
 use crate::parse::{Token, Tokens, TokensRef};
 use crate::{Functions, Number, Variables};
-use std::array;
+use std::{array, mem};
 use ucalc_numbers::{Constant, Float, FloatTrait, RealTrait};
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub(crate) struct Compute<'a> {
     pub(crate) tokens: TokensRef<'a>,
     pub(crate) vars: &'a [Number],
@@ -40,7 +40,7 @@ impl Tokens {
         Compute::new(TokensRef(self), vars, funs, custom_vars, offset)
             .compute_buffer_with(fun_vars, stack)
     }
-    pub(crate) fn get_skip<'a, const N: usize, const K: usize>(
+    pub(crate) fn get_skip_mut<'a, const N: usize, const K: usize>(
         &mut self,
         tokens: TokensRef<'a>,
     ) -> (&mut Number, [Number; K], [TokensRef<'a>; N]) {
@@ -70,19 +70,41 @@ impl Tokens {
         }
         arr
     }
-    pub(crate) fn get_skip_tokens_ref<'a, const N: usize>(
-        &self,
+    pub(crate) fn get_skip_tokens_keep_one<'a, const N: usize>(
+        &mut self,
         tokens: TokensRef<'a>,
     ) -> [TokensRef<'a>; N] {
         let len = tokens.len();
         let mut t = len - 1;
         let mut arr = array::from_fn(|_| TokensRef(&[]));
-        for i in 0..N {
-            let back = self[self.len() - (i + 1)].skip();
+        for i in 0..N - 1 {
+            let back = self.pop().unwrap().skip();
             let ret = TokensRef(&tokens.0[back..t]);
             t = back.saturating_sub(1);
             arr[N - (i + 1)] = ret
         }
+        let back = self[self.len() - 1].skip();
+        let ret = TokensRef(&tokens.0[back..t]);
+        arr[0] = ret;
+        arr
+    }
+    pub(crate) fn get_skip_tokens_keep_one_vec<'a>(
+        &mut self,
+        tokens: TokensRef<'a>,
+        n: usize,
+    ) -> Vec<TokensRef<'a>> {
+        let len = tokens.len();
+        let mut t = len - 1;
+        let mut arr = vec![TokensRef(&[]); n];
+        for i in 0..n - 1 {
+            let back = self.pop().unwrap().skip();
+            let ret = TokensRef(&tokens.0[back..t]);
+            t = back.saturating_sub(1);
+            arr[n - (i + 1)] = ret
+        }
+        let back = self[self.len() - 1].skip();
+        let ret = TokensRef(&tokens.0[back..t]);
+        arr[0] = ret;
         arr
     }
     #[allow(clippy::too_many_arguments)]
@@ -92,8 +114,9 @@ impl Tokens {
         fun_vars: &mut Vec<Number>,
         fun: impl FnOnce(&mut dyn Iterator<Item = Number>) -> Number,
     ) {
-        let (start, [end], [tokens]) = self.get_skip(compute.tokens);
-        let start = start.clone().to_real().into_isize();
+        let (start, [end], [tokens]) = self.get_skip_mut(compute.tokens);
+        let start = mem::take(start);
+        let start = start.to_real().into_isize();
         let end = end.to_real().into_isize();
         fun_vars.push(Number::from(start));
         let mut iter = (start..=end).map(|_| {
@@ -145,7 +168,7 @@ impl<'a> Compute<'a> {
             let len = stack.len();
             match &self.tokens[i] {
                 Token::Function(operator) => {
-                    let inputs = operator.inputs() as usize;
+                    let inputs = operator.inputs();
                     if operator.has_inner_fn() {
                         operator.compute_var(
                             self.tokens(TokensRef(&self.tokens[..=i])),
@@ -160,13 +183,13 @@ impl<'a> Compute<'a> {
                                 false
                             }
                         }) {
-                            Some(self.tokens[len - inputs].num_ref())
+                            Some(self.tokens[len - inputs.get() as usize].num_ref())
                         } else {
                             None
                         };
                         operator.compute(stack, inputs);
                         if let Some(b) = chain {
-                            let a = stack[len - inputs].num_mut();
+                            let a = stack[len - inputs.get() as usize].num_mut();
                             *a = if a.is_zero() {
                                 Number::from(Constant::Nan)
                             } else {
@@ -181,7 +204,7 @@ impl<'a> Compute<'a> {
                     stack.push(Token::Num(self.custom_vars[*index as usize].value.clone()))
                 }
                 Token::Fun(index) => {
-                    let inputs = self.funs[*index as usize].inputs as usize;
+                    let inputs = self.funs[*index as usize].inputs.get() as usize;
                     let end = fun_vars.len();
                     fun_vars.push(stack[len - inputs].num_ref().clone());
                     fun_vars.extend(stack.drain(len + 1 - inputs..).map(|n| n.num()));
@@ -205,9 +228,6 @@ impl<'a> Compute<'a> {
                 Token::Skip(to) => {
                     stack.push(Token::Skip(i + 1));
                     i += to;
-                }
-                Token::Pop => {
-                    stack.pop();
                 }
                 Token::Num(n) => stack.push(Token::Num(n.clone())),
                 Token::Polynomial(_) => unreachable!(),

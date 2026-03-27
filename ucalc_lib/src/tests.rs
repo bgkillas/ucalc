@@ -1,10 +1,11 @@
-use crate::functions::{Function, Inputs};
+use crate::functions::{AtanInputs, Function, ModifyInputs};
 use crate::operators::Operators;
 use crate::parse::ParseError;
 use crate::parse::{Token, Tokens};
 use crate::polynomial::Poly;
 use crate::variable::{Functions, Variables};
 use crate::{FUNCTION_LIST, FunctionVar, Number, Variable, get_help};
+use std::num::NonZero;
 use ucalc_numbers::*;
 macro_rules! assert_approx_eq {
     ($a:expr, $b:expr) => {
@@ -341,13 +342,13 @@ fn test_inverses() {
         Function::Atanh,
         Function::Tanh,
         Function::Tan,
-        Function::Atan(Inputs::One),
+        Function::Atan(AtanInputs::One),
         Function::Sqrt,
         Function::Sq,
         Function::Cbrt,
         Function::Cb,
     ] {
-        match f.inputs() {
+        match f.inputs().get() {
             1 => {
                 assert_approx_correct!(
                     infix(&format!("{f}(solve(x,{f}(x)-0.5))")),
@@ -972,7 +973,7 @@ fn parse_atan() {
     assert_correct!(
         infix("atan(1,1)"),
         rpn("1 1 atan2"),
-        vec![num(1), num(1), Function::Atan(Inputs::Two).into()],
+        vec![num(1), num(1), Function::Atan(AtanInputs::Two).into()],
         res(Constant::Pi) / Float::from(4)
     );
 }
@@ -981,7 +982,7 @@ fn parse_arctan() {
     assert_correct!(
         infix("atan(1)"),
         rpn("1 atan1"),
-        vec![num(1), Function::Atan(Inputs::One).into()],
+        vec![num(1), Function::Atan(AtanInputs::One).into()],
         res(Constant::Pi) / Float::from(4)
     );
 }
@@ -1595,7 +1596,7 @@ fn test_overwrite_var() {
     let vars3 = Variables(vec![Variable::null(res(4))]);
     let funs3 = Functions(vec![FunctionVar::new(
         "n",
-        1,
+        NonZero::new(1).unwrap(),
         Tokens(vec![
             num(2),
             Token::InnerVar(0).into(),
@@ -1605,7 +1606,7 @@ fn test_overwrite_var() {
     let vars4 = Variables(vec![Variable::null(res(4))]);
     let funs4 = Functions(vec![FunctionVar::new(
         "n",
-        1,
+        NonZero::new(1).unwrap(),
         Tokens(vec![
             Token::InnerVar(0).into(),
             num(2),
@@ -1614,7 +1615,7 @@ fn test_overwrite_var() {
     )]);
     let vars5 = Variables(vec![Variable::null(res(4)), Variable::new("n", res(8))]);
     let funs5 = Functions(vec![FunctionVar::null(
-        1,
+        NonZero::new(1).unwrap(),
         Tokens(vec![
             Token::InnerVar(0).into(),
             num(2),
@@ -1776,7 +1777,7 @@ macro_rules! assert_fun {
 fn test_recursion() {
     let mut funs = Functions(vec![FunctionVar::new(
         "fact",
-        1,
+        NonZero::new(1).unwrap(),
         Tokens(vec![
             Token::InnerVar(0),
             num(0),
@@ -1830,7 +1831,7 @@ fn test_recursion() {
 fn test_inner_functions() {
     let f1 = FunctionVar::new(
         "f",
-        2,
+        NonZero::new(2).unwrap(),
         Tokens(vec![
             Token::InnerVar(0),
             Token::InnerVar(1),
@@ -1839,7 +1840,7 @@ fn test_inner_functions() {
     );
     let f2 = FunctionVar::new(
         "g",
-        2,
+        NonZero::new(2).unwrap(),
         Tokens(vec![
             Token::InnerVar(0),
             Token::InnerVar(1),
@@ -1951,7 +1952,7 @@ fn test_inner_functions() {
 fn test_composed_functions() {
     let f1 = FunctionVar::new(
         "f",
-        2,
+        NonZero::new(2).unwrap(),
         Tokens(vec![
             Token::InnerVar(0),
             Token::InnerVar(1),
@@ -1960,7 +1961,7 @@ fn test_composed_functions() {
     );
     let f2 = FunctionVar::new(
         "g",
-        2,
+        NonZero::new(2).unwrap(),
         Tokens(vec![
             Token::InnerVar(0),
             Token::InnerVar(1),
@@ -2024,7 +2025,7 @@ fn test_composed_functions() {
 fn test_custom_functions() {
     let mut funs = Functions(vec![FunctionVar::new(
         "f",
-        2,
+        NonZero::new(2).unwrap(),
         Tokens(vec![
             Token::InnerVar(0),
             Token::InnerVar(1),
@@ -2289,7 +2290,7 @@ fn test_inner_fn() {
 fn test_modify() {
     assert_correct!(
         infix("set(2,x,modify(3,x,x))"),
-        rpn("2 x 3 x x modify set"),
+        rpn("2 x 3 x x modify3 set"),
         vec![
             num(2),
             Token::Skip(6),
@@ -2298,14 +2299,14 @@ fn test_modify() {
             Token::InnerVar(0),
             Token::Skip(1),
             Token::InnerVar(0),
-            Function::Modify.into(),
+            Function::Modify(ModifyInputs::Three).into(),
             Function::Set.into()
         ],
         res(3)
     );
     assert_correct!(
         infix("set(2,modify(3,x,x))"),
-        rpn("2 x 3 x x modify set"),
+        rpn("2 x 3 x x modify3 set"),
         vec![
             num(2),
             Token::Skip(6),
@@ -2314,10 +2315,38 @@ fn test_modify() {
             Token::InnerVar(0),
             Token::Skip(1),
             Token::InnerVar(0),
-            Function::Modify.into(),
+            Function::Modify(ModifyInputs::Three).into(),
             Function::Set.into()
         ],
         res(3)
+    );
+    assert_correct!(
+        infix("set(2,x,modify(3,x))"),
+        rpn("2 x 3 x modify set"),
+        vec![
+            num(2),
+            Token::Skip(4),
+            num(3),
+            Token::Skip(1),
+            Token::InnerVar(0),
+            Function::Modify(ModifyInputs::Two).into(),
+            Function::Set.into()
+        ],
+        res(0)
+    );
+    assert_correct!(
+        infix("set(2,modify(3,x))"),
+        rpn("2 x 3 x modify set"),
+        vec![
+            num(2),
+            Token::Skip(4),
+            num(3),
+            Token::Skip(1),
+            Token::InnerVar(0),
+            Function::Modify(ModifyInputs::Two).into(),
+            Function::Set.into()
+        ],
+        res(0)
     );
 }
 #[test]
@@ -2818,8 +2847,8 @@ fn function_exists() {
         Function::Atanh,
         Function::Ln,
         Function::Exp,
-        Function::Atan(Inputs::One),
-        Function::Atan(Inputs::Two),
+        Function::Atan(AtanInputs::One),
+        Function::Atan(AtanInputs::Two),
         Function::Max,
         Function::Min,
         Function::Quadratic,
@@ -2855,7 +2884,11 @@ fn function_exists() {
         Function::If,
         Function::Fold,
         Function::Set,
-        Function::Modify,
+        Function::Modify(ModifyInputs::Two),
+        Function::Modify(ModifyInputs::Three),
+        Function::While(ModifyInputs::Two),
+        Function::While(ModifyInputs::Three),
+        Function::Exprs(NonZero::new(1).unwrap()),
         Function::Solve,
         Function::NumericalDerivative,
         Function::NumericalDifferential,
