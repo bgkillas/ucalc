@@ -362,34 +362,32 @@ impl Function {
         match inputs {
             1 => self.compute_on_1(v.last_mut().unwrap().num_mut()),
             2 => {
-                let b = v.pop().unwrap();
-                self.compute_on_2(v.last_mut().unwrap().num_mut(), b.num())
+                let b = v.pop().unwrap().num();
+                let a = v.last_mut().unwrap().num_mut();
+                self.compute_on_2(a, b)
             }
             3 => {
-                let c = v.pop().unwrap();
-                let b = v.pop().unwrap();
-                self.compute_on_3(v.last_mut().unwrap().num_mut(), b.num(), c.num())
+                let c = v.pop().unwrap().num();
+                let b = v.pop().unwrap().num();
+                let a = v.last_mut().unwrap().num_mut();
+                self.compute_on_3(a, b, c)
             }
             #[cfg(feature = "complex")]
             4 => {
-                let d = v.pop().unwrap();
-                let c = v.pop().unwrap();
-                let b = v.pop().unwrap();
-                self.compute_on_4(v.last_mut().unwrap().num_mut(), b.num(), c.num(), d.num())
+                let d = v.pop().unwrap().num();
+                let c = v.pop().unwrap().num();
+                let b = v.pop().unwrap().num();
+                let a = v.last_mut().unwrap().num_mut();
+                self.compute_on_4(a, b, c, d)
             }
             #[cfg(feature = "complex")]
             5 => {
-                let e = v.pop().unwrap();
-                let d = v.pop().unwrap();
-                let c = v.pop().unwrap();
-                let b = v.pop().unwrap();
-                self.compute_on_5(
-                    v.last_mut().unwrap().num_mut(),
-                    b.num(),
-                    c.num(),
-                    d.num(),
-                    e.num(),
-                )
+                let e = v.pop().unwrap().num();
+                let d = v.pop().unwrap().num();
+                let c = v.pop().unwrap().num();
+                let b = v.pop().unwrap().num();
+                let a = v.last_mut().unwrap().num_mut();
+                self.compute_on_5(a, b, c, d, e)
             }
             _ => unreachable!(),
         }
@@ -428,7 +426,7 @@ impl Function {
             Self::Atanh => a.atanh_mut(),
             Self::Cbrt => a.cbrt_mut(),
             Self::Sq => *a *= a.clone(),
-            Self::Cb => *a = a.clone() * a.deref() * a.deref(),
+            Self::Cb => *a *= a.clone() * a.deref(),
             Self::Atan(Inputs::One) => a.atan_mut(),
             Self::Ceil => a.ceil_mut(),
             Self::Floor => a.floor_mut(),
@@ -450,7 +448,7 @@ impl Function {
             Self::Div => *a /= b,
             Self::Rem => *a %= b,
             Self::Pow => a.pow_assign(b),
-            Self::Root => a.pow_assign(b.clone().recip()),
+            Self::Root => a.pow_assign(b.recip()),
             Self::Tetration => a.tetration_mut(&b),
             Self::Equal => *a = Number::from(a == &b),
             Self::NotEqual => *a = Number::from(a != &b),
@@ -469,9 +467,7 @@ impl Function {
     pub fn compute_on_3(self, a: &mut Number, b: Number, c: Number) {
         match self {
             Self::Quadratic => {
-                let mut poly = PolyRef(&[c.clone(), b.clone(), a.clone()])
-                    .quadratic()
-                    .into_iter();
+                let mut poly = PolyRef(&[c, b, a.clone()]).quadratic().into_iter();
                 *a = poly.next().unwrap()
             }
             _ => unreachable!(),
@@ -482,9 +478,7 @@ impl Function {
         match self {
             #[cfg(feature = "complex")]
             Self::Cubic => {
-                let mut poly = PolyRef(&[d.clone(), c.clone(), b.clone(), a.clone()])
-                    .cubic()
-                    .into_iter();
+                let mut poly = PolyRef(&[d, c, b, a.clone()]).cubic().into_iter();
                 *a = poly.next().unwrap()
             }
             _ => unreachable!(),
@@ -495,9 +489,7 @@ impl Function {
         match self {
             #[cfg(feature = "complex")]
             Self::Quartic => {
-                let mut poly = PolyRef(&[e.clone(), d.clone(), c.clone(), b.clone(), a.clone()])
-                    .quartic()
-                    .into_iter();
+                let mut poly = PolyRef(&[e, d, c, b, a.clone()]).quartic().into_iter();
                 *a = poly.next().unwrap()
             }
             _ => unreachable!(),
@@ -590,123 +582,116 @@ impl Function {
         stack: &mut Tokens,
         fun_vars: &mut Vec<Number>,
     ) {
-        let len = stack.len();
         match self {
-            Self::Sum => stack.range(compute, fun_vars, |iter| iter.sum::<Number>().into()),
-            Self::Prod => stack.range(compute, fun_vars, |iter| iter.product::<Number>().into()),
+            Self::Sum => stack.range(compute, fun_vars, |iter| iter.sum::<Number>()),
+            Self::Prod => stack.range(compute, fun_vars, |iter| iter.product::<Number>()),
             Self::Fold => {
-                let ([start, end, value], [tokens]) = stack.get_skip(compute.tokens);
-                let start = start.num_ref().real().clone().into_isize();
-                let end = end.num_ref().real().clone().into_isize();
-                fun_vars.push(value.num_ref().clone());
+                let (start, [end, value], [tokens]) = stack.get_skip(compute.tokens);
+                let start = start.clone().to_real().into_isize();
+                let end = end.to_real().into_isize();
+                fun_vars.push(value);
                 fun_vars.push(Number::from(start));
                 let nl = fun_vars.len();
                 (start..=end).for_each(|_| {
                     fun_vars[nl - 2] = compute.tokens(tokens).compute_buffer_with(fun_vars, stack);
                     *fun_vars.last_mut().unwrap() += Float::from(1);
                 });
-                stack.drain(len - 3..);
                 fun_vars.pop().unwrap();
-                *stack[len - 4].num_mut() = fun_vars.pop().unwrap();
+                *stack.last_mut().unwrap().num_mut() = fun_vars.pop().unwrap();
             }
             Self::Set => {
-                let ([value], [tokens]) = stack.get_skip(compute.tokens);
-                fun_vars.push(value.num_ref().clone());
-                *stack[len - 2].num_mut() =
+                let (value, [], [tokens]) = stack.get_skip(compute.tokens);
+                fun_vars.push(value.clone());
+                *stack.last_mut().unwrap().num_mut() =
                     compute.tokens(tokens).compute_buffer_with(fun_vars, stack);
-                stack.drain(len - 1..);
                 fun_vars.pop().unwrap();
             }
             Self::Modify => {
                 //TODO can probably do modify in a nicer way
-                let ([value], [var, tokens]) = stack.get_skip(compute.tokens);
-                fun_vars[var[0].inner_var_ref() as usize] = value.num_ref().clone();
-                *stack[len - 3].num_mut() =
+                let (value, [], [var, tokens]) = stack.get_skip(compute.tokens);
+                fun_vars[var[0].inner_var_ref() as usize] = value.clone();
+                *stack.last_mut().unwrap().num_mut() =
                     compute.tokens(tokens).compute_buffer_with(fun_vars, stack);
-                stack.drain(len - 2..);
             }
             Self::Solve => {
-                let [tokens] = stack.get_skip_tokens(compute.tokens);
-                stack[len - 1] = compute
+                let [tokens] = stack.get_skip_tokens_ref(compute.tokens);
+                *stack.last_mut().unwrap() = compute
                     .tokens(tokens)
                     .get_inverse(fun_vars, stack)
                     .unwrap_or(Number::from(Constant::Nan))
                     .into();
-                stack.drain(len..);
             }
             Self::Iter => {
-                let ([first, steps], [tokens]) = stack.get_skip(compute.tokens);
-                fun_vars.push(first.num_ref().clone());
-                let steps = steps.num_ref().real().clone().into_isize();
+                let (first, [steps], [tokens]) = stack.get_skip(compute.tokens);
+                fun_vars.push(first.clone());
+                let steps = steps.to_real().into_isize();
                 (0..steps).for_each(|_| {
                     *fun_vars.last_mut().unwrap() =
                         compute.tokens(tokens).compute_buffer_with(fun_vars, stack);
                 });
-                stack.drain(len - 2..);
-                *stack[len - 3].num_mut() = fun_vars.pop().unwrap();
+                *stack.last_mut().unwrap().num_mut() = fun_vars.pop().unwrap();
             }
             Self::If => {
-                let ([condition], [ifthen, ifelse]) = stack.get_skip(compute.tokens);
-                let condition = condition.num_ref();
+                let (condition, [], [ifthen, ifelse]) = stack.get_skip(compute.tokens);
                 let tokens = if condition.is_zero() { ifelse } else { ifthen };
-                *stack[len - 3].num_mut() =
+                *stack.last_mut().unwrap().num_mut() =
                     stacker::maybe_grow(2usize.pow(16), 2usize.pow(20), || {
                         compute.tokens(tokens).compute_buffer_with(fun_vars, stack)
                     });
-                stack.drain(len - 2..);
             }
             Self::NumericalDerivative => {
-                let ([point], [tokens]) = stack.get_skip(compute.tokens);
+                let (point, [], [tokens]) = stack.get_skip(compute.tokens);
+                let point = point.clone();
                 fun_vars.push(Number::default());
-                *stack[len - 2].num_mut() = compute.tokens(tokens).numerical_derivative(
+                *stack.last_mut().unwrap().num_mut() = compute.tokens(tokens).numerical_derivative(
                     fun_vars,
                     stack,
-                    point.num_ref().clone(),
+                    point,
                     fun_vars.len() - 1,
                 );
-                stack.drain(len - 1..);
                 fun_vars.pop().unwrap();
             }
             Self::NumericalIntegral => {
-                let ([start, end], [tokens]) = stack.get_skip(compute.tokens);
+                let (start, [end], [tokens]) = stack.get_skip(compute.tokens);
+                let start = start.clone();
                 fun_vars.push(Number::default());
-                *stack[len - 3].num_mut() = compute.tokens(tokens).numerical_integral(
+                *stack.last_mut().unwrap().num_mut() = compute.tokens(tokens).numerical_integral(
                     fun_vars,
                     stack,
-                    start.num_ref().clone(),
-                    end.num_ref().clone(),
+                    start,
+                    end,
                     fun_vars.len() - 1,
                 );
-                stack.drain(len - 2..);
                 fun_vars.pop().unwrap();
             }
             Self::NumericalDifferential => {
-                let ([x_0, t_0, t_1], [tokens]) = stack.get_skip(compute.tokens);
+                let (x_0, [t_0, t_1], [tokens]) = stack.get_skip(compute.tokens);
+                let x_0 = x_0.clone();
                 fun_vars.push(Number::default());
                 fun_vars.push(Number::default());
-                *stack[len - 3].num_mut() = compute.tokens(tokens).numerical_differential(
-                    fun_vars,
-                    stack,
-                    x_0.num_ref().clone(),
-                    t_0.num_ref().clone(),
-                    t_1.num_ref().clone(),
-                    fun_vars.len() - 2,
-                    fun_vars.len() - 1,
-                );
-                stack.drain(len - 2..);
+                *stack.last_mut().unwrap().num_mut() =
+                    compute.tokens(tokens).numerical_differential(
+                        fun_vars,
+                        stack,
+                        x_0,
+                        t_0,
+                        t_1,
+                        fun_vars.len() - 2,
+                        fun_vars.len() - 1,
+                    );
                 fun_vars.pop().unwrap();
                 fun_vars.pop().unwrap();
             }
             Self::NumericalSolve => {
-                let ([point], [tokens]) = stack.get_skip(compute.tokens);
+                let (point, [], [tokens]) = stack.get_skip(compute.tokens);
+                let point = point.clone();
                 fun_vars.push(Number::default());
-                *stack[len - 2].num_mut() = compute.tokens(tokens).numerical_solve(
+                *stack.last_mut().unwrap().num_mut() = compute.tokens(tokens).numerical_solve(
                     fun_vars,
                     stack,
-                    point.num_ref().clone(),
+                    point,
                     fun_vars.len() - 1,
                 );
-                stack.drain(len - 1..);
                 fun_vars.pop().unwrap();
             }
             _ => {}

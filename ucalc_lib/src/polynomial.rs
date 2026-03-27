@@ -437,10 +437,11 @@ impl Compute<'_> {
                     stack.push(Token::Num(self.vars[*index as usize].clone()))
                 }
                 Token::Skip(to) => {
-                    let back = stack.len();
-                    stack.extend_from_slice(&self.tokens[i + 1..=i + to]);
-                    stack.push(Token::Skip(back));
+                    stack.push(Token::Skip(i + 1));
                     i += to;
+                }
+                Token::Pop => {
+                    stack.pop();
                 }
                 Token::Polynomial(_) => unreachable!(),
             }
@@ -480,7 +481,7 @@ impl Function {
             }
         } else if let Token::Num(_) = b[0] {
             assert_eq!(self.inputs(), 2);
-            self.compute_on_2(a.num_mut(), b[0].clone().num())
+            self.compute_on_2(a.num_mut(), b[0].num_ref().clone())
         } else if let Token::Num(c) = a {
             *a = self.num_poly(c, mem::take(b[0].poly_mut()))?.into()
         }

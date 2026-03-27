@@ -37,6 +37,7 @@ pub enum Token {
     Fun(u16),
     Var(u16),
     Skip(usize),
+    Pop,
     Function(Function),
 }
 impl Display for Token {
@@ -97,6 +98,9 @@ impl Token {
             Token::Skip(_) => {
                 unreachable!()
             }
+            Token::Pop => {
+                unreachable!()
+            }
             Token::Function(f) => {
                 if let Ok(f) = Operators::try_from(*f) {
                     (f == o && f.left_associative()) || f.precedence() > o.precedence()
@@ -122,6 +126,7 @@ impl<'a> TokensRef<'a> {
             Token::Fun(i) => write!(fmt, "{}", funs[*i as usize].name.as_ref().unwrap()),
             Token::Var(i) => write!(fmt, "{}", vars[*i as usize].name.as_ref().unwrap()),
             Token::Skip(_) => Ok(()),
+            Token::Pop => todo!(),
             Token::Function(f) => {
                 let l = self.len() - 1;
                 let last = TokensRef(&self[..l]).get_last(funs);
@@ -192,6 +197,7 @@ impl<'a> TokensRef<'a> {
                         }
                     }
                     Token::Skip(_) => first = true,
+                    Token::Pop => todo!(),
                 }
             }
             Ok(())

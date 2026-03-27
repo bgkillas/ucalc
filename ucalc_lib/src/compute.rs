@@ -40,19 +40,37 @@ impl Tokens {
         Compute::new(TokensRef(self), vars, funs, custom_vars, offset)
             .compute_buffer_with(fun_vars, stack)
     }
-    pub(crate) fn get_skip<'a, 'b, const N: usize, const K: usize>(
-        &'b self,
+    pub(crate) fn get_skip<'a, const N: usize, const K: usize>(
+        &mut self,
         tokens: TokensRef<'a>,
-    ) -> ([&'b Token; K], [TokensRef<'a>; N]) {
+    ) -> (&mut Number, [Number; K], [TokensRef<'a>; N]) {
         let tokens = self.get_skip_tokens(tokens);
-        let args = self.get_skip_var(N);
-        (args, tokens)
+        let args = self.get_skip_var();
+        (self.last_mut().unwrap().num_mut(), args, tokens)
     }
-    pub fn get_skip_var<const N: usize>(&self, end: usize) -> [&Token; N] {
-        let end = self.len() - (end + 1);
-        array::from_fn(|i| &self[end - (N - (i + 1))])
+    pub fn get_skip_var<const N: usize>(&mut self) -> [Number; N] {
+        let mut arr = array::from_fn(|_| Number::default());
+        for i in 0..N {
+            arr[N - (i + 1)] = self.pop().unwrap().num();
+        }
+        arr
     }
     pub(crate) fn get_skip_tokens<'a, const N: usize>(
+        &mut self,
+        tokens: TokensRef<'a>,
+    ) -> [TokensRef<'a>; N] {
+        let len = tokens.len();
+        let mut t = len - 1;
+        let mut arr = array::from_fn(|_| TokensRef(&[]));
+        for i in 0..N {
+            let back = self.pop().unwrap().skip();
+            let ret = TokensRef(&tokens.0[back..t]);
+            t = back.saturating_sub(1);
+            arr[N - (i + 1)] = ret
+        }
+        arr
+    }
+    pub(crate) fn get_skip_tokens_ref<'a, const N: usize>(
         &self,
         tokens: TokensRef<'a>,
     ) -> [TokensRef<'a>; N] {
@@ -72,21 +90,19 @@ impl Tokens {
         &mut self,
         compute: Compute,
         fun_vars: &mut Vec<Number>,
-        fun: impl FnOnce(&mut dyn Iterator<Item = Number>) -> Token,
+        fun: impl FnOnce(&mut dyn Iterator<Item = Number>) -> Number,
     ) {
-        let len = self.len();
-        let ([start, end], [tokens]) = self.get_skip(compute.tokens);
-        let start = start.num_ref().real().clone().into_isize();
-        let end = end.num_ref().real().clone().into_isize();
+        let (start, [end], [tokens]) = self.get_skip(compute.tokens);
+        let start = start.clone().to_real().into_isize();
+        let end = end.to_real().into_isize();
         fun_vars.push(Number::from(start));
         let mut iter = (start..=end).map(|_| {
             let ret = compute.tokens(tokens).compute_buffer_with(fun_vars, self);
             *fun_vars.last_mut().unwrap() += Float::from(1);
             ret
         });
-        self[len - 3] = fun(&mut iter);
+        *self.last_mut().unwrap().num_mut() = fun(&mut iter);
         fun_vars.pop().unwrap();
-        self.drain(len - 2..);
     }
 }
 impl<'a> Compute<'a> {
@@ -189,6 +205,9 @@ impl<'a> Compute<'a> {
                 Token::Skip(to) => {
                     stack.push(Token::Skip(i + 1));
                     i += to;
+                }
+                Token::Pop => {
+                    stack.pop();
                 }
                 Token::Num(n) => stack.push(Token::Num(n.clone())),
                 Token::Polynomial(_) => unreachable!(),
