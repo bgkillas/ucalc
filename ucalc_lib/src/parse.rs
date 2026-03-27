@@ -720,11 +720,11 @@ impl Tokens {
                     }
                     let mut inputs = fn_inputs.pop().unwrap();
                     fun.set_inputs(NonZero::new(inputs).unwrap());
-                    if fun.inputs().get() + 1 - fun.inner_vars() < inputs {
+                    if fun.inputs().get() + 1 < inputs + fun.inner_vars() {
                         let last = TokensRef(self).get_last(funs);
                         let mut t = last;
                         for _ in fun.inputs().get()..inputs {
-                            let last = TokensRef(&self[0..t]).get_last(funs);
+                            let last = TokensRef(&self[..t]).get_last(funs);
                             if t - 1 == last && matches!(self[last], Token::InnerVar(_)) {
                                 self.remove(last);
                             } else {
@@ -750,7 +750,7 @@ impl Tokens {
     pub fn compact_args(&mut self, fun: Function, inner_vars: &mut Vec<&str>, funs: &Functions) {
         let mut t = self.len();
         for _ in 0..fun.compact() {
-            let last = TokensRef(&self[0..t]).get_last(funs);
+            let last = TokensRef(&self[..t]).get_last(funs);
             self.insert(last, Token::Skip(t - last));
             t = last;
         }
@@ -771,6 +771,9 @@ impl<'a> TokensRef<'a> {
                 Token::Skip(_) => inputs += 1,
                 _ => {}
             }
+        }
+        if end != 0 && matches!(self[end - 1], Token::Skip(_)) {
+            end -= 1;
         }
         end
     }
