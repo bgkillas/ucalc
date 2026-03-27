@@ -4,7 +4,7 @@ use crate::parse::ParseError;
 use crate::parse::{Token, Tokens};
 use crate::polynomial::Poly;
 use crate::variable::{Functions, Variables};
-use crate::{FUNCTION_LIST, FunctionVar, Number, Variable};
+use crate::{FUNCTION_LIST, FunctionVar, Number, Variable, get_help};
 use ucalc_numbers::*;
 macro_rules! assert_approx_eq {
     ($a:expr, $b:expr) => {
@@ -2784,13 +2784,95 @@ fn test_err() {
 }
 #[test]
 fn function_exists() {
-    for f in [Function::Add] {
-        assert_eq!(Function::try_from(f.to_string().as_str()).unwrap(), f);
+    for f in [
+        Function::Add,
+        Function::Sub,
+        Function::Mul,
+        Function::Div,
+        Function::Pow,
+        Function::Tetration,
+        Function::Root,
+        Function::Rem,
+        Function::Negate,
+        Function::Factorial,
+        Function::SubFactorial,
+        Function::Equal,
+        Function::NotEqual,
+        Function::Greater,
+        Function::Less,
+        Function::GreaterEqual,
+        Function::LessEqual,
+        Function::And,
+        Function::Or,
+        Function::Not,
+        Function::Sin,
+        Function::Asin,
+        Function::Cos,
+        Function::Acos,
+        Function::Tan,
+        Function::Sinh,
+        Function::Asinh,
+        Function::Cosh,
+        Function::Acosh,
+        Function::Tanh,
+        Function::Atanh,
+        Function::Ln,
+        Function::Exp,
+        Function::Atan(Inputs::One),
+        Function::Atan(Inputs::Two),
+        Function::Max,
+        Function::Min,
+        Function::Quadratic,
+        #[cfg(feature = "complex")]
+        Function::Cubic,
+        #[cfg(feature = "complex")]
+        Function::Quartic,
+        Function::Sqrt,
+        Function::Cbrt,
+        Function::Sq,
+        Function::Cb,
+        Function::Sum,
+        Function::Prod,
+        Function::Gamma,
+        Function::Erf,
+        Function::Erfc,
+        Function::Abs,
+        #[cfg(feature = "complex")]
+        Function::Arg,
+        Function::Recip,
+        #[cfg(feature = "complex")]
+        Function::Conj,
+        Function::Iter,
+        Function::Ceil,
+        Function::Floor,
+        Function::Round,
+        Function::Trunc,
+        Function::Fract,
+        #[cfg(feature = "complex")]
+        Function::Real,
+        #[cfg(feature = "complex")]
+        Function::Imag,
+        Function::If,
+        Function::Fold,
+        Function::Set,
+        Function::Modify,
+        Function::Solve,
+        Function::NumericalDerivative,
+        Function::NumericalDifferential,
+        Function::NumericalIntegral,
+        Function::NumericalSolve,
+    ] {
+        assert_eq!(
+            std::mem::discriminant(&Function::try_from(f.to_string().as_str()).unwrap()),
+            std::mem::discriminant(&f),
+            "{f}"
+        );
         assert!(
             FUNCTION_LIST
                 .iter()
                 .any(|l| l.starts_with(format!("{f}(").as_str())),
             "{f}"
         );
+        assert_ne!(get_help(f.to_string().as_str()), "unknown", "{f}")
     }
 }

@@ -1,6 +1,6 @@
 use crate::{
-    Complex, ComplexFunctionsMut, ComplexTrait, Float, FloatFunctionsMut, FloatTrait, NegAssign,
-    Pow, PowAssign, Quantity, Units,
+    Complex, ComplexFunctionsMut, ComplexTrait, ComplexType, Float, FloatFunctionsMut, FloatTrait,
+    FloatType, NegAssign, Pow, PowAssign, Quantity, Units,
 };
 use std::array;
 use std::cmp::Ordering;
@@ -10,6 +10,9 @@ use std::ops::{
     Add, AddAssign, Deref, DerefMut, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub,
     SubAssign,
 };
+impl<const N: usize> FloatType<Float> for Quantity<Complex, f32, N> {}
+impl<const N: usize> FloatType<Float> for Quantity<Float, f32, N> {}
+impl<const N: usize> ComplexType<Float> for Quantity<Complex, f32, N> {}
 impl<N, const K: usize> Default for Units<N, K> {
     fn default() -> Self {
         Units(None)

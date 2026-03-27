@@ -1,6 +1,6 @@
 use crate::{
-    ComplexFunctions, ComplexFunctionsMut, ComplexTrait, Constant, FloatFunctions,
-    FloatFunctionsMut, FloatTrait, NegAssign, Pow, RealTrait,
+    ComplexFunctions, ComplexFunctionsMut, ComplexTrait, ComplexType, Constant, FloatFunctions,
+    FloatFunctionsMut, FloatTrait, FloatType, NegAssign, Pow, RealTrait, RealType,
 };
 use lexical::{NumberFormatBuilder, ParseFloatOptions, WriteFloatOptions};
 use std::cmp::Ordering;
@@ -39,6 +39,10 @@ pub struct Complex {
     pub real: Float,
     pub imag: Float,
 }
+impl FloatType<Float> for Complex {}
+impl FloatType<Self> for Float {}
+impl ComplexType<Float> for Complex {}
+impl RealType for Float {}
 impl Debug for Float {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.0)

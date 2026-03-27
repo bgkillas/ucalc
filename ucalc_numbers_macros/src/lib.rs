@@ -359,7 +359,6 @@ fn float_trait() -> TokenStream {
     };
     quote! {
         pub trait FloatType<F>: #req {}
-        impl<T: #req, F> FloatType<F> for T {}
     }
 }
 fn real_trait() -> TokenStream {
@@ -370,7 +369,6 @@ fn real_trait() -> TokenStream {
     };
     quote! {
         pub trait RealType: #req {}
-        impl<T: #req> RealType for T {}
     }
 }
 fn complex_trait() -> TokenStream {
@@ -409,7 +407,6 @@ fn complex_trait() -> TokenStream {
     };
     quote! {
         pub trait ComplexType<F>: #req {}
-        impl<T: #req, F> ComplexType<F> for T {}
     }
 }
 #[proc_macro]
