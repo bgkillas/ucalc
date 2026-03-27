@@ -2350,6 +2350,106 @@ fn test_modify() {
     );
 }
 #[test]
+fn test_while() {
+    assert_correct!(
+        infix("set(1,while(n<5,modify(n+1,n),2n))"),
+        rpn("1 n n 5 < n 1 + n modify 2 n * while3 set"),
+        vec![
+            num(1),
+            Token::Skip(16),
+            Token::Skip(3),
+            Token::InnerVar(0),
+            num(5),
+            Function::Less.into(),
+            Token::Skip(6),
+            Token::InnerVar(0),
+            num(1),
+            Function::Add.into(),
+            Token::Skip(1),
+            Token::InnerVar(0),
+            Function::Modify(ModifyInputs::Two).into(),
+            Token::Skip(3),
+            num(2),
+            Token::InnerVar(0),
+            Function::Mul.into(),
+            Function::While(ModifyInputs::Three).into(),
+            Function::Set.into(),
+        ],
+        res(10)
+    );
+    assert_correct!(
+        infix("set(1,while(n<5,modify(n+1,n,2n)))"),
+        rpn("1 n n 5 < n 1 + n 2 n * modify3 while2 set"),
+        vec![
+            num(1),
+            Token::Skip(16),
+            Token::Skip(3),
+            Token::InnerVar(0),
+            num(5),
+            Function::Less.into(),
+            Token::Skip(10),
+            Token::InnerVar(0),
+            num(1),
+            Function::Add.into(),
+            Token::Skip(1),
+            Token::InnerVar(0),
+            Token::Skip(3),
+            num(2),
+            Token::InnerVar(0),
+            Function::Mul.into(),
+            Function::Modify(ModifyInputs::Three).into(),
+            Function::While(ModifyInputs::Two).into(),
+            Function::Set.into(),
+        ],
+        res(10)
+    );
+}
+#[test]
+fn test_exprs() {
+    assert_correct!(
+        infix("set(1,while(n<10,exprs(modify(n+1,n),modify(n+2,n),modify(n+3,n,2n))))"),
+        rpn("1 n n 10 < n 1 + n modify n 2 + n modify n 3 + n 2 n * modify3 exprs3 while2 set"),
+        vec![
+            num(1),
+            Token::Skip(32),
+            Token::Skip(3),
+            Token::InnerVar(0),
+            num(10),
+            Function::Less.into(),
+            Token::Skip(26),
+            Token::Skip(6),
+            Token::InnerVar(0),
+            num(1),
+            Function::Add.into(),
+            Token::Skip(1),
+            Token::InnerVar(0),
+            Function::Modify(ModifyInputs::Two).into(),
+            Token::Skip(6),
+            Token::InnerVar(0),
+            num(2),
+            Function::Add.into(),
+            Token::Skip(1),
+            Token::InnerVar(0),
+            Function::Modify(ModifyInputs::Two).into(),
+            Token::Skip(10),
+            Token::InnerVar(0),
+            num(3),
+            Function::Add.into(),
+            Token::Skip(1),
+            Token::InnerVar(0),
+            Token::Skip(3),
+            num(2),
+            Token::InnerVar(0),
+            Function::Mul.into(),
+            Function::Modify(ModifyInputs::Three).into(),
+            Function::Exprs(NonZero::new(3).unwrap()).into(),
+            Function::While(ModifyInputs::Two).into(),
+            Function::Set.into(),
+        ],
+        res(26)
+    );
+}
+#[test]
 fn test_prod() {
     assert_correct!(
         infix("prod(1,4,x,x^2)"),

@@ -127,7 +127,6 @@ impl TryFrom<&str> for Operators {
     }
 }
 impl Operators {
-    pub const MAX_INPUT: usize = Function::MAX_INPUT;
     pub fn inputs(self) -> NonZeroU8 {
         NonZero::new(match self {
             Self::Mul

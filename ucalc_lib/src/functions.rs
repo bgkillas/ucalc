@@ -363,10 +363,6 @@ impl Function {
         })
         .unwrap()
     }
-    #[cfg(not(feature = "complex"))]
-    pub const MAX_INPUT: usize = 4;
-    #[cfg(feature = "complex")]
-    pub const MAX_INPUT: usize = 5;
     pub fn is_chainable(self) -> bool {
         matches!(
             self,
@@ -650,14 +646,15 @@ impl Function {
             }
             Self::While(ModifyInputs::Two) => {
                 let [cond, expr] = stack.get_skip_tokens_keep_one(compute.tokens);
+                let mut last = Number::default();
                 while !compute
                     .tokens(cond)
                     .compute_buffer_with(fun_vars, stack)
                     .is_zero()
                 {
-                    compute.tokens(expr).compute_buffer_with(fun_vars, stack);
+                    last = compute.tokens(expr).compute_buffer_with(fun_vars, stack);
                 }
-                *stack.last_mut().unwrap() = Number::default().into();
+                *stack.last_mut().unwrap() = last.into();
             }
             Self::While(ModifyInputs::Three) => {
                 let [cond, expr, ret] = stack.get_skip_tokens_keep_one(compute.tokens);
