@@ -1,6 +1,7 @@
 use crate::colors::{Colors, color_brackets};
 use std::fmt::Display;
 use ucalc_lib::FUNCTION_LIST;
+#[repr(transparent)]
 pub struct Complete<'a>(pub &'a Colors);
 impl<'b> readchar::Complete<'b> for Complete<'b> {
     fn run<'a>(self, str: &'a str) -> Vec<(impl Display + 'a, usize)>

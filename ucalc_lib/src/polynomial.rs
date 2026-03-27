@@ -7,8 +7,10 @@ use std::mem;
 use ucalc_numbers::ComplexFunctions;
 use ucalc_numbers::{Float, FloatFunctions, FloatTrait, NegAssign, Pow};
 #[derive(Debug, PartialEq, Clone, Default)]
+#[repr(transparent)]
 pub struct Poly(pub Vec<Number>);
 #[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub(crate) struct PolyRef<'a>(pub &'a [Number]);
 #[derive(Debug, PartialEq, Clone)]
 pub enum Func {
@@ -420,18 +422,10 @@ impl Compute<'_> {
                     stack[len - inputs] = self
                         .offset(end)
                         .tokens(TokensRef(&self.funs[*index as usize].tokens))
-                        .compute_polynomial(
-                            fun_vars,
-                            &mut Tokens(Vec::with_capacity(
-                                self.funs[*index as usize].tokens.len(),
-                            )),
-                            None,
-                        )?;
+                        .compute_polynomial(fun_vars, stack, None)?;
                     fun_vars.drain(end..);
                 }
-                Token::Num(n) => {
-                    stack.push(Token::Num(n.clone()));
-                }
+                Token::Num(n) => stack.push(Token::Num(n.clone())),
                 Token::InnerVar(index) => {
                     if Some(*index) == to_poly {
                         stack.push(Polynomial::new().into())
@@ -452,7 +446,7 @@ impl Compute<'_> {
             }
             i += 1;
         }
-        Some(stack.remove(0))
+        Some(stack.pop().unwrap())
     }
 }
 impl Function {

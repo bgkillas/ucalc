@@ -6,17 +6,17 @@ impl Compute<'_> {
         self,
         fun_vars: &mut Vec<Number>,
         stack: &mut Tokens,
-        point: &Number,
+        point: Number,
         var: usize,
     ) -> Number {
-        fun_vars[var] = point.clone();
+        fun_vars[var] = point;
         for _ in 0..64 {
             let y = self.compute_buffer_with(fun_vars, stack);
             if y.is_zero() {
                 break;
             }
-            fun_vars[var] = fun_vars[var].clone()
-                - y / self.numerical_derivative(fun_vars, stack, &fun_vars[var].clone(), var);
+            let val = self.numerical_derivative(fun_vars, stack, fun_vars[var].clone(), var);
+            fun_vars[var] -= y / val;
         }
         fun_vars[var].clone()
     }
@@ -24,13 +24,13 @@ impl Compute<'_> {
         self,
         fun_vars: &mut Vec<Number>,
         stack: &mut Tokens,
-        point: &Number,
+        point: Number,
         var: usize,
     ) -> Number {
         let epsilon = Float::from(2.0f64.powi(-32));
         fun_vars[var] = point.clone() - &epsilon;
         let start = self.compute_buffer_with(fun_vars, stack);
-        fun_vars[var] = point.clone() + &epsilon;
+        fun_vars[var] = point + &epsilon;
         let end = self.compute_buffer_with(fun_vars, stack);
         (end - start) / (Float::from(2) * epsilon)
     }
@@ -38,14 +38,14 @@ impl Compute<'_> {
         self,
         fun_vars: &mut Vec<Number>,
         stack: &mut Tokens,
-        start: &Number,
-        end: &Number,
+        start: Number,
+        end: Number,
         var: usize,
     ) -> Number {
         let n = 1024;
-        let epsilon = (end.clone() - start) / Float::from(n);
+        let epsilon = (end - &start) / Float::from(n);
         let mut total = Number::from(0);
-        fun_vars[var] = start.clone();
+        fun_vars[var] = start;
         let mut last = self.compute_buffer_with(fun_vars, stack);
         let mid = epsilon.clone() / Float::from(2);
         for _ in 0..n {
@@ -61,16 +61,16 @@ impl Compute<'_> {
         self,
         fun_vars: &mut Vec<Number>,
         stack: &mut Tokens,
-        x_0: &Number,
-        t_0: &Number,
-        t_1: &Number,
+        x_0: Number,
+        t_0: Number,
+        t_1: Number,
         x_var: usize,
         t_var: usize,
     ) -> Number {
         let n = 1024;
-        let epsilon = (t_1.clone() - t_0) / Float::from(n);
-        fun_vars[x_var] = x_0.clone();
-        fun_vars[t_var] = t_0.clone();
+        let epsilon = (t_1 - &t_0) / Float::from(n);
+        fun_vars[x_var] = x_0;
+        fun_vars[t_var] = t_0;
         for _ in 0..n {
             let delta = self.compute_buffer_with(fun_vars, stack) * &epsilon;
             fun_vars[x_var] += delta;

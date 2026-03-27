@@ -4,11 +4,14 @@ use crate::parse::{Token, TokensRef};
 use crate::{Number, Tokens};
 use std::ops::Deref;
 impl Compute<'_> {
-    pub(crate) fn get_inverse(self, fun_vars: &mut Vec<Number>) -> Option<Number> {
+    pub(crate) fn get_inverse(
+        self,
+        fun_vars: &mut Vec<Number>,
+        stack: &mut Tokens,
+    ) -> Option<Number> {
         let mut ret = Number::from(0);
-        let mut inner_stack = Tokens(Vec::with_capacity(self.tokens.len()));
         Some(
-            if let Some(inner) = self.cas_inner(fun_vars, &mut ret, &mut inner_stack, None)? {
+            if let Some(inner) = self.cas_inner(fun_vars, &mut ret, stack, None)? {
                 inner
             } else {
                 ret
@@ -20,7 +23,7 @@ impl Compute<'_> {
         self,
         fun_vars: &mut Vec<Number>,
         ret: &mut Number,
-        inner_stack: &mut Tokens,
+        stack: &mut Tokens,
         args: Option<&mut Vec<TokensRef>>,
     ) -> Option<Option<Number>> {
         let mut i = self.tokens.len();
@@ -44,23 +47,21 @@ impl Compute<'_> {
                         if arg.contains(&Token::InnerVar(fun_vars.len() as u16)) {
                             fun_vars.push(Number::default())
                         } else {
-                            let n = self.tokens(arg).compute_buffer_with(fun_vars, inner_stack);
+                            let n = self.tokens(arg).compute_buffer_with(fun_vars, stack);
                             fun_vars.push(n)
                         }
                     }
                     let roots = self.tokens(TokensRef(&fun.tokens)).offset(end).cas_inner(
                         fun_vars,
                         ret,
-                        inner_stack,
+                        stack,
                         Some(&mut args),
                     )?;
                     if let Some(n) = roots {
                         *ret = n;
                     }
                     fun_vars.drain(end..);
-                    return self
-                        .tokens(args[0])
-                        .cas_inner(fun_vars, ret, inner_stack, None);
+                    return self.tokens(args[0]).cas_inner(fun_vars, ret, stack, None);
                 }
                 Token::Function(operator) => {
                     let inverse = Inverse::from(operator);
@@ -102,7 +103,7 @@ impl Compute<'_> {
                                     .tokens(TokensRef(&self.tokens[start..=i]))
                                     .compute_polynomial(
                                         fun_vars,
-                                        inner_stack,
+                                        stack,
                                         Some(
                                             args.and_then(|a| {
                                                 a.iter().position(|a| {
@@ -119,14 +120,14 @@ impl Compute<'_> {
                             } else {
                                 let num = self
                                     .tokens(left_tokens)
-                                    .compute_buffer_with(fun_vars, inner_stack);
+                                    .compute_buffer_with(fun_vars, stack);
                                 start = last;
                                 inverse.right_inverse(ret, num);
                             }
                         } else {
                             let num = self
                                 .tokens(right_tokens)
-                                .compute_buffer_with(fun_vars, inner_stack);
+                                .compute_buffer_with(fun_vars, stack);
                             i = last;
                             inverse.left_inverse(ret, num);
                         }

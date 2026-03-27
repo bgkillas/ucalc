@@ -13,7 +13,9 @@ pub(crate) struct Compute<'a> {
 impl Tokens {
     pub fn compute(&self, vars: &[Number], funs: &Functions, custom_vars: &Variables) -> Number {
         let mut fun_vars = Vec::with_capacity(self.len());
-        let mut stack = Tokens(Vec::with_capacity(self.len()));
+        let mut stack = Tokens(Vec::with_capacity(
+            self.len() + funs.iter().map(|c| c.tokens.len()).sum::<usize>(),
+        ));
         self.compute_buffer(&mut fun_vars, vars, funs, custom_vars, &mut stack)
     }
     pub fn compute_buffer(
@@ -56,15 +58,13 @@ impl Tokens {
     ) -> [TokensRef<'a>; N] {
         let len = tokens.len();
         let mut t = len - 1;
-        let mut l = 0;
-        let mut arr = array::from_fn(|i| {
+        let mut arr = array::from_fn(|_| TokensRef(&[]));
+        for i in 0..N {
             let back = self[self.len() - (i + 1)].skip();
             let ret = TokensRef(&tokens.0[back..t]);
-            l += t - back + 1;
             t = back.saturating_sub(1);
-            ret
-        });
-        arr.reverse();
+            arr[N - (i + 1)] = ret
+        }
         arr
     }
     #[allow(clippy::too_many_arguments)]
@@ -79,11 +79,8 @@ impl Tokens {
         let start = start.num_ref().real().clone().into_isize();
         let end = end.num_ref().real().clone().into_isize();
         fun_vars.push(Number::from(start));
-        let mut stack = Tokens(Vec::with_capacity(tokens.len()));
         let mut iter = (start..=end).map(|_| {
-            let ret = compute
-                .tokens(tokens)
-                .compute_buffer_with(fun_vars, &mut stack);
+            let ret = compute.tokens(tokens).compute_buffer_with(fun_vars, self);
             *fun_vars.last_mut().unwrap() += Float::from(1);
             ret
         });
@@ -178,9 +175,7 @@ impl<'a> Compute<'a> {
                             self.vars,
                             self.funs,
                             self.custom_vars,
-                            &mut Tokens(Vec::with_capacity(
-                                self.funs[*index as usize].tokens.len(),
-                            )),
+                            stack,
                             end,
                         );
                     fun_vars.drain(end..);

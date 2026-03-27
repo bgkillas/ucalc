@@ -13,8 +13,10 @@ use ucalc_numbers::FloatTrait;
 #[cfg(feature = "units")]
 use ucalc_numbers::Units;
 #[derive(Default, PartialEq, Debug, Clone)]
+#[repr(transparent)]
 pub struct Tokens(pub Vec<Token>);
 #[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
 pub(crate) struct TokensRef<'a>(pub &'a [Token]);
 impl<'a> From<&'a Tokens> for TokensRef<'a> {
     fn from(value: &'a Tokens) -> Self {

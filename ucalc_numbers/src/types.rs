@@ -15,6 +15,7 @@ pub enum Constant {
     Nan,
 }
 #[derive(Debug, PartialEq, Clone)]
+#[repr(transparent)]
 pub struct Units<T, const N: usize>(pub Option<Box<[T; N]>>);
 #[derive(Debug, PartialEq, Clone)]
 pub struct Quantity<T, K, const N: usize> {

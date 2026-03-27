@@ -12,6 +12,7 @@ pub enum Color {
     Cyan(bool),
     White(bool),
 }
+#[repr(transparent)]
 pub struct ToColor<'a>(pub &'a Colors);
 impl<'b> readchar::ToColor<'b> for ToColor<'b> {
     fn run<'a>(self, str: &'a str) -> impl Display + 'a

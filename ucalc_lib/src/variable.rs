@@ -41,6 +41,7 @@ impl Variable {
     }
 }
 #[derive(Debug, Clone, PartialEq)]
+#[repr(transparent)]
 pub struct Variables(pub Vec<Variable>);
 impl Variables {
     pub fn position(&self, name: &str) -> Option<u16> {
@@ -55,6 +56,7 @@ impl Variables {
     }
 }
 #[derive(Default, Debug, Clone, PartialEq)]
+#[repr(transparent)]
 pub struct Functions(pub Vec<FunctionVar>);
 impl Functions {
     pub fn position(&self, name: &str) -> Option<u16> {
