@@ -142,9 +142,9 @@ impl<'a> Compute<'a> {
         }
     }
     pub fn compute_buffer_with(self, fun_vars: &mut Vec<Number>, stack: &mut Tokens) -> Number {
-        let mut i = 0;
-        while i < self.tokens.len() {
-            match &self.tokens[i] {
+        let mut tokens = self.tokens.iter().enumerate();
+        while let Some((i, token)) = tokens.next() {
+            match token {
                 Token::Function(operator) => {
                     let inputs = operator.inputs();
                     if operator.has_inner_fn() {
@@ -202,12 +202,11 @@ impl<'a> Compute<'a> {
                 }
                 Token::Skip(to) => {
                     stack.push(Token::Skip(i + 1));
-                    i += to;
+                    tokens.nth(*to - 1);
                 }
                 Token::Num(n) => stack.push(Token::Num(n.clone())),
                 Token::Polynomial(_) => unreachable!(),
             }
-            i += 1;
         }
         stack.pop().unwrap().num()
     }

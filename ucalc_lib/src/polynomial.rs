@@ -401,10 +401,10 @@ impl Compute<'_> {
         stack: &mut Tokens,
         to_poly: Option<u16>,
     ) -> Option<Token> {
-        let mut i = 0;
         let mut poly = Vec::with_capacity(8).into();
-        while i < self.tokens.len() {
-            match &self.tokens[i] {
+        let mut tokens = self.tokens.iter().enumerate();
+        while let Some((i, token)) = tokens.next() {
+            match token {
                 Token::Function(operator) => {
                     let inputs = operator.inputs().get() as usize;
                     let len = stack.len();
@@ -439,11 +439,10 @@ impl Compute<'_> {
                 }
                 Token::Skip(to) => {
                     stack.push(Token::Skip(i + 1));
-                    i += to;
+                    tokens.nth(*to - 1);
                 }
                 Token::Polynomial(_) => unreachable!(),
             }
-            i += 1;
         }
         Some(stack.pop().unwrap())
     }
