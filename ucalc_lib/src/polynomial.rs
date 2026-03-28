@@ -405,7 +405,7 @@ impl Compute<'_> {
         let mut tokens = self.tokens.iter().enumerate();
         while let Some((i, token)) = tokens.next() {
             match token {
-                Token::Function(operator) => {
+                Token::Function(operator, _) => {
                     let inputs = operator.inputs().get() as usize;
                     let len = stack.len();
                     operator.compute_poly(&mut stack[len - inputs..], &mut poly)?;

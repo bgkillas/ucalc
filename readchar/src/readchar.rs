@@ -131,6 +131,7 @@ impl ReadChar {
         stdout: &mut impl Write,
         run: impl FnOnce(&str, &mut String),
     ) -> io::Result<()> {
+        stdout.flush()?;
         run(&self.line, string);
         self.new_lines = self.out_lines(string);
         stdout.queue(Clear(ClearType::FromCursorDown))?;

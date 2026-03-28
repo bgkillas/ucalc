@@ -38,13 +38,13 @@ pub enum Token {
     Fun(u16),
     Var(u16),
     Skip(usize),
-    Function(Function),
+    Function(Function, i8),
 }
 impl Display for Token {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Self::Num(n) => write!(f, "{}", n.real()),
-            Self::Function(fun) => {
+            Self::Function(fun, _) => {
                 if let Ok(o) = Operators::try_from(*fun) {
                     write!(f, "{o}")
                 } else {
@@ -65,6 +65,7 @@ pub enum ParseError<'a> {
     ExtraInput,
     InnerVarError,
     VarExpectedName,
+    CommaError,
 }
 impl Display for Tokens {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -98,7 +99,7 @@ impl Token {
             Token::Skip(_) => {
                 unreachable!()
             }
-            Token::Function(f) => {
+            Token::Function(f, _) => {
                 if let Ok(f) = Operators::try_from(*f) {
                     (f == o && f.left_associative()) || f.precedence() > o.precedence()
                 } else {
@@ -123,14 +124,14 @@ impl<'a> TokensRef<'a> {
             Token::Fun(i) => write!(fmt, "{}", funs[*i as usize].name.as_ref().unwrap()),
             Token::Var(i) => write!(fmt, "{}", vars[*i as usize].name.as_ref().unwrap()),
             Token::Skip(_) => Ok(()),
-            Token::Function(f) => {
+            Token::Function(f, _) => {
                 let l = self.len() - 1;
                 let last = TokensRef(&self[..l]).get_last(funs);
                 if let Ok(o) = Operators::try_from(*f) {
                     let arg = TokensRef(&self[last..l]).get_infix(vars, funs, graph_vars);
                     let arg = if self[l - 1].greater_precedence(o)
                         || (f.is_chainable()
-                            && if let Token::Function(f) = self[l - 1] {
+                            && if let Token::Function(f, _) = self[l - 1] {
                                 f.is_chainable()
                             } else {
                                 false
@@ -185,7 +186,7 @@ impl<'a> TokensRef<'a> {
                     Token::GraphVar(i) => write!(fmt, "{}", graph_vars[*i as usize])?,
                     Token::Fun(i) => write!(fmt, "{}", funs[*i as usize].name.as_ref().unwrap())?,
                     Token::Var(i) => write!(fmt, "{}", vars[*i as usize].name.as_ref().unwrap())?,
-                    Token::Function(fun) => {
+                    Token::Function(fun, _) => {
                         if let Ok(o) = Operators::try_from(*fun) {
                             write!(fmt, "{o}")?
                         } else {
@@ -476,13 +477,18 @@ impl Tokens {
                     }
                     if let Some(last) = fn_inputs.last_mut() {
                         *last += 1;
+                        if operator_stack.len() < 2 {
+                            return Err(ParseError::CommaError);
+                        }
                         let Operators::Function(fun) = operator_stack[operator_stack.len() - 2]
                         else {
-                            unreachable!()
+                            return Err(ParseError::CommaError);
                         };
                         if fun.first_expected_var(*last) {
                             inner_vars.extend(iter::repeat_n("", fun.inner_vars() as usize));
                         }
+                    } else if !expect_let {
+                        return Err(ParseError::CommaError);
                     }
                     negate = true;
                     last_abs = false;
@@ -767,7 +773,7 @@ impl<'a> TokensRef<'a> {
             end -= 1;
             match self[end] {
                 Token::Fun(j) => inputs += funs[j as usize].inputs.get(),
-                Token::Function(o) => inputs += o.inputs().get(),
+                Token::Function(o, _) => inputs += o.inputs().get(),
                 Token::Skip(_) => inputs += 1,
                 _ => {}
             }
@@ -794,7 +800,7 @@ impl<'a> TokensRef<'a> {
     pub fn get_lasts(self, funs: &Functions) -> Vec<Self> {
         let inputs = match self.last().unwrap() {
             Token::Fun(j) => funs[*j as usize].inputs,
-            Token::Function(o) => o.inputs(),
+            Token::Function(o, _) => o.inputs(),
             _ => unreachable!(),
         };
         let mut ret = vec![TokensRef(&[]); inputs.get() as usize];
@@ -812,12 +818,12 @@ impl From<Number> for Token {
 }
 impl From<Operators> for Token {
     fn from(value: Operators) -> Self {
-        Self::Function(value.into())
+        Self::Function(value.into(), 0)
     }
 }
 impl From<Function> for Token {
     fn from(value: Function) -> Self {
-        Self::Function(value)
+        Self::Function(value, 0)
     }
 }
 impl From<Polynomial> for Token {

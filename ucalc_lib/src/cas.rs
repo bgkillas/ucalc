@@ -62,7 +62,7 @@ impl Compute<'_> {
                     fun_vars.drain(end..);
                     return self.tokens(args[0]).cas_inner(fun_vars, ret, stack, None);
                 }
-                Token::Function(operator) => {
+                Token::Function(operator, _) => {
                     let inverse = Inverse::from(operator);
                     if inverse.is_none() {
                         return None;

@@ -145,7 +145,7 @@ impl<'a> Compute<'a> {
         let mut tokens = self.tokens.iter().enumerate();
         while let Some((i, token)) = tokens.next() {
             match token {
-                Token::Function(operator) => {
+                Token::Function(operator, _) => {
                     let inputs = operator.inputs();
                     if operator.has_inner_fn() {
                         operator.compute_var(
@@ -155,7 +155,7 @@ impl<'a> Compute<'a> {
                         )
                     } else if operator.is_chainable() {
                         let chain = if self.tokens.get(i + 1).is_some_and(|o| {
-                            if let Token::Function(o) = o {
+                            if let Token::Function(o, _) = o {
                                 o.is_chainable()
                             } else {
                                 false
