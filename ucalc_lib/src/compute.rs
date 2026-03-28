@@ -1,7 +1,7 @@
 use crate::parse::{Token, Tokens, TokensRef};
 use crate::{Functions, Number, Variables};
-use std::{array, mem};
-use ucalc_numbers::{Constant, Float, FloatTrait, RealTrait};
+use std::array;
+use ucalc_numbers::{Constant, FloatTrait};
 #[derive(Copy, Clone, Debug)]
 pub(crate) struct Compute<'a> {
     pub(crate) tokens: TokensRef<'a>,
@@ -12,10 +12,9 @@ pub(crate) struct Compute<'a> {
 }
 impl Tokens {
     pub fn compute(&self, vars: &[Number], funs: &Functions, custom_vars: &Variables) -> Number {
-        let mut fun_vars = Vec::with_capacity(self.len());
-        let mut stack = Tokens(Vec::with_capacity(
-            self.len() + funs.iter().map(|c| c.tokens.len()).sum::<usize>(),
-        ));
+        let cap = self.len() + funs.iter().map(|c| c.tokens.len()).sum::<usize>();
+        let mut fun_vars = Vec::with_capacity(cap);
+        let mut stack = Tokens(Vec::with_capacity(cap));
         self.compute_buffer(&mut fun_vars, vars, funs, custom_vars, &mut stack)
     }
     pub fn compute_buffer(
@@ -107,26 +106,6 @@ impl Tokens {
         arr[0] = ret;
         arr
     }
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) fn range(
-        &mut self,
-        compute: Compute,
-        fun_vars: &mut Vec<Number>,
-        fun: impl FnOnce(&mut dyn Iterator<Item = Number>) -> Number,
-    ) {
-        let (start, [end], [tokens]) = self.get_skip_mut(compute.tokens);
-        let start = mem::take(start);
-        let start = start.to_real().into_isize();
-        let end = end.to_real().into_isize();
-        fun_vars.push(Number::from(start));
-        let mut iter = (start..=end).map(|_| {
-            let ret = compute.tokens(tokens).compute_buffer_with(fun_vars, self);
-            *fun_vars.last_mut().unwrap() += Float::from(1);
-            ret
-        });
-        *self.last_mut().unwrap().num_mut() = fun(&mut iter);
-        fun_vars.pop().unwrap();
-    }
 }
 impl<'a> Compute<'a> {
     pub fn offset(self, offset: usize) -> Self {
@@ -165,7 +144,6 @@ impl<'a> Compute<'a> {
     pub fn compute_buffer_with(self, fun_vars: &mut Vec<Number>, stack: &mut Tokens) -> Number {
         let mut i = 0;
         while i < self.tokens.len() {
-            let len = stack.len();
             match &self.tokens[i] {
                 Token::Function(operator) => {
                     let inputs = operator.inputs();
@@ -183,13 +161,14 @@ impl<'a> Compute<'a> {
                                 false
                             }
                         }) {
-                            Some(self.tokens[len - inputs.get() as usize].num_ref())
+                            Some(self.tokens[stack.len() - inputs.get() as usize].num_ref())
                         } else {
                             None
                         };
                         operator.compute(stack, inputs);
                         if let Some(b) = chain {
-                            let a = stack[len - inputs.get() as usize].num_mut();
+                            let len = stack.len();
+                            let a = stack[len - 1].num_mut();
                             *a = if a.is_zero() {
                                 Number::from(Constant::Nan)
                             } else {
@@ -206,17 +185,13 @@ impl<'a> Compute<'a> {
                 Token::Fun(index) => {
                     let inputs = self.funs[*index as usize].inputs.get() as usize;
                     let end = fun_vars.len();
+                    let len = stack.len();
                     fun_vars.push(stack[len - inputs].num_ref().clone());
                     fun_vars.extend(stack.drain(len + 1 - inputs..).map(|n| n.num()));
-                    *stack[len - inputs].num_mut() =
-                        self.funs[*index as usize].tokens.compute_buffer_with(
-                            fun_vars,
-                            self.vars,
-                            self.funs,
-                            self.custom_vars,
-                            stack,
-                            end,
-                        );
+                    *stack[len - inputs].num_mut() = self
+                        .offset(end)
+                        .tokens(TokensRef(&self.funs[*index as usize].tokens))
+                        .compute_buffer_with(fun_vars, stack);
                     fun_vars.drain(end..);
                 }
                 Token::InnerVar(index) => {
@@ -234,6 +209,6 @@ impl<'a> Compute<'a> {
             }
             i += 1;
         }
-        stack.pop().map(|t| t.num()).unwrap()
+        stack.pop().unwrap().num()
     }
 }

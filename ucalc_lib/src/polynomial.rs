@@ -404,10 +404,10 @@ impl Compute<'_> {
         let mut i = 0;
         let mut poly = Vec::with_capacity(8).into();
         while i < self.tokens.len() {
-            let len = stack.len();
             match &self.tokens[i] {
                 Token::Function(operator) => {
                     let inputs = operator.inputs().get() as usize;
+                    let len = stack.len();
                     operator.compute_poly(&mut stack[len - inputs..], &mut poly)?;
                     stack.drain(len + 1 - inputs..);
                 }
@@ -417,6 +417,7 @@ impl Compute<'_> {
                 Token::Fun(index) => {
                     let inputs = self.funs[*index as usize].inputs.get() as usize;
                     let end = fun_vars.len();
+                    let len = stack.len();
                     fun_vars.push(stack[len - inputs].num_ref().clone());
                     fun_vars.extend(stack.drain(len + 1 - inputs..).map(|n| n.num()));
                     stack[len - inputs] = self

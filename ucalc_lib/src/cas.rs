@@ -18,7 +18,6 @@ impl Compute<'_> {
             },
         )
     }
-    #[allow(clippy::too_many_arguments)]
     fn cas_inner(
         self,
         fun_vars: &mut Vec<Number>,

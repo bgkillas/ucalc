@@ -599,7 +599,6 @@ impl Function {
                 | Self::NumericalSolve
         )
     }
-    #[allow(clippy::too_many_arguments)]
     pub(crate) fn compute_var(
         self,
         compute: Compute,
@@ -607,8 +606,36 @@ impl Function {
         fun_vars: &mut Vec<Number>,
     ) {
         match self {
-            Self::Sum => stack.range(compute, fun_vars, |iter| iter.sum::<Number>()),
-            Self::Prod => stack.range(compute, fun_vars, |iter| iter.product::<Number>()),
+            Self::Sum => {
+                let (start, [end], [tokens]) = stack.get_skip_mut(compute.tokens);
+                let start = mem::take(start);
+                let start = start.to_real().into_isize();
+                let end = end.to_real().into_isize();
+                fun_vars.push(Number::from(start));
+                *stack.last_mut().unwrap().num_mut() = (start..=end)
+                    .map(|_| {
+                        let ret = compute.tokens(tokens).compute_buffer_with(fun_vars, stack);
+                        *fun_vars.last_mut().unwrap() += Float::from(1);
+                        ret
+                    })
+                    .sum();
+                fun_vars.pop().unwrap();
+            }
+            Self::Prod => {
+                let (start, [end], [tokens]) = stack.get_skip_mut(compute.tokens);
+                let start = mem::take(start);
+                let start = start.to_real().into_isize();
+                let end = end.to_real().into_isize();
+                fun_vars.push(Number::from(start));
+                *stack.last_mut().unwrap().num_mut() = (start..=end)
+                    .map(|_| {
+                        let ret = compute.tokens(tokens).compute_buffer_with(fun_vars, stack);
+                        *fun_vars.last_mut().unwrap() += Float::from(1);
+                        ret
+                    })
+                    .product();
+                fun_vars.pop().unwrap();
+            }
             Self::Fold => {
                 let (start, [end, value], [tokens]) = stack.get_skip_mut(compute.tokens);
                 let start = mem::take(start);
@@ -672,11 +699,17 @@ impl Function {
             }
             Self::Exprs(n) => {
                 let n = n.get();
-                let tokens = stack.get_skip_tokens_keep_one_vec(compute.tokens, n as usize);
-                let mut last = Number::default();
-                for tokens in tokens {
-                    last = compute.tokens(tokens).compute_buffer_with(fun_vars, stack);
+                let mut tokens = stack
+                    .get_skip_tokens_keep_one_vec(compute.tokens, n as usize)
+                    .into_iter();
+                for _ in 1..n {
+                    compute
+                        .tokens(tokens.next().unwrap())
+                        .compute_buffer_with(fun_vars, stack);
                 }
+                let last = compute
+                    .tokens(tokens.next().unwrap())
+                    .compute_buffer_with(fun_vars, stack);
                 *stack.last_mut().unwrap() = last.into();
             }
             Self::Solve => {
