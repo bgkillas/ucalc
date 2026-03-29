@@ -35,10 +35,10 @@ pub enum Token {
     Polynomial(Box<Polynomial>),
     InnerVar(u16),
     GraphVar(u8),
-    Fun(u16, i8),
     Var(u16),
+    Fun(u16, u8),
+    Function(Function, u8),
     Skip(usize),
-    Function(Function, i8),
 }
 impl Display for Token {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -68,6 +68,7 @@ pub enum ParseError<'a> {
     CommaError,
     DerivativeError,
     IntegralError,
+    MixedError,
 }
 impl Display for Tokens {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -291,13 +292,44 @@ impl Tokens {
                     tokens.compact_args(fun, &mut inner_vars, funs);
                     tokens.push(fun.into());
                 }
-                _ if let Some(i) = token.rfind(|c: char| !c.is_ascii_digit())
+                _ if let Some(k) = token
+                    .rfind(|c: char| c != '\'')
+                    .map(|k| token.len() - (k + 1))
+                    && let Some(j) = token
+                        .rfind(|c: char| c != '`')
+                        .map(|j| token.len() - (j + 1))
+                    && ((k > 0 && j == 0) || (j > 0 && k == 0) || (k == 0 && j == 0))
+                    && let Ok(fun) = Function::try_from(&token[..token.len() - (j + k)]) =>
+                {
+                    let mut d = (j + k) as u8;
+                    tokens.compact_args(fun, &mut inner_vars, funs);
+                    if j > 0 {
+                        d += 0b1000_0000;
+                    }
+                    tokens.push(Token::Function(fun, d));
+                }
+                _ if let Some(k) = token
+                    .rfind(|c: char| c != '\'')
+                    .map(|k| token.len() - (k + 1))
+                    && let Some(j) = token
+                        .rfind(|c: char| c != '`')
+                        .map(|j| token.len() - (j + 1))
+                    && ((k > 0 && j == 0) || (j > 0 && k == 0) || (k == 0 && j == 0))
+                    && let Some(i) =
+                        token[..token.len() - (j + k)].rfind(|c: char| !c.is_ascii_digit())
                     && let Ok(mut fun) = Function::try_from(&token[..=i]) =>
                 {
-                    let inputs = token[i + 1..].parse().unwrap();
+                    let inputs = token[i + 1..token.len() - (j + k)].parse().unwrap();
+                    let mut d = (j + k) as u8;
                     fun.set_inputs(inputs);
                     tokens.compact_args(fun, &mut inner_vars, funs);
-                    tokens.push(fun.into());
+                    if j > 0 {
+                        if inputs.get() == 2 && fun.inputs().get() == 1 {
+                            d += 0b0100_0000;
+                        }
+                        d += 0b1000_0000;
+                    }
+                    tokens.push(Token::Function(fun, d));
                 }
                 _ if token.chars().all(|c| c.is_ascii_alphabetic()) => inner_vars.push(token),
                 #[cfg(feature = "units")]
@@ -454,8 +486,8 @@ impl Tokens {
                         Some(Operators::Function(_, d)) => d,
                         _ => return Err(ParseError::DerivativeError),
                     };
-                    if *d < 0 {
-                        return Err(ParseError::DerivativeError);
+                    if *d & 0b1000_0000 != 0 {
+                        return Err(ParseError::MixedError);
                     }
                     *d += 1;
                     open_input = false;
@@ -470,10 +502,14 @@ impl Tokens {
                         Some(Operators::Function(_, d)) => d,
                         _ => return Err(ParseError::IntegralError),
                     };
-                    if *d > 0 {
-                        return Err(ParseError::IntegralError);
+                    if *d & 0b1000_0000 == 0 {
+                        if *d == 0 {
+                            *d += 0b1000_0000;
+                        } else {
+                            return Err(ParseError::MixedError);
+                        }
                     }
-                    *d -= 1;
+                    *d += 1;
                     open_input = false;
                     negate = false;
                     last_abs = false;
@@ -761,7 +797,7 @@ impl Tokens {
                     }
                     self.push(Token::Fun(i, d));
                 }
-                Operators::Function(mut fun, d) => {
+                Operators::Function(mut fun, mut d) => {
                     if fun.has_var() {
                         inner_vars_count.pop().unwrap();
                     }
@@ -783,7 +819,12 @@ impl Tokens {
                     }
                     match fun.inputs().get().cmp(&inputs) {
                         Ordering::Greater => return Err(ParseError::MissingInput),
-                        Ordering::Less => return Err(ParseError::ExtraInput),
+                        Ordering::Less if d & 0b1000_0000 == 0 || inputs != 2 => {
+                            return Err(ParseError::ExtraInput);
+                        }
+                        Ordering::Less => {
+                            d += 0b0100_0000;
+                        }
                         _ => {}
                     }
                     self.compact_args(fun, inner_vars, funs);

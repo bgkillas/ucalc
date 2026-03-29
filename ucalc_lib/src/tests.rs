@@ -2889,6 +2889,50 @@ fn test_err() {
         Err(ParseError::VarExpectedName)
     );
     assert_eq!(
+        Tokens::infix(
+            "sin'`(2)",
+            &mut Variables::default(),
+            &mut Functions::default(),
+            &[],
+            false,
+            10
+        ),
+        Err(ParseError::MixedError)
+    );
+    assert_eq!(
+        Tokens::infix(
+            "sin`'(2)",
+            &mut Variables::default(),
+            &mut Functions::default(),
+            &[],
+            false,
+            10
+        ),
+        Err(ParseError::MixedError)
+    );
+    assert_eq!(
+        Tokens::infix(
+            "sin'(2,3)",
+            &mut Variables::default(),
+            &mut Functions::default(),
+            &[],
+            false,
+            10
+        ),
+        Err(ParseError::ExtraInput)
+    );
+    assert_eq!(
+        Tokens::infix(
+            "sin(2,3)",
+            &mut Variables::default(),
+            &mut Functions::default(),
+            &[],
+            false,
+            10
+        ),
+        Err(ParseError::ExtraInput)
+    );
+    assert_eq!(
         Tokens::rpn(
             "=-=",
             &mut Variables::default(),

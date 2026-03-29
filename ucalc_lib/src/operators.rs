@@ -24,8 +24,8 @@ pub enum Operators {
     Or,
     Not,
     Bracket(Bracket),
-    Custom(u16, i8),
-    Function(Function, i8),
+    Custom(u16, u8),
+    Function(Function, u8),
 }
 impl Display for Operators {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {

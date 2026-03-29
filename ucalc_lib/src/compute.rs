@@ -145,7 +145,7 @@ impl<'a> Compute<'a> {
         let mut tokens = self.tokens.iter().enumerate();
         while let Some((i, token)) = tokens.next() {
             match token {
-                Token::Function(operator, _) => {
+                &Token::Function(operator, _) => {
                     let inputs = operator.inputs();
                     if operator.has_inner_fn() {
                         operator.compute_var(
@@ -179,30 +179,30 @@ impl<'a> Compute<'a> {
                         operator.compute(stack, inputs);
                     }
                 }
-                Token::Var(index) => {
-                    stack.push(Token::Num(self.custom_vars[*index as usize].value.clone()))
+                &Token::Var(index) => {
+                    stack.push(Token::Num(self.custom_vars[index as usize].value.clone()))
                 }
-                Token::Fun(index, _) => {
-                    let inputs = self.funs[*index as usize].inputs.get() as usize;
+                &Token::Fun(index, _) => {
+                    let inputs = self.funs[index as usize].inputs.get() as usize;
                     let end = fun_vars.len();
                     let len = stack.len();
                     fun_vars.push(stack[len - inputs].num_ref().clone());
                     fun_vars.extend(stack.drain(len + 1 - inputs..).map(|n| n.num()));
                     *stack[len - inputs].num_mut() = self
                         .offset(end)
-                        .tokens(TokensRef(&self.funs[*index as usize].tokens))
+                        .tokens(TokensRef(&self.funs[index as usize].tokens))
                         .compute_buffer_with(fun_vars, stack);
                     fun_vars.drain(end..);
                 }
-                Token::InnerVar(index) => {
-                    stack.push(Token::Num(fun_vars[self.offset + *index as usize].clone()))
+                &Token::InnerVar(index) => {
+                    stack.push(Token::Num(fun_vars[self.offset + index as usize].clone()))
                 }
-                Token::GraphVar(index) => {
-                    stack.push(Token::Num(self.vars[*index as usize].clone()))
+                &Token::GraphVar(index) => {
+                    stack.push(Token::Num(self.vars[index as usize].clone()))
                 }
-                Token::Skip(to) => {
+                &Token::Skip(to) => {
                     stack.push(Token::Skip(i + 1));
-                    tokens.nth(*to - 1);
+                    tokens.nth(to - 1);
                 }
                 Token::Num(n) => stack.push(Token::Num(n.clone())),
                 Token::Polynomial(_) => unreachable!(),
