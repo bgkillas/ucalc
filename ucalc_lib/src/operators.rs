@@ -24,7 +24,8 @@ pub enum Operators {
     Or,
     Not,
     Bracket(Bracket),
-    Function(Function),
+    Custom(u16, i8),
+    Function(Function, i8),
 }
 impl Display for Operators {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -51,9 +52,10 @@ impl Display for Operators {
                 Operators::LessEqual => "<=",
                 Operators::And => "&",
                 Operators::Or => "?",
-                Operators::Not => "'",
+                Operators::Not => ";",
                 Operators::Bracket(_) => unreachable!(),
-                Operators::Function(_) => unreachable!(),
+                Operators::Function(_, _) => unreachable!(),
+                Operators::Custom(_, _) => unreachable!(),
             }
         )
     }
@@ -119,7 +121,7 @@ impl TryFrom<&str> for Operators {
             "<=" => Self::LessEqual,
             "&" => Self::And,
             "?" => Self::Or,
-            "'" => Self::Not,
+            ";" => Self::Not,
             "(" => Self::Bracket(Bracket::Parenthesis),
             "|" => Self::Bracket(Bracket::Absolute),
             _ => return Err(()),
@@ -146,7 +148,8 @@ impl Operators {
             | Self::Or
             | Self::Tetration => 2,
             Self::Negate | Self::Factorial | Self::Not | Self::SubFactorial => 1,
-            Self::Function(fun) => return fun.inputs(),
+            Self::Function(fun, _) => return fun.inputs(),
+            Self::Custom(_, _) => unreachable!(),
             Self::Bracket(_) => unreachable!(),
         })
         .unwrap()
@@ -171,12 +174,13 @@ impl Operators {
             | Self::And
             | Self::Or
             | Self::Tetration
-            | Self::Function(_)
+            | Self::Function(_, _)
+            | Self::Custom(_, _)
             | Self::Bracket(_) => unreachable!(),
         }
     }
     pub fn expected_var(self, n: u8) -> bool {
-        if let Self::Function(f) = self {
+        if let Self::Function(f, _) = self {
             f.expected_var(n)
         } else {
             false
@@ -198,7 +202,7 @@ impl Operators {
             Self::Pow | Self::Root | Self::Tetration => 6,
             Self::Rem => 7,
             Self::Factorial | Self::SubFactorial => 8,
-            Self::Bracket(_) | Self::Function(_) => unreachable!(),
+            Self::Bracket(_) | Self::Function(_, _) | Self::Custom(_, _) => unreachable!(),
         }
     }
     pub fn left_associative(self) -> bool {
@@ -217,7 +221,11 @@ impl Operators {
             | Self::Less
             | Self::LessEqual
             | Self::GreaterEqual => false,
-            Self::Bracket(_) | Self::Factorial | Self::Function(_) | Self::SubFactorial => {
+            Self::Bracket(_)
+            | Self::Factorial
+            | Self::Function(_, _)
+            | Self::Custom(_, _)
+            | Self::SubFactorial => {
                 unreachable!()
             }
         }
@@ -246,7 +254,8 @@ impl From<Operators> for Function {
             Operators::And => Self::And,
             Operators::Or => Self::Or,
             Operators::Not => Self::Not,
-            Operators::Function(function) => function,
+            Operators::Function(function, _) => function,
+            Operators::Custom(_, _) => unreachable!(),
             Operators::Bracket(_) => unreachable!(),
         }
     }

@@ -30,7 +30,7 @@ impl Compute<'_> {
         while i > start + 1 {
             i -= 1;
             match self.tokens[i] {
-                Token::Fun(n) => {
+                Token::Fun(n, _) => {
                     let fun = &self.funs[n as usize];
                     let tokens = TokensRef(&self.tokens[start..=i]);
                     let mut args = tokens.get_lasts(self.funs);

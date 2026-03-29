@@ -35,7 +35,7 @@ pub enum Token {
     Polynomial(Box<Polynomial>),
     InnerVar(u16),
     GraphVar(u8),
-    Fun(u16),
+    Fun(u16, i8),
     Var(u16),
     Skip(usize),
     Function(Function, i8),
@@ -66,6 +66,8 @@ pub enum ParseError<'a> {
     InnerVarError,
     VarExpectedName,
     CommaError,
+    DerivativeError,
+    IntegralError,
 }
 impl Display for Tokens {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -94,7 +96,7 @@ impl Token {
             }
             Token::InnerVar(_) => true,
             Token::GraphVar(_) => true,
-            Token::Fun(_) => true,
+            Token::Fun(_, _) => true,
             Token::Var(_) => true,
             Token::Skip(_) => {
                 unreachable!()
@@ -121,7 +123,7 @@ impl<'a> TokensRef<'a> {
             Token::Polynomial(_) => unreachable!(),
             Token::InnerVar(i) => write!(fmt, "{}", (b'n' + *i as u8) as char),
             Token::GraphVar(i) => write!(fmt, "{}", graph_vars[*i as usize]),
-            Token::Fun(i) => write!(fmt, "{}", funs[*i as usize].name.as_ref().unwrap()),
+            Token::Fun(i, _) => write!(fmt, "{}", funs[*i as usize].name.as_ref().unwrap()),
             Token::Var(i) => write!(fmt, "{}", vars[*i as usize].name.as_ref().unwrap()),
             Token::Skip(_) => Ok(()),
             Token::Function(f, _) => {
@@ -184,7 +186,9 @@ impl<'a> TokensRef<'a> {
                     Token::Polynomial(_) => unreachable!(),
                     Token::InnerVar(i) => write!(fmt, "{}", (b'n' + *i as u8) as char)?,
                     Token::GraphVar(i) => write!(fmt, "{}", graph_vars[*i as usize])?,
-                    Token::Fun(i) => write!(fmt, "{}", funs[*i as usize].name.as_ref().unwrap())?,
+                    Token::Fun(i, _) => {
+                        write!(fmt, "{}", funs[*i as usize].name.as_ref().unwrap())?
+                    }
                     Token::Var(i) => write!(fmt, "{}", vars[*i as usize].name.as_ref().unwrap())?,
                     Token::Function(fun, _) => {
                         if let Ok(o) = Operators::try_from(*fun) {
@@ -275,7 +279,7 @@ impl Tokens {
                     inner_vars.push(token)
                 }
                 _ if let Ok(operator) = Operators::try_from(token) => tokens.push(operator.into()),
-                _ if let Some(i) = funs.position(token) => tokens.push(Token::Fun(i)),
+                _ if let Some(i) = funs.position(token) => tokens.push(Token::Fun(i, 0)),
                 _ if let Some(i) = inner_vars.iter().position(|v| *v == token) => {
                     tokens.push(Token::InnerVar(i as u16))
                 }
@@ -372,7 +376,7 @@ impl Tokens {
                             open_input = true;
                         } else if let Some(i) = funs.position(s) {
                             tokens.last_mul(&mut operator_stack, negate, &mut last_mul, false);
-                            operator_stack.push(Operators::Function(Function::Custom(i)));
+                            operator_stack.push(Operators::Custom(i, 0));
                             open_input = false;
                             fn_inputs.push(1);
                         } else if let Some(i) = inner_vars.iter().position(|v| *v == s) {
@@ -395,7 +399,7 @@ impl Tokens {
                                 inner_vars_count.push(fun.inner_vars());
                             }
                             tokens.last_mul(&mut operator_stack, negate, &mut last_mul, false);
-                            operator_stack.push(Operators::Function(fun));
+                            operator_stack.push(Operators::Function(fun, 0));
                             open_input = false;
                             fn_inputs.push(1);
                         } else if s.chars().all(|c| c.is_ascii_alphabetic())
@@ -444,6 +448,38 @@ impl Tokens {
                     req_input = false;
                     expect_expr = !open_input;
                 }
+                '\'' => {
+                    let d = match operator_stack.last_mut() {
+                        Some(Operators::Custom(_, d)) => d,
+                        Some(Operators::Function(_, d)) => d,
+                        _ => return Err(ParseError::DerivativeError),
+                    };
+                    if *d < 0 {
+                        return Err(ParseError::DerivativeError);
+                    }
+                    *d += 1;
+                    open_input = false;
+                    negate = false;
+                    last_abs = false;
+                    req_input = false;
+                    expect_expr = true;
+                }
+                '`' => {
+                    let d = match operator_stack.last_mut() {
+                        Some(Operators::Custom(_, d)) => d,
+                        Some(Operators::Function(_, d)) => d,
+                        _ => return Err(ParseError::IntegralError),
+                    };
+                    if *d > 0 {
+                        return Err(ParseError::IntegralError);
+                    }
+                    *d -= 1;
+                    open_input = false;
+                    negate = false;
+                    last_abs = false;
+                    req_input = false;
+                    expect_expr = true;
+                }
                 '0'..='9' if base <= 10 => {
                     let mut l = 1;
                     for t in value[i + 1..].chars() {
@@ -480,12 +516,15 @@ impl Tokens {
                         if operator_stack.len() < 2 {
                             return Err(ParseError::CommaError);
                         }
-                        let Operators::Function(fun) = operator_stack[operator_stack.len() - 2]
-                        else {
-                            return Err(ParseError::CommaError);
-                        };
-                        if fun.first_expected_var(*last) {
-                            inner_vars.extend(iter::repeat_n("", fun.inner_vars() as usize));
+                        match operator_stack[operator_stack.len() - 2] {
+                            Operators::Custom(_, _) => {}
+                            Operators::Function(fun, _) => {
+                                if fun.first_expected_var(*last) {
+                                    inner_vars
+                                        .extend(iter::repeat_n("", fun.inner_vars() as usize));
+                                }
+                            }
+                            _ => return Err(ParseError::CommaError),
                         }
                     } else if !expect_let {
                         return Err(ParseError::CommaError);
@@ -644,7 +683,7 @@ impl Tokens {
         if operator_stack
             .iter()
             .rfind(|la| {
-                let Operators::Function(f) = la else {
+                let Operators::Function(f, 0) = la else {
                     return false;
                 };
                 last = inputs.next_back();
@@ -709,18 +748,20 @@ impl Tokens {
         funs: &Functions,
         fn_inputs: &mut Vec<u8>,
     ) -> Result<(), ParseError<'static>> {
-        if let Some(top) = operator_stack.pop_if(|l| matches!(l, Operators::Function(_))) {
+        if let Some(top) = operator_stack
+            .pop_if(|l| matches!(l, Operators::Function(_, _) | Operators::Custom(_, _)))
+        {
             match top {
-                Operators::Function(Function::Custom(i)) => {
+                Operators::Custom(i, d) => {
                     let inputs = fn_inputs.pop().unwrap();
                     match funs.get(i as usize).unwrap().inputs.get().cmp(&inputs) {
                         Ordering::Greater => return Err(ParseError::MissingInput),
                         Ordering::Less => return Err(ParseError::ExtraInput),
                         _ => {}
                     }
-                    self.push(Token::Fun(i));
+                    self.push(Token::Fun(i, d));
                 }
-                Operators::Function(mut fun) => {
+                Operators::Function(mut fun, d) => {
                     if fun.has_var() {
                         inner_vars_count.pop().unwrap();
                     }
@@ -746,7 +787,7 @@ impl Tokens {
                         _ => {}
                     }
                     self.compact_args(fun, inner_vars, funs);
-                    self.push(fun.into());
+                    self.push(Token::Function(fun, d));
                 }
                 _ => {}
             }
@@ -772,7 +813,7 @@ impl<'a> TokensRef<'a> {
             inputs -= 1;
             end -= 1;
             match self[end] {
-                Token::Fun(j) => inputs += funs[j as usize].inputs.get(),
+                Token::Fun(j, _) => inputs += funs[j as usize].inputs.get(),
                 Token::Function(o, _) => inputs += o.inputs().get(),
                 Token::Skip(_) => inputs += 1,
                 _ => {}
@@ -799,7 +840,7 @@ impl<'a> TokensRef<'a> {
     }
     pub fn get_lasts(self, funs: &Functions) -> Vec<Self> {
         let inputs = match self.last().unwrap() {
-            Token::Fun(j) => funs[*j as usize].inputs,
+            Token::Fun(j, _) => funs[*j as usize].inputs,
             Token::Function(o, _) => o.inputs(),
             _ => unreachable!(),
         };

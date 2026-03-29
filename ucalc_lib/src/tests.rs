@@ -1420,11 +1420,11 @@ fn test_solve() {
             Token::InnerVar(0).into(),
             num(3),
             Operators::Add.into(),
-            Token::Fun(1),
+            Token::Fun(1, 0),
             num(3),
             Operators::Add.into(),
             num(2),
-            Token::Fun(0),
+            Token::Fun(0, 0),
             num(1),
             Operators::Sub.into(),
             Function::Solve.into(),
@@ -1483,11 +1483,11 @@ fn test_solve() {
             Token::InnerVar(0).into(),
             num(3),
             Operators::Add.into(),
-            Token::Fun(1),
+            Token::Fun(1, 0),
             num(3),
             Operators::Add.into(),
             num(2),
-            Token::Fun(0),
+            Token::Fun(0, 0),
             num(1),
             Operators::Sub.into(),
             Function::Solve.into(),
@@ -1787,7 +1787,7 @@ fn test_recursion() {
             Token::InnerVar(0),
             num(1),
             Operators::Sub.into(),
-            Token::Fun(0),
+            Token::Fun(0, 0),
             Operators::Mul.into(),
             Token::Skip(1),
             num(1),
@@ -1823,7 +1823,7 @@ fn test_recursion() {
         Variables::default(),
         &[],
         funs,
-        vec![num(5), Token::Fun(0)],
+        vec![num(5), Token::Fun(0, 0)],
         res(120)
     );
 }
@@ -1847,7 +1847,7 @@ fn test_inner_functions() {
             Operators::Mul.into(),
             Token::InnerVar(0),
             Token::InnerVar(1),
-            Token::Fun(0),
+            Token::Fun(0, 0),
             Operators::Sub.into(),
         ]),
     );
@@ -1931,19 +1931,19 @@ fn test_inner_functions() {
         vec![
             num(2),
             num(3),
-            Token::Fun(1),
+            Token::Fun(1, 0),
             num(2),
             Operators::Mul.into(),
             num(3),
             num(2),
-            Token::Fun(1),
+            Token::Fun(1, 0),
             num(2),
             Operators::Mul.into(),
-            Token::Fun(0),
+            Token::Fun(0, 0),
             num(1),
             Operators::Sub.into(),
             num(2),
-            Token::Fun(1)
+            Token::Fun(1, 0)
         ],
         res(5)
     );
@@ -2004,19 +2004,19 @@ fn test_composed_functions() {
         vec![
             num(2),
             num(3),
-            Token::Fun(1),
+            Token::Fun(1, 0),
             num(2),
             Operators::Mul.into(),
             num(3),
             num(2),
-            Token::Fun(1),
+            Token::Fun(1, 0),
             num(2),
             Operators::Mul.into(),
-            Token::Fun(0),
+            Token::Fun(0, 0),
             num(1),
             Operators::Sub.into(),
             num(2),
-            Token::Fun(1)
+            Token::Fun(1, 0)
         ],
         res(44)
     );
@@ -2057,7 +2057,7 @@ fn test_custom_functions() {
         Variables::default(),
         &[],
         funs,
-        vec![num(3), num(4), Token::Fun(0)],
+        vec![num(3), num(4), Token::Fun(0, 0)],
         res(-1)
     );
     assert_correct_with!(
@@ -2093,12 +2093,12 @@ fn test_custom_functions() {
             Token::Skip(11),
             Token::InnerVar(0),
             Token::InnerVar(1),
-            Token::Fun(0),
+            Token::Fun(0, 0),
             num(2),
             Operators::Pow.into(),
             Token::InnerVar(1),
             Token::InnerVar(0),
-            Token::Fun(0),
+            Token::Fun(0, 0),
             Operators::Add.into(),
             num(2),
             Operators::Sub.into(),
@@ -2644,8 +2644,8 @@ fn test_cmp() {
         res(1)
     );
     assert_correct!(
-        infix("'1"),
-        rpn("1 '"),
+        infix(";1"),
+        rpn("1 ;"),
         vec![num(1), Operators::Not.into()],
         res(0)
     );

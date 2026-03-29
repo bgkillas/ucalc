@@ -99,7 +99,6 @@ pub enum Function {
     NumericalDifferential,
     NumericalIntegral,
     NumericalSolve,
-    Custom(u16),
 }
 impl TryFrom<&str> for Function {
     type Error = ();
@@ -269,7 +268,6 @@ impl Display for Function {
                 Self::And => "and",
                 Self::Or => "or",
                 Self::Not => "not",
-                Self::Custom(_) => unreachable!(),
             }
         )
     }
@@ -359,7 +357,6 @@ impl Function {
             #[cfg(feature = "complex")]
             Self::Quartic => 5,
             Self::Exprs(n) => return n,
-            Self::Custom(_) => unreachable!(),
         })
         .unwrap()
     }
