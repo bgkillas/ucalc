@@ -282,6 +282,14 @@ impl Function {
             _ => {}
         }
     }
+    pub fn is_default_inputs(self) -> bool {
+        !matches!(
+            self,
+            Self::Atan(AtanInputs::Two)
+                | Self::Modify(ModifyInputs::Three)
+                | Self::While(ModifyInputs::Three)
+        )
+    }
     pub fn inputs(self) -> NonZeroU8 {
         NonZero::new(match self {
             Self::Not

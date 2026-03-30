@@ -122,15 +122,30 @@ impl<'a> TokensRef<'a> {
         fmt::from_fn(move |fmt| match self.last().unwrap() {
             Token::Num(n) => write!(fmt, "{}", n.real()),
             Token::Polynomial(_) => unreachable!(),
-            Token::InnerVar(i) => write!(fmt, "{}", (b'n' + *i as u8) as char),
-            Token::GraphVar(i) => write!(fmt, "{}", graph_vars[*i as usize]),
-            Token::Fun(i, _) => write!(fmt, "{}", funs[*i as usize].name.as_ref().unwrap()),
-            Token::Var(i) => write!(fmt, "{}", vars[*i as usize].name.as_ref().unwrap()),
+            &Token::InnerVar(i) => write!(fmt, "{}", (b'n' + i as u8) as char),
+            &Token::GraphVar(i) => write!(fmt, "{}", graph_vars[i as usize]),
+            &Token::Fun(i, d) => {
+                let lasts = self.get_lasts(funs);
+                let mut first = true;
+                write!(fmt, "{}", funs[i as usize].name.as_ref().unwrap())?;
+                write_commas(fmt, d)?;
+                for arg in lasts {
+                    let arg = arg.get_infix(vars, funs, graph_vars);
+                    if first {
+                        first = false;
+                        write!(fmt, "{arg}")?;
+                    } else {
+                        write!(fmt, ",{arg}")?;
+                    }
+                }
+                write!(fmt, ")")
+            }
+            &Token::Var(i) => write!(fmt, "{}", vars[i as usize].name.as_ref().unwrap()),
             Token::Skip(_) => Ok(()),
-            Token::Function(f, _) => {
+            &Token::Function(f, d) => {
                 let l = self.len() - 1;
                 let last = TokensRef(&self[..l]).get_last(funs);
-                if let Ok(o) = Operators::try_from(*f) {
+                if let Ok(o) = Operators::try_from(f) {
                     let arg = TokensRef(&self[last..l]).get_infix(vars, funs, graph_vars);
                     let arg = if self[l - 1].greater_precedence(o)
                         || (f.is_chainable()
@@ -160,6 +175,7 @@ impl<'a> TokensRef<'a> {
                     let lasts = self.get_lasts(funs);
                     let mut first = true;
                     write!(fmt, "{f}(")?;
+                    write_commas(fmt, d)?;
                     for arg in lasts {
                         let arg = arg.get_infix(vars, funs, graph_vars);
                         if first {
@@ -185,17 +201,19 @@ impl<'a> TokensRef<'a> {
                 match token {
                     Token::Num(n) => write!(fmt, "{}", n.real())?,
                     Token::Polynomial(_) => unreachable!(),
-                    Token::InnerVar(i) => write!(fmt, "{}", (b'n' + *i as u8) as char)?,
-                    Token::GraphVar(i) => write!(fmt, "{}", graph_vars[*i as usize])?,
-                    Token::Fun(i, _) => {
-                        write!(fmt, "{}", funs[*i as usize].name.as_ref().unwrap())?
+                    &Token::InnerVar(i) => write!(fmt, "{}", (b'n' + i as u8) as char)?,
+                    &Token::GraphVar(i) => write!(fmt, "{}", graph_vars[i as usize])?,
+                    &Token::Fun(i, d) => {
+                        write!(fmt, "{}", funs[i as usize].name.as_ref().unwrap())?;
+                        write_commas(fmt, d)?;
                     }
-                    Token::Var(i) => write!(fmt, "{}", vars[*i as usize].name.as_ref().unwrap())?,
-                    Token::Function(fun, _) => {
-                        if let Ok(o) = Operators::try_from(*fun) {
-                            write!(fmt, "{o}")?
+                    &Token::Var(i) => write!(fmt, "{}", vars[i as usize].name.as_ref().unwrap())?,
+                    &Token::Function(fun, d) => {
+                        if let Ok(o) = Operators::try_from(fun) {
+                            write!(fmt, "{o}")?;
                         } else {
-                            write!(fmt, "{fun}")?
+                            write!(fmt, "{fun}")?;
+                            write_commas(fmt, d)?;
                         }
                     }
                     Token::Skip(_) => first = true,
@@ -204,6 +222,19 @@ impl<'a> TokensRef<'a> {
             Ok(())
         })
     }
+}
+fn write_commas(fmt: &mut Formatter, mut d: u8) -> fmt::Result {
+    if d & 0b1000_0000 == 0 {
+        for _ in 0..d {
+            write!(fmt, "\'")?;
+        }
+    } else {
+        d -= 0b1000_0000;
+        for _ in 0..d {
+            write!(fmt, "`")?;
+        }
+    }
+    Ok(())
 }
 impl Tokens {
     pub fn get_infix(
