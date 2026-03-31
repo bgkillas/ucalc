@@ -1,4 +1,5 @@
 use crate::functions::Function;
+use crate::parse::Derivative;
 use std::fmt::{Display, Formatter};
 use std::num::{NonZero, NonZeroU8};
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -24,8 +25,8 @@ pub enum Operators {
     Or,
     Not,
     Bracket(Bracket),
-    Custom(u16, u8),
-    Function(Function, u8),
+    Custom(u16, Derivative),
+    Function(Function, Derivative),
 }
 impl Display for Operators {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {

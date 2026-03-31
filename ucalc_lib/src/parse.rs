@@ -36,9 +36,38 @@ pub enum Token {
     InnerVar(u16),
     GraphVar(u8),
     Var(u16),
-    Fun(u16, u8),
-    Function(Function, u8),
+    Fun(u16, Derivative),
+    Function(Function, Derivative),
     Skip(usize),
+}
+#[derive(Debug, PartialEq, Clone, Copy, Default)]
+#[repr(transparent)]
+pub struct Derivative(u8);
+impl Derivative {
+    pub fn get_num(self) -> u8 {
+        self.0 & 0b0011_1111
+    }
+    pub fn set_integral(&mut self) {
+        self.0 |= 0b1000_0000;
+    }
+    pub fn set_integral_two_input(&mut self) {
+        self.0 |= 0b1100_0000;
+    }
+    pub fn set_derivative(&mut self) {
+        self.0 &= 0b0011_1111;
+    }
+    pub fn is_integral(self) -> bool {
+        self.0 & 0b1000_0000 == 0b1000_0000
+    }
+    pub fn is_integral_two_input(self) -> bool {
+        self.0 & 0b1100_0000 == 0b1100_0000
+    }
+    pub fn is_derivative(self) -> bool {
+        self.0 & 0b1000_0000 == 0
+    }
+    pub fn add(&mut self) {
+        self.0 += 1;
+    }
 }
 impl Display for Token {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -223,14 +252,13 @@ impl<'a> TokensRef<'a> {
         })
     }
 }
-fn write_commas(fmt: &mut Formatter, mut d: u8) -> fmt::Result {
-    if d & 0b1000_0000 == 0 {
-        for _ in 0..d {
+fn write_commas(fmt: &mut Formatter, d: Derivative) -> fmt::Result {
+    if d.is_derivative() {
+        for _ in 0..d.get_num() {
             write!(fmt, "\'")?;
         }
     } else {
-        d -= 0b1000_0000;
-        for _ in 0..d {
+        for _ in 0..d.get_num() {
             write!(fmt, "`")?;
         }
     }
@@ -311,7 +339,9 @@ impl Tokens {
                     inner_vars.push(token)
                 }
                 _ if let Ok(operator) = Operators::try_from(token) => tokens.push(operator.into()),
-                _ if let Some(i) = funs.position(token) => tokens.push(Token::Fun(i, 0)),
+                _ if let Some(i) = funs.position(token) => {
+                    tokens.push(Token::Fun(i, Derivative::default()))
+                }
                 _ if let Some(i) = inner_vars.iter().position(|v| *v == token) => {
                     tokens.push(Token::InnerVar(i as u16))
                 }
@@ -332,10 +362,10 @@ impl Tokens {
                     && ((k > 0 && j == 0) || (j > 0 && k == 0) || (k == 0 && j == 0))
                     && let Ok(fun) = Function::try_from(&token[..token.len() - (j + k)]) =>
                 {
-                    let mut d = (j + k) as u8;
+                    let mut d = Derivative((j + k) as u8);
                     tokens.compact_args(fun, &mut inner_vars, funs);
                     if j > 0 {
-                        d += 0b1000_0000;
+                        d.set_integral()
                     }
                     tokens.push(Token::Function(fun, d));
                 }
@@ -351,14 +381,15 @@ impl Tokens {
                     && let Ok(mut fun) = Function::try_from(&token[..=i]) =>
                 {
                     let inputs = token[i + 1..token.len() - (j + k)].parse().unwrap();
-                    let mut d = (j + k) as u8;
+                    let mut d = Derivative((j + k) as u8);
                     fun.set_inputs(inputs);
                     tokens.compact_args(fun, &mut inner_vars, funs);
                     if j > 0 {
                         if inputs.get() == 2 && fun.inputs().get() == 1 {
-                            d += 0b0100_0000;
+                            d.set_integral_two_input()
+                        } else {
+                            d.set_integral()
                         }
-                        d += 0b1000_0000;
                     }
                     tokens.push(Token::Function(fun, d));
                 }
@@ -439,7 +470,7 @@ impl Tokens {
                             open_input = true;
                         } else if let Some(i) = funs.position(s) {
                             tokens.last_mul(&mut operator_stack, negate, &mut last_mul, false);
-                            operator_stack.push(Operators::Custom(i, 0));
+                            operator_stack.push(Operators::Custom(i, Derivative::default()));
                             open_input = false;
                             fn_inputs.push(1);
                         } else if let Some(i) = inner_vars.iter().position(|v| *v == s) {
@@ -462,7 +493,7 @@ impl Tokens {
                                 inner_vars_count.push(fun.inner_vars());
                             }
                             tokens.last_mul(&mut operator_stack, negate, &mut last_mul, false);
-                            operator_stack.push(Operators::Function(fun, 0));
+                            operator_stack.push(Operators::Function(fun, Derivative::default()));
                             open_input = false;
                             fn_inputs.push(1);
                         } else if s.chars().all(|c| c.is_ascii_alphabetic())
@@ -517,10 +548,10 @@ impl Tokens {
                         Some(Operators::Function(_, d)) => d,
                         _ => return Err(ParseError::DerivativeError),
                     };
-                    if *d & 0b1000_0000 != 0 {
+                    if d.is_integral() {
                         return Err(ParseError::MixedError);
                     }
-                    *d += 1;
+                    d.add();
                     open_input = false;
                     negate = false;
                     last_abs = false;
@@ -533,14 +564,14 @@ impl Tokens {
                         Some(Operators::Function(_, d)) => d,
                         _ => return Err(ParseError::IntegralError),
                     };
-                    if *d & 0b1000_0000 == 0 {
-                        if *d == 0 {
-                            *d += 0b1000_0000;
+                    if d.is_derivative() {
+                        if d.get_num() == 0 {
+                            d.set_integral()
                         } else {
                             return Err(ParseError::MixedError);
                         }
                     }
-                    *d += 1;
+                    d.add();
                     open_input = false;
                     negate = false;
                     last_abs = false;
@@ -750,7 +781,7 @@ impl Tokens {
         if operator_stack
             .iter()
             .rfind(|la| {
-                let Operators::Function(f, 0) = la else {
+                let Operators::Function(f, _) = la else {
                     return false;
                 };
                 last = inputs.next_back();
@@ -850,12 +881,10 @@ impl Tokens {
                     }
                     match fun.inputs().get().cmp(&inputs) {
                         Ordering::Greater => return Err(ParseError::MissingInput),
-                        Ordering::Less if d & 0b1000_0000 == 0 || inputs != 2 => {
+                        Ordering::Less if d.is_derivative() || inputs != 2 => {
                             return Err(ParseError::ExtraInput);
                         }
-                        Ordering::Less => {
-                            d += 0b0100_0000;
-                        }
+                        Ordering::Less => d.set_integral_two_input(),
                         _ => {}
                     }
                     self.compact_args(fun, inner_vars, funs);
@@ -931,12 +960,12 @@ impl From<Number> for Token {
 }
 impl From<Operators> for Token {
     fn from(value: Operators) -> Self {
-        Self::Function(value.into(), 0)
+        Self::Function(value.into(), Derivative::default())
     }
 }
 impl From<Function> for Token {
     fn from(value: Function) -> Self {
-        Self::Function(value, 0)
+        Self::Function(value, Derivative::default())
     }
 }
 impl From<Polynomial> for Token {
