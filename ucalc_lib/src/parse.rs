@@ -65,14 +65,14 @@ impl Derivative {
     pub fn is_derivative(self) -> bool {
         self.0 & 0b1000_0000 == 0
     }
-    pub fn from(n: u8)->Result<Self, ParseError<'static>> {
+    pub fn from(n: u8) -> Result<Self, ParseError<'static>> {
         if n > 0b0011_1111 {
             Err(ParseError::TooManyDerivatives)
-        }else{
+        } else {
             Ok(Self(n))
         }
     }
-    pub fn increment(&mut self) -> Result<(), ParseError<'static>>{
+    pub fn increment(&mut self) -> Result<(), ParseError<'static>> {
         if self.get() == 0b0011_1111 {
             Err(ParseError::TooManyDerivatives)
         } else {
@@ -110,7 +110,8 @@ pub enum ParseError<'a> {
     DerivativeError,
     IntegralError,
     MixedError,
-    TooManyDerivatives
+    TooManyDerivatives,
+    RpnUnsupported,
 }
 impl Display for Tokens {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -348,6 +349,7 @@ impl Tokens {
                         inputs = Some((name, false));
                     }
                 }
+                "=" => return Err(ParseError::RpnUnsupported),
                 _ if expect_let && token.chars().all(|c| c.is_ascii_alphabetic()) => {
                     inner_vars.push(token)
                 }
@@ -544,6 +546,8 @@ impl Tokens {
                             count -= 1;
                             l -= value[i..i + l].chars().last().unwrap().len_utf8();
                             continue;
+                        } else if o == 1 {
+                            todo!()
                         } else {
                             return Err(ParseError::UnknownToken(&value[i..i + o]));
                         }
@@ -729,17 +733,21 @@ impl Tokens {
                         l += next.len_utf8();
                     }
                     let s = &value[i..i + l];
-                    if expect_let && s == "=" {
-                        open_input = false;
-                        expect_let = false;
-                        let Some(name) = inner_vars.try_remove(0) else {
-                            return Err(ParseError::VarExpectedName);
-                        };
-                        if !inner_vars.is_empty() {
-                            funs.add(vars, name, NonZero::new(inner_vars.len() as u8).unwrap());
-                            inputs = Some((name, true));
+                    if s == "=" {
+                        if expect_let {
+                            open_input = false;
+                            expect_let = false;
+                            let Some(name) = inner_vars.try_remove(0) else {
+                                return Err(ParseError::VarExpectedName);
+                            };
+                            if !inner_vars.is_empty() {
+                                funs.add(vars, name, NonZero::new(inner_vars.len() as u8).unwrap());
+                                inputs = Some((name, true));
+                            } else {
+                                inputs = Some((name, false));
+                            }
                         } else {
-                            inputs = Some((name, false));
+                            todo!()
                         }
                     } else if let Ok(mut operator) = Operators::try_from(s) {
                         if negate {

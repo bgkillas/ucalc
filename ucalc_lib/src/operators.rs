@@ -24,6 +24,7 @@ pub enum Operators {
     And,
     Or,
     Not,
+    Solve,
     Bracket(Bracket),
     Custom(u16, Derivative),
     Function(Function, Derivative),
@@ -54,6 +55,7 @@ impl Display for Operators {
                 Operators::And => "&",
                 Operators::Or => "?",
                 Operators::Not => ";",
+                Operators::Solve => "=",
                 Operators::Bracket(_) => unreachable!(),
                 Operators::Function(_, _) => unreachable!(),
                 Operators::Custom(_, _) => unreachable!(),
@@ -123,6 +125,7 @@ impl TryFrom<&str> for Operators {
             "&" => Self::And,
             "?" => Self::Or,
             ";" => Self::Not,
+            "=" => Self::Solve,
             "(" => Self::Bracket(Bracket::Parenthesis),
             "|" => Self::Bracket(Bracket::Absolute),
             _ => return Err(()),
@@ -147,6 +150,7 @@ impl Operators {
             | Self::GreaterEqual
             | Self::And
             | Self::Or
+            | Self::Solve
             | Self::Tetration => 2,
             Self::Negate | Self::Factorial | Self::Not | Self::SubFactorial => 1,
             Self::Function(fun, _) => return fun.inputs(),
@@ -174,6 +178,7 @@ impl Operators {
             | Self::GreaterEqual
             | Self::And
             | Self::Or
+            | Self::Solve
             | Self::Tetration
             | Self::Function(_, _)
             | Self::Custom(_, _)
@@ -197,20 +202,26 @@ impl Operators {
             | Self::Less
             | Self::LessEqual
             | Self::GreaterEqual => 2,
-            Self::Add | Self::Sub => 3,
-            Self::Mul | Self::Div => 4,
-            Self::Negate | Self::Not => 5,
-            Self::Pow | Self::Root | Self::Tetration => 6,
-            Self::Rem => 7,
-            Self::Factorial | Self::SubFactorial => 8,
+            Self::Solve => 3,
+            Self::Add | Self::Sub => 4,
+            Self::Mul | Self::Div => 5,
+            Self::Negate | Self::Not => 6,
+            Self::Pow | Self::Root | Self::Tetration => 7,
+            Self::Rem => 8,
+            Self::Factorial | Self::SubFactorial => 9,
             Self::Bracket(_) | Self::Function(_, _) | Self::Custom(_, _) => unreachable!(),
         }
     }
     pub fn left_associative(self) -> bool {
         match self {
-            Self::Add | Self::Sub | Self::Mul | Self::Div | Self::Rem | Self::And | Self::Or => {
-                true
-            }
+            Self::Add
+            | Self::Sub
+            | Self::Mul
+            | Self::Div
+            | Self::Rem
+            | Self::And
+            | Self::Or
+            | Self::Solve => true,
             Self::Pow
             | Self::Root
             | Self::Negate
@@ -256,8 +267,7 @@ impl From<Operators> for Function {
             Operators::Or => Self::Or,
             Operators::Not => Self::Not,
             Operators::Function(function, _) => function,
-            Operators::Custom(_, _) => unreachable!(),
-            Operators::Bracket(_) => unreachable!(),
+            Operators::Custom(_, _) | Operators::Bracket(_) | Operators::Solve => unreachable!(),
         }
     }
 }
