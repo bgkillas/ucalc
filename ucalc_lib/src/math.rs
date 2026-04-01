@@ -38,9 +38,9 @@ impl Compute<'_> {
         self,
         fun_vars: &mut Vec<Number>,
         stack: &mut Tokens,
+        n: u8,
         point: Number,
         var: usize,
-        n: u8,
     ) -> Number {
         let e = -32;
         let e = e - e % n as i32;
@@ -73,15 +73,55 @@ impl Compute<'_> {
         end: Number,
         var: usize,
     ) -> Number {
-        let n = 1024;
-        let epsilon = (end - &start) / Float::from(n);
+        let k = 1024;
+        let epsilon = (end - &start) / Float::from(k);
         let mut total = Number::from(0);
         fun_vars[var] = start;
         let mut last = self.compute_buffer_with(fun_vars, stack);
         let mid = epsilon.clone() / Float::from(2);
-        for _ in 0..n {
+        for _ in 1..=k {
             fun_vars[var] += &epsilon;
             let cur = self.compute_buffer_with(fun_vars, stack);
+            total += (last + &cur) * &mid;
+            last = cur;
+        }
+        total
+    }
+    pub fn numerical_nth_integral(
+        self,
+        fun_vars: &mut Vec<Number>,
+        stack: &mut Tokens,
+        n: u8,
+        start: Number,
+        end: Number,
+        var: usize,
+    ) -> Number {
+        if n == 0 {
+            fun_vars[var] = start;
+            return self.compute_buffer_with(fun_vars, stack);
+        }
+        let k = 1024;
+        let kf = Float::from(k);
+        let fact = Float::from(UInteger::from((n - 1) as usize).factorial().0);
+        let epsilon = (end - &start) / &kf;
+        let mut total = Number::from(0);
+        fun_vars[var] = start;
+        let mut last = self.compute_buffer_with(fun_vars, stack);
+        for _ in 1..n {
+            last *= &epsilon;
+            last *= &kf;
+        }
+        last /= &fact;
+        let mid = epsilon.clone() / Float::from(2);
+        for i in 1..=k {
+            fun_vars[var] += &epsilon;
+            let mut cur = self.compute_buffer_with(fun_vars, stack);
+            let kf = Float::from(k - i);
+            for _ in 1..n {
+                cur *= &epsilon;
+                cur *= &kf;
+            }
+            cur /= &fact;
             total += (last + &cur) * &mid;
             last = cur;
         }
@@ -102,7 +142,7 @@ impl Compute<'_> {
         let epsilon = (t_1 - &t_0) / Float::from(n);
         fun_vars[x_var] = x_0;
         fun_vars[t_var] = t_0;
-        for _ in 0..n {
+        for _ in 1..=n {
             let delta = self.compute_buffer_with(fun_vars, stack) * &epsilon;
             fun_vars[x_var] += delta;
             fun_vars[t_var] += &epsilon;

@@ -50,7 +50,7 @@ impl Derivative {
     pub fn set_integral(&mut self) {
         self.0 |= 0b1000_0000;
     }
-    pub fn set_integral_two_input(&mut self) {
+    pub fn set_integral_twice_input(&mut self) {
         self.0 |= 0b1100_0000;
     }
     pub fn set_derivative(&mut self) {
@@ -385,8 +385,8 @@ impl Tokens {
                     fun.set_inputs(inputs);
                     tokens.compact_args(fun, &mut inner_vars, funs);
                     if j > 0 {
-                        if inputs.get() == 2 && fun.inputs().get() == 1 {
-                            d.set_integral_two_input()
+                        if inputs.get() == 2 * fun.inputs().get() {
+                            d.set_integral_twice_input()
                         } else {
                             d.set_integral()
                         }
@@ -852,12 +852,13 @@ impl Tokens {
             match top {
                 Operators::Custom(i, mut d) => {
                     let inputs = fn_inputs.pop().unwrap();
-                    match funs.get(i as usize).unwrap().inputs.get().cmp(&inputs) {
+                    let normal = funs.get(i as usize).unwrap().inputs.get();
+                    match normal.cmp(&inputs) {
                         Ordering::Greater => return Err(ParseError::MissingInput),
-                        Ordering::Less if d.is_derivative() || inputs != 2 => {
+                        Ordering::Less if d.is_derivative() || inputs != 2 * normal => {
                             return Err(ParseError::ExtraInput);
                         }
-                        Ordering::Less => d.set_integral_two_input(),
+                        Ordering::Less => d.set_integral_twice_input(),
                         _ => {}
                     }
                     self.push(Token::Fun(i, d));
@@ -882,12 +883,13 @@ impl Tokens {
                         }
                         inputs = fun.inputs().get();
                     }
-                    match fun.inputs().get().cmp(&inputs) {
+                    let normal = fun.inputs().get();
+                    match normal.cmp(&inputs) {
                         Ordering::Greater => return Err(ParseError::MissingInput),
-                        Ordering::Less if d.is_derivative() || inputs != 2 => {
+                        Ordering::Less if d.is_derivative() || inputs != 2 * normal => {
                             return Err(ParseError::ExtraInput);
                         }
-                        Ordering::Less => d.set_integral_two_input(),
+                        Ordering::Less => d.set_integral_twice_input(),
                         _ => {}
                     }
                     self.compact_args(fun, inner_vars, funs);
