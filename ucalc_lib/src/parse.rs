@@ -44,7 +44,7 @@ pub enum Token {
 #[repr(transparent)]
 pub struct Derivative(u8);
 impl Derivative {
-    pub fn get_num(self) -> u8 {
+    pub fn get(self) -> u8 {
         self.0 & 0b0011_1111
     }
     pub fn set_integral(&mut self) {
@@ -65,8 +65,20 @@ impl Derivative {
     pub fn is_derivative(self) -> bool {
         self.0 & 0b1000_0000 == 0
     }
-    pub fn add(&mut self) {
-        self.0 += 1;
+    pub fn from(n: u8)->Result<Self, ParseError<'static>> {
+        if n > 0b0011_1111 {
+            Err(ParseError::TooManyDerivatives)
+        }else{
+            Ok(Self(n))
+        }
+    }
+    pub fn increment(&mut self) -> Result<(), ParseError<'static>>{
+        if self.get() == 0b0011_1111 {
+            Err(ParseError::TooManyDerivatives)
+        } else {
+            self.0 += 1;
+            Ok(())
+        }
     }
 }
 impl Display for Token {
@@ -98,6 +110,7 @@ pub enum ParseError<'a> {
     DerivativeError,
     IntegralError,
     MixedError,
+    TooManyDerivatives
 }
 impl Display for Tokens {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -254,11 +267,11 @@ impl<'a> TokensRef<'a> {
 }
 fn write_commas(fmt: &mut Formatter, d: Derivative) -> fmt::Result {
     if d.is_derivative() {
-        for _ in 0..d.get_num() {
+        for _ in 0..d.get() {
             write!(fmt, "\'")?;
         }
     } else {
-        for _ in 0..d.get_num() {
+        for _ in 0..d.get() {
             write!(fmt, "`")?;
         }
     }
@@ -362,7 +375,7 @@ impl Tokens {
                     && ((k > 0 && j == 0) || (j > 0 && k == 0) || (k == 0 && j == 0))
                     && let Ok(fun) = Function::try_from(&token[..token.len() - (j + k)]) =>
                 {
-                    let mut d = Derivative((j + k) as u8);
+                    let mut d = Derivative::from((j + k) as u8)?;
                     tokens.compact_args(fun, &mut inner_vars, funs);
                     if j > 0 {
                         d.set_integral()
@@ -381,7 +394,7 @@ impl Tokens {
                     && let Ok(mut fun) = Function::try_from(&token[..=i]) =>
                 {
                     let inputs = token[i + 1..token.len() - (j + k)].parse().unwrap();
-                    let mut d = Derivative((j + k) as u8);
+                    let mut d = Derivative::from((j + k) as u8)?;
                     fun.set_inputs(inputs);
                     tokens.compact_args(fun, &mut inner_vars, funs);
                     if j > 0 {
@@ -551,7 +564,7 @@ impl Tokens {
                     if d.is_integral() {
                         return Err(ParseError::MixedError);
                     }
-                    d.add();
+                    d.increment()?;
                     open_input = false;
                     negate = false;
                     last_abs = false;
@@ -565,13 +578,13 @@ impl Tokens {
                         _ => return Err(ParseError::IntegralError),
                     };
                     if d.is_derivative() {
-                        if d.get_num() == 0 {
+                        if d.get() == 0 {
                             d.set_integral()
                         } else {
                             return Err(ParseError::MixedError);
                         }
                     }
-                    d.add();
+                    d.increment()?;
                     open_input = false;
                     negate = false;
                     last_abs = false;

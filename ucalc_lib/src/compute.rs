@@ -146,7 +146,7 @@ impl<'a> Compute<'a> {
         while let Some((i, token)) = tokens.next() {
             match token {
                 &Token::Function(operator, d) => {
-                    if d.get_num() != 0 {
+                    if d.get() != 0 {
                         todo!()
                     }
                     let inputs = operator.inputs();
@@ -192,7 +192,7 @@ impl<'a> Compute<'a> {
                     let compute = self
                         .offset(end)
                         .tokens(TokensRef(&self.funs[index as usize].tokens));
-                    if d.get_num() != 0 {
+                    if d.get() != 0 {
                         if d.is_integral() {
                             if d.is_integral_two_input() {
                                 if inputs != 1 {
@@ -204,7 +204,7 @@ impl<'a> Compute<'a> {
                                     .numerical_nth_integral(
                                         fun_vars,
                                         stack,
-                                        d.get_num(),
+                                        d.get(),
                                         stack.last().unwrap().num_ref().clone(),
                                         end,
                                         fun_vars.len() - 1,
@@ -217,7 +217,7 @@ impl<'a> Compute<'a> {
                                 *stack[len - inputs].num_mut() = compute.numerical_nth_integral(
                                     fun_vars,
                                     stack,
-                                    d.get_num(),
+                                    d.get(),
                                     Number::default(),
                                     stack[len - inputs].num_ref().clone(),
                                     fun_vars.len() - 1,
@@ -231,7 +231,7 @@ impl<'a> Compute<'a> {
                             *stack[len - inputs].num_mut() = compute.numerical_nth_derivative(
                                 fun_vars,
                                 stack,
-                                d.get_num(),
+                                d.get(),
                                 stack[len - inputs].num_ref().clone(),
                                 fun_vars.len() - 1,
                             );

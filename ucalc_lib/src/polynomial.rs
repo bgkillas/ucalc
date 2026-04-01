@@ -406,7 +406,7 @@ impl Compute<'_> {
         while let Some((i, token)) = tokens.next() {
             match token {
                 Token::Function(operator, d) => {
-                    if d.get_num() != 0 {
+                    if d.get() != 0 {
                         todo!()
                     }
                     let inputs = operator.inputs().get() as usize;
@@ -418,7 +418,7 @@ impl Compute<'_> {
                     stack.push(Token::Num(self.custom_vars[*index as usize].value.clone()))
                 }
                 Token::Fun(index, d) => {
-                    if d.get_num() != 0 {
+                    if d.get() != 0 {
                         todo!()
                     }
                     let inputs = self.funs[*index as usize].inputs.get() as usize;
