@@ -6,11 +6,15 @@
 #![allow(internal_features)]
 #![feature(rustc_attrs)]
 #![feature(ptr_cast_slice)]
+#![feature(const_trait_impl)]
+#![feature(const_convert)]
 #[cfg(feature = "float")]
 mod float;
 #[cfg(feature = "float")]
 #[cfg(test)]
 mod float_test;
+#[cfg(feature = "float")]
+mod integer;
 #[cfg(feature = "rug")]
 pub mod rug;
 pub use traits::*;

@@ -1,6 +1,8 @@
-use crate::float;
+use crate::{float, integer};
 #[cfg(feature = "float")]
-pub type Integer = float::Integer;
+pub type Integer = integer::Integer;
+#[cfg(feature = "float")]
+pub type UInteger = integer::UInteger;
 #[cfg(feature = "float")]
 pub type Float = float::Float;
 #[cfg(feature = "float")]

@@ -850,11 +850,14 @@ impl Tokens {
             .pop_if(|l| matches!(l, Operators::Function(_, _) | Operators::Custom(_, _)))
         {
             match top {
-                Operators::Custom(i, d) => {
+                Operators::Custom(i, mut d) => {
                     let inputs = fn_inputs.pop().unwrap();
                     match funs.get(i as usize).unwrap().inputs.get().cmp(&inputs) {
                         Ordering::Greater => return Err(ParseError::MissingInput),
-                        Ordering::Less => return Err(ParseError::ExtraInput),
+                        Ordering::Less if d.is_derivative() || inputs != 2 => {
+                            return Err(ParseError::ExtraInput);
+                        }
+                        Ordering::Less => d.set_integral_two_input(),
                         _ => {}
                     }
                     self.push(Token::Fun(i, d));

@@ -405,7 +405,10 @@ impl Compute<'_> {
         let mut tokens = self.tokens.iter().enumerate();
         while let Some((i, token)) = tokens.next() {
             match token {
-                Token::Function(operator, _) => {
+                Token::Function(operator, d) => {
+                    if d.get_num() != 0 {
+                        todo!()
+                    }
                     let inputs = operator.inputs().get() as usize;
                     let len = stack.len();
                     operator.compute_poly(&mut stack[len - inputs..], &mut poly)?;
@@ -414,7 +417,10 @@ impl Compute<'_> {
                 Token::Var(index) => {
                     stack.push(Token::Num(self.custom_vars[*index as usize].value.clone()))
                 }
-                Token::Fun(index, _) => {
+                Token::Fun(index, d) => {
+                    if d.get_num() != 0 {
+                        todo!()
+                    }
                     let inputs = self.funs[*index as usize].inputs.get() as usize;
                     let end = fun_vars.len();
                     let len = stack.len();

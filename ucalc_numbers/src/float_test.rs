@@ -1,4 +1,5 @@
 use crate::float::{Complex, Float};
+use crate::integer::Integer;
 use crate::{ComplexFunctions, FloatFunctions, Pow};
 fn res<T>(f: T) -> Complex
 where
@@ -8,6 +9,28 @@ where
 }
 fn approx(a: Complex, b: Complex) -> bool {
     (a - b).abs().0 < 1e-4
+}
+#[test]
+fn test_factorial() {
+    assert_eq!(Integer(5).factorial(), Integer(120));
+}
+#[test]
+fn test_binomial() {
+    for (i, r) in [1, 10, 45, 120, 210, 252, 210, 120, 45, 10, 1]
+        .into_iter()
+        .enumerate()
+    {
+        assert_eq!(Integer(10).binomial(Integer(i as isize)), Integer(r));
+    }
+    for (i, r) in [1, 11, 55, 165, 330, 462, 462, 330, 165, 55, 11, 1]
+        .into_iter()
+        .enumerate()
+    {
+        assert_eq!(Integer(11).binomial(Integer(i as isize)), Integer(r));
+    }
+    assert_eq!(Integer(0).binomial(Integer(0)), Integer(1));
+    assert_eq!(Integer(1).binomial(Integer(0)), Integer(1));
+    assert_eq!(Integer(1).binomial(Integer(1)), Integer(1));
 }
 #[test]
 fn test_norm() {

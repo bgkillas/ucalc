@@ -1,3 +1,4 @@
+use crate::integer::Integer;
 use crate::{
     ComplexFunctions, ComplexFunctionsMut, ComplexTrait, ComplexType, Constant, FloatFunctions,
     FloatFunctionsMut, FloatTrait, FloatType, NegAssign, Pow, RealTrait, RealType,
@@ -28,9 +29,6 @@ pub type F = f64;
 pub type F = f128;
 #[cfg(feature = "fastnum")]
 pub type F = fastnum::D1024;
-#[derive(Clone, Default, PartialEq, PartialOrd)]
-#[repr(transparent)]
-pub struct Integer(pub isize);
 #[derive(Clone, Default, PartialEq, PartialOrd)]
 #[repr(transparent)]
 pub struct Float(pub F);

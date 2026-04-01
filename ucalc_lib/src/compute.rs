@@ -145,7 +145,10 @@ impl<'a> Compute<'a> {
         let mut tokens = self.tokens.iter().enumerate();
         while let Some((i, token)) = tokens.next() {
             match token {
-                &Token::Function(operator, _) => {
+                &Token::Function(operator, d) => {
+                    if d.get_num() != 0 {
+                        todo!()
+                    }
                     let inputs = operator.inputs();
                     if operator.has_inner_fn() {
                         operator.compute_var(
@@ -182,16 +185,60 @@ impl<'a> Compute<'a> {
                 &Token::Var(index) => {
                     stack.push(Token::Num(self.custom_vars[index as usize].value.clone()))
                 }
-                &Token::Fun(index, _) => {
+                &Token::Fun(index, d) => {
                     let inputs = self.funs[index as usize].inputs.get() as usize;
                     let end = fun_vars.len();
                     let len = stack.len();
-                    fun_vars.push(stack[len - inputs].num_ref().clone());
-                    fun_vars.extend(stack.drain(len + 1 - inputs..).map(|n| n.num()));
-                    *stack[len - inputs].num_mut() = self
+                    let compute = self
                         .offset(end)
-                        .tokens(TokensRef(&self.funs[index as usize].tokens))
-                        .compute_buffer_with(fun_vars, stack);
+                        .tokens(TokensRef(&self.funs[index as usize].tokens));
+                    if d.get_num() != 0 {
+                        if d.is_integral() {
+                            if d.is_integral_two_input() {
+                                if d.get_num() != 1 {
+                                    todo!()
+                                }
+                                fun_vars.push(Number::default());
+                                let end = stack.pop().unwrap().num();
+                                *stack.last_mut().unwrap().num_mut() = compute.numerical_integral(
+                                    fun_vars,
+                                    stack,
+                                    stack.last().unwrap().num_ref().clone(),
+                                    end,
+                                    fun_vars.len() - 1,
+                                );
+                            } else {
+                                if inputs != 1 || d.get_num() != 1 {
+                                    todo!()
+                                }
+                                fun_vars.push(Number::default());
+                                *stack[len - inputs].num_mut() = compute.numerical_integral(
+                                    fun_vars,
+                                    stack,
+                                    Number::default(),
+                                    stack[len - inputs].num_ref().clone(),
+                                    fun_vars.len() - 1,
+                                );
+                            }
+                        } else {
+                            if inputs != 1 {
+                                todo!()
+                            }
+                            fun_vars.push(Number::default());
+                            *stack[len - inputs].num_mut() = compute.numerical_nth_derivative(
+                                fun_vars,
+                                stack,
+                                stack[len - inputs].num_ref().clone(),
+                                fun_vars.len() - 1,
+                                d.get_num(),
+                            );
+                        }
+                    } else {
+                        fun_vars.push(stack[len - inputs].num_ref().clone());
+                        fun_vars.extend(stack.drain(len + 1 - inputs..).map(|n| n.num()));
+                        *stack[len - inputs].num_mut() =
+                            compute.compute_buffer_with(fun_vars, stack);
+                    }
                     fun_vars.drain(end..);
                 }
                 &Token::InnerVar(index) => {
