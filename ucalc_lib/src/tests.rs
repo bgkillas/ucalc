@@ -1,11 +1,11 @@
 use crate::functions::{AtanInputs, Function, ModifyInputs};
-use crate::operators::Operators;
+use crate::operators::Operator;
 use crate::parse::{Derivative, ParseError};
 use crate::parse::{Token, Tokens};
 use crate::polynomial::Poly;
 use crate::variable::{Functions, Variables};
 use crate::{FUNCTION_LIST, FunctionVar, Number, Variable, get_help};
-use std::num::NonZero;
+use std::num::NonZeroU8;
 use ucalc_numbers::*;
 macro_rules! assert_approx_eq {
     ($a:expr, $b:expr) => {
@@ -165,7 +165,7 @@ fn parse_neg() {
     assert_correct!(
         infix("-4"),
         rpn("4 _"),
-        vec![num(4), Operators::Negate.into()],
+        vec![num(4), Operator::Negate.into()],
         res(-4)
     );
 }
@@ -174,7 +174,7 @@ fn parse_fact() {
     assert_correct!(
         infix("5!"),
         rpn("5 !"),
-        vec![num(5), Operators::Factorial.into()],
+        vec![num(5), Operator::Factorial.into()],
         res(120)
     );
     assert_correct!(
@@ -182,9 +182,9 @@ fn parse_fact() {
         rpn("3 ! 2 ^"),
         vec![
             num(3),
-            Operators::Factorial.into(),
+            Operator::Factorial.into(),
             num(2),
-            Operators::Pow.into()
+            Operator::Pow.into()
         ],
         res(36)
     );
@@ -197,16 +197,16 @@ fn parse_mul() {
         vec![
             var("e"),
             var("pi"),
-            Operators::Mul.into(),
+            Operator::Mul.into(),
             var("e"),
-            Operators::Mul.into()
+            Operator::Mul.into()
         ],
         res(Constant::Pi) * res(Constant::E) * res(Constant::E)
     );
     assert_correct!(
         infix("2*4"),
         rpn("2 4 *"),
-        vec![num(2), num(4), Operators::Mul.into()],
+        vec![num(2), num(4), Operator::Mul.into()],
         res(8)
     );
     assert_correct!(
@@ -218,8 +218,8 @@ fn parse_mul() {
             num(2),
             Token::InnerVar(0),
             num(2),
-            Operators::Pow.into(),
-            Operators::Mul.into(),
+            Operator::Pow.into(),
+            Operator::Mul.into(),
             Function::Set.into()
         ],
         res(8)
@@ -230,9 +230,9 @@ fn parse_mul() {
         vec![
             num(2),
             num(3),
-            Operators::Div.into(),
+            Operator::Div.into(),
             num(3),
-            Operators::Mul.into(),
+            Operator::Mul.into(),
         ],
         res(2)
     );
@@ -242,16 +242,16 @@ fn parse_mul() {
         vec![
             num(2),
             num(3),
-            Operators::Div.into(),
+            Operator::Div.into(),
             num(3),
-            Operators::Mul.into(),
+            Operator::Mul.into(),
         ],
         res(2)
     );
     assert_correct!(
         infix("(2)(3)"),
         rpn("2 3 *"),
-        vec![num(2), num(3), Operators::Mul.into()],
+        vec![num(2), num(3), Operator::Mul.into()],
         res(6)
     );
     assert_correct!(
@@ -262,7 +262,7 @@ fn parse_mul() {
             Function::Sqrt.into(),
             num(4),
             Function::Sqrt.into(),
-            Operators::Mul.into(),
+            Operator::Mul.into(),
         ],
         res(4)
     );
@@ -272,7 +272,7 @@ fn parse_add() {
     assert_correct!(
         infix("2+4"),
         rpn("2 4 +"),
-        vec![num(2), num(4), Operators::Add.into()],
+        vec![num(2), num(4), Operator::Add.into()],
         res(6)
     );
 }
@@ -281,7 +281,7 @@ fn parse_sub() {
     assert_correct!(
         infix("2-4"),
         rpn("2 4 -"),
-        vec![num(2), num(4), Operators::Sub.into()],
+        vec![num(2), num(4), Operator::Sub.into()],
         res(-2)
     );
 }
@@ -290,7 +290,7 @@ fn parse_div() {
     assert_correct!(
         infix("2/4"),
         rpn("2 4 /"),
-        vec![num(2), num(4), Operators::Div.into()],
+        vec![num(2), num(4), Operator::Div.into()],
         res(0.5)
     );
 }
@@ -299,7 +299,7 @@ fn parse_rem() {
     assert_correct!(
         infix("7%4"),
         rpn("7 4 %"),
-        vec![num(7), num(4), Operators::Rem.into()],
+        vec![num(7), num(4), Operator::Rem.into()],
         res(3)
     );
     assert_correct!(
@@ -308,9 +308,9 @@ fn parse_rem() {
         vec![
             num(7),
             num(4),
-            Operators::Rem.into(),
+            Operator::Rem.into(),
             num(2),
-            Operators::Pow.into()
+            Operator::Pow.into()
         ],
         res(9)
     );
@@ -358,7 +358,7 @@ fn test_inverses() {
                         Token::InnerVar(0).into(),
                         f.into(),
                         num(0.5),
-                        Operators::Sub.into(),
+                        Operator::Sub.into(),
                         Function::Solve.into(),
                         f.into()
                     ],
@@ -375,7 +375,7 @@ fn test_inverses() {
                         num(0.5),
                         f.into(),
                         num(0.5),
-                        Operators::Sub.into(),
+                        Operator::Sub.into(),
                         Function::Solve.into(),
                         num(0.5),
                         f.into(),
@@ -392,7 +392,7 @@ fn test_inverses() {
                         Token::InnerVar(0).into(),
                         f.into(),
                         num(0.5),
-                        Operators::Sub.into(),
+                        Operator::Sub.into(),
                         Function::Solve.into(),
                         f.into(),
                     ],
@@ -408,7 +408,7 @@ fn parse_pow() {
     assert_correct!(
         infix("2^4"),
         rpn("2 4 ^"),
-        vec![num(2), num(4), Operators::Pow.into()],
+        vec![num(2), num(4), Operator::Pow.into()],
         res(16)
     );
     assert_correct!(
@@ -417,8 +417,8 @@ fn parse_pow() {
         vec![
             num(2),
             num(4),
-            Operators::Negate.into(),
-            Operators::Pow.into()
+            Operator::Negate.into(),
+            Operator::Pow.into()
         ],
         res(16).recip()
     );
@@ -429,17 +429,17 @@ fn parse_pow() {
             num(1),
             num(2),
             num(4),
-            Operators::Negate.into(),
-            Operators::Pow.into(),
-            Operators::Negate.into(),
-            Operators::Add.into()
+            Operator::Negate.into(),
+            Operator::Pow.into(),
+            Operator::Negate.into(),
+            Operator::Add.into()
         ],
         res(1) - res(16).recip()
     );
     assert_correct!(
         infix("2**4"),
         rpn("2 4 **"),
-        vec![num(2), num(4), Operators::Pow.into()],
+        vec![num(2), num(4), Operator::Pow.into()],
         res(16)
     );
 }
@@ -448,7 +448,7 @@ fn parse_root() {
     assert_correct!(
         infix("4//2"),
         rpn("4 2 //"),
-        vec![num(4), num(2), Operators::Root.into()],
+        vec![num(4), num(2), Operator::Root.into()],
         res(2)
     );
 }
@@ -515,7 +515,7 @@ fn parse_cos() {
         vec![
             var("pi"),
             num(6),
-            Operators::Div.into(),
+            Operator::Div.into(),
             Function::Cos.into()
         ],
         (res(Constant::Pi) / Float::from(6)).cos()
@@ -529,9 +529,9 @@ fn parse_acos() {
         vec![
             num(3),
             num(2),
-            Operators::Root.into(),
+            Operator::Root.into(),
             num(2),
-            Operators::Div.into(),
+            Operator::Div.into(),
             Function::Acos.into()
         ],
         (res(3).sqrt() / Float::from(2)).acos()
@@ -546,15 +546,15 @@ fn test_polynomial() {
             Token::Skip(11),
             Token::InnerVar(0),
             num(2),
-            Operators::Sub.into(),
+            Operator::Sub.into(),
             Token::InnerVar(0),
             num(3),
-            Operators::Sub.into(),
-            Operators::Mul.into(),
+            Operator::Sub.into(),
+            Operator::Mul.into(),
             Token::InnerVar(0),
             num(3),
-            Operators::Sub.into(),
-            Operators::Div.into(),
+            Operator::Sub.into(),
+            Operator::Div.into(),
             Function::Solve.into()
         ],
         res(2)
@@ -566,19 +566,19 @@ fn test_polynomial() {
             Token::Skip(15),
             Token::InnerVar(0),
             num(2),
-            Operators::Sub.into(),
+            Operator::Sub.into(),
             Token::InnerVar(0),
             num(3),
-            Operators::Sub.into(),
-            Operators::Mul.into(),
+            Operator::Sub.into(),
+            Operator::Mul.into(),
             Token::InnerVar(0),
             num(3),
-            Operators::Sub.into(),
-            Operators::Div.into(),
+            Operator::Sub.into(),
+            Operator::Div.into(),
             Token::InnerVar(0),
             num(3),
-            Operators::Sub.into(),
-            Operators::Div.into(),
+            Operator::Sub.into(),
+            Operator::Div.into(),
             Function::Solve.into()
         ],
         res(2)
@@ -591,8 +591,8 @@ fn test_polynomial() {
             Token::InnerVar(0),
             Token::InnerVar(0),
             num(2),
-            Operators::Pow.into(),
-            Operators::Add.into(),
+            Operator::Pow.into(),
+            Operator::Add.into(),
             Function::Solve.into()
         ],
         res(-1)
@@ -605,15 +605,15 @@ fn test_polynomial() {
             Token::Skip(11),
             Token::InnerVar(0),
             num(0.5),
-            Operators::Pow.into(),
+            Operator::Pow.into(),
             num(2),
-            Operators::Sub.into(),
+            Operator::Sub.into(),
             Token::InnerVar(0),
             num(0.5),
-            Operators::Pow.into(),
+            Operator::Pow.into(),
             num(2),
-            Operators::Add.into(),
-            Operators::Mul.into(),
+            Operator::Add.into(),
+            Operator::Mul.into(),
             Function::Solve.into()
         ],
         res(4)
@@ -626,19 +626,19 @@ fn test_polynomial() {
             Token::Skip(15),
             Token::InnerVar(0),
             num(2),
-            Operators::Sub.into(),
+            Operator::Sub.into(),
             Token::InnerVar(0),
             num(1),
-            Operators::Sub.into(),
-            Operators::Mul.into(),
+            Operator::Sub.into(),
+            Operator::Mul.into(),
             Token::InnerVar(0),
             num(1),
-            Operators::Add.into(),
-            Operators::Mul.into(),
+            Operator::Add.into(),
+            Operator::Mul.into(),
             Token::InnerVar(0),
             num(2),
-            Operators::Add.into(),
-            Operators::Mul.into(),
+            Operator::Add.into(),
+            Operator::Mul.into(),
             Function::Solve.into()
         ],
         res(1)
@@ -651,19 +651,19 @@ fn test_polynomial() {
             Token::Skip(15),
             Token::InnerVar(0),
             num(2),
-            Operators::Sub.into(),
+            Operator::Sub.into(),
             Token::InnerVar(0),
             num(1),
-            Operators::Sub.into(),
-            Operators::Mul.into(),
+            Operator::Sub.into(),
+            Operator::Mul.into(),
             Token::InnerVar(0),
             num(1),
-            Operators::Add.into(),
-            Operators::Mul.into(),
+            Operator::Add.into(),
+            Operator::Mul.into(),
             Token::InnerVar(0),
             num(3),
-            Operators::Add.into(),
-            Operators::Mul.into(),
+            Operator::Add.into(),
+            Operator::Mul.into(),
             Function::Solve.into()
         ],
         res(-3)
@@ -676,15 +676,15 @@ fn test_polynomial() {
             Token::Skip(11),
             Token::InnerVar(0),
             num(2),
-            Operators::Sub.into(),
+            Operator::Sub.into(),
             Token::InnerVar(0),
             num(1),
-            Operators::Sub.into(),
-            Operators::Mul.into(),
+            Operator::Sub.into(),
+            Operator::Mul.into(),
             Token::InnerVar(0),
             num(3),
-            Operators::Add.into(),
-            Operators::Mul.into(),
+            Operator::Add.into(),
+            Operator::Mul.into(),
             Function::Solve.into()
         ],
         res(-3)
@@ -698,7 +698,7 @@ fn parse_sin() {
         vec![
             var("pi"),
             num(6),
-            Operators::Div.into(),
+            Operator::Div.into(),
             Function::Sin.into()
         ],
         (res(Constant::Pi) / Float::from(6)).sin()
@@ -719,10 +719,10 @@ fn parse_sinh() {
             var("e"),
             num(1),
             var("e"),
-            Operators::Div.into(),
-            Operators::Sub.into(),
+            Operator::Div.into(),
+            Operator::Sub.into(),
             num(2),
-            Operators::Div.into(),
+            Operator::Div.into(),
             Function::Asinh.into(),
         ],
         res(1)
@@ -743,10 +743,10 @@ fn parse_cosh() {
             var("e"),
             num(1),
             var("e"),
-            Operators::Div.into(),
-            Operators::Add.into(),
+            Operator::Div.into(),
+            Operator::Add.into(),
             num(2),
-            Operators::Div.into(),
+            Operator::Div.into(),
             Function::Acosh.into(),
         ],
         res(1)
@@ -775,7 +775,7 @@ fn parse_tan() {
         vec![
             var("pi"),
             num(6),
-            Operators::Div.into(),
+            Operator::Div.into(),
             Function::Tan.into()
         ],
         (res(Constant::Pi) / Float::from(6)).tan()
@@ -848,8 +848,8 @@ fn parse_abs() {
             num(2),
             num(2),
             var("i"),
-            Operators::Mul.into(),
-            Operators::Add.into(),
+            Operator::Mul.into(),
+            Operator::Add.into(),
             Function::Abs.into()
         ],
         res(8).sqrt()
@@ -880,7 +880,7 @@ fn parse_abs() {
             num(0),
             Function::Abs.into(),
             num(0),
-            Operators::Sub.into(),
+            Operator::Sub.into(),
             Function::Abs.into()
         ],
         res(0)
@@ -890,24 +890,24 @@ fn parse_abs() {
         rpn("0 ! abs 0 1 ^ 0 abs * 2 _ abs - abs - abs 0 abs +"),
         vec![
             num(0),
-            Operators::Factorial.into(),
+            Operator::Factorial.into(),
             Function::Abs.into(),
             num(0),
             num(1),
-            Operators::Pow.into(),
+            Operator::Pow.into(),
             num(0),
             Function::Abs.into(),
-            Operators::Mul.into(),
+            Operator::Mul.into(),
             num(2),
-            Operators::Negate.into(),
+            Operator::Negate.into(),
             Function::Abs.into(),
-            Operators::Sub.into(),
+            Operator::Sub.into(),
             Function::Abs.into(),
-            Operators::Sub.into(),
+            Operator::Sub.into(),
             Function::Abs.into(),
             num(0),
             Function::Abs.into(),
-            Operators::Add.into(),
+            Operator::Add.into(),
         ],
         res(1)
     );
@@ -926,8 +926,8 @@ fn parse_arg() {
             num(2),
             num(2),
             var("i"),
-            Operators::Mul.into(),
-            Operators::Add.into(),
+            Operator::Mul.into(),
+            Operator::Add.into(),
             Function::Arg.into()
         ],
         res(Constant::Pi) / Float::from(4)
@@ -943,8 +943,8 @@ fn parse_conj() {
             num(2),
             num(2),
             var("i"),
-            Operators::Mul.into(),
-            Operators::Add.into(),
+            Operator::Mul.into(),
+            Operator::Add.into(),
             Function::Conj.into()
         ],
         res((2, -2))
@@ -964,7 +964,7 @@ fn parse_asin() {
     assert_correct!(
         infix("asin(1/2)"),
         rpn("1 2 / asin"),
-        vec![num(1), num(2), Operators::Div.into(), Function::Asin.into()],
+        vec![num(1), num(2), Operator::Div.into(), Function::Asin.into()],
         (res(1) / Float::from(2)).asin()
     );
 }
@@ -995,7 +995,7 @@ fn parse_cubic() {
         vec![
             num(1),
             num(2),
-            Operators::Negate.into(),
+            Operator::Negate.into(),
             num(0),
             num(1),
             Function::Cubic.into()
@@ -1013,7 +1013,7 @@ fn parse_quartic() {
             num(1),
             num(0),
             num(13),
-            Operators::Negate.into(),
+            Operator::Negate.into(),
             num(0),
             num(36),
             Function::Quartic.into()
@@ -1029,9 +1029,9 @@ fn parse_quadratic() {
         vec![
             num(1),
             num(2),
-            Operators::Negate.into(),
+            Operator::Negate.into(),
             num(1),
-            Operators::Negate.into(),
+            Operator::Negate.into(),
             Function::Quadratic.into()
         ],
         res(2).sqrt() + Float::from(1)
@@ -1042,17 +1042,17 @@ fn parse_quadratic() {
         vec![
             num(4),
             num(2),
-            Operators::Sub.into(),
+            Operator::Sub.into(),
             num(2),
-            Operators::Div.into(),
+            Operator::Div.into(),
             num(3),
             num(2),
-            Operators::Sub.into(),
+            Operator::Sub.into(),
             num(3),
-            Operators::Sub.into(),
+            Operator::Sub.into(),
             var("e"),
             Function::Ln.into(),
-            Operators::Negate.into(),
+            Operator::Negate.into(),
             Function::Quadratic.into()
         ],
         res(2).sqrt() + Float::from(1)
@@ -1069,20 +1069,20 @@ fn parse_order_of_operations() {
         rpn("2 _ 3 * 4 7 * + 2 2 3 ^ ^ _ +"),
         vec![
             num(2),
-            Operators::Negate.into(),
+            Operator::Negate.into(),
             num(3),
-            Operators::Mul.into(),
+            Operator::Mul.into(),
             num(4),
             num(7),
-            Operators::Mul.into(),
-            Operators::Add.into(),
+            Operator::Mul.into(),
+            Operator::Add.into(),
             num(2),
             num(2),
             num(3),
-            Operators::Pow.into(),
-            Operators::Pow.into(),
-            Operators::Negate.into(),
-            Operators::Add.into(),
+            Operator::Pow.into(),
+            Operator::Pow.into(),
+            Operator::Negate.into(),
+            Operator::Add.into(),
         ],
         res(-234)
     );
@@ -1094,9 +1094,9 @@ fn parse_order_of_operations() {
             num(3),
             Function::Max.into(),
             num(3),
-            Operators::Div.into(),
+            Operator::Div.into(),
             var("pi"),
-            Operators::Mul.into(),
+            Operator::Mul.into(),
             Function::Sin.into(),
         ],
         res(Constant::Pi).sin()
@@ -1130,11 +1130,7 @@ fn test_graph_vars() {
         Variables::default(),
         &[Number::from(2), Number::from(3)],
         Functions::default(),
-        vec![
-            Token::GraphVar(0),
-            Token::GraphVar(1),
-            Operators::Pow.into()
-        ],
+        vec![Token::GraphVar(0), Token::GraphVar(1), Operator::Pow.into()],
         res(8)
     );
     assert_correct_with!(
@@ -1143,11 +1139,7 @@ fn test_graph_vars() {
         Variables::default(),
         &[Number::from(3), Number::from(2)],
         Functions::default(),
-        vec![
-            Token::GraphVar(0),
-            Token::GraphVar(1),
-            Operators::Pow.into()
-        ],
+        vec![Token::GraphVar(0), Token::GraphVar(1), Operator::Pow.into()],
         res(9)
     );
 }
@@ -1161,7 +1153,7 @@ fn test_set() {
             Token::Skip(3),
             Token::InnerVar(0).into(),
             num(2),
-            Operators::Pow.into(),
+            Operator::Pow.into(),
             Function::Set.into()
         ],
         res(4)
@@ -1173,7 +1165,7 @@ fn test_set() {
             Token::Skip(3),
             num(1),
             Token::InnerVar(0),
-            Operators::Add.into(),
+            Operator::Add.into(),
             Function::Solve.into(),
             Token::Skip(1),
             Token::InnerVar(0),
@@ -1194,7 +1186,7 @@ fn test_numerical_differential() {
             Token::Skip(3),
             Token::InnerVar(0).into(),
             Token::InnerVar(1).into(),
-            Operators::Add.into(),
+            Operator::Add.into(),
             Function::NumericalDifferential.into()
         ],
         res(Constant::E) - res(2)
@@ -1211,9 +1203,9 @@ fn test_numerical_integral() {
             Token::Skip(5),
             Token::InnerVar(0).into(),
             num(2),
-            Operators::Pow.into(),
+            Operator::Pow.into(),
             num(2),
-            Operators::Sub.into(),
+            Operator::Sub.into(),
             Function::NumericalIntegral.into()
         ],
         res(13) / res(3)
@@ -1229,9 +1221,9 @@ fn test_numerical_derivative() {
             Token::Skip(5),
             Token::InnerVar(0).into(),
             num(2),
-            Operators::Pow.into(),
+            Operator::Pow.into(),
             num(2),
-            Operators::Sub.into(),
+            Operator::Sub.into(),
             Function::NumericalDerivative.into()
         ],
         res(4)
@@ -1247,9 +1239,9 @@ fn test_numerical_solve() {
             Token::Skip(5),
             Token::InnerVar(0).into(),
             num(2),
-            Operators::Pow.into(),
+            Operator::Pow.into(),
             num(2),
-            Operators::Sub.into(),
+            Operator::Sub.into(),
             Function::NumericalSolve.into()
         ],
         res(2).sqrt()
@@ -1264,15 +1256,15 @@ fn test_solve() {
             Token::Skip(11),
             Token::InnerVar(0).into(),
             num(4),
-            Operators::Pow.into(),
+            Operator::Pow.into(),
             num(2),
             Token::InnerVar(0).into(),
             num(2),
-            Operators::Pow.into(),
-            Operators::Mul.into(),
-            Operators::Sub.into(),
+            Operator::Pow.into(),
+            Operator::Mul.into(),
+            Operator::Sub.into(),
             num(1),
-            Operators::Add.into(),
+            Operator::Add.into(),
             Function::Solve.into()
         ],
         res(1)
@@ -1284,9 +1276,9 @@ fn test_solve() {
             Token::Skip(5),
             num(4),
             Token::InnerVar(0).into(),
-            Operators::Sub.into(),
+            Operator::Sub.into(),
             Token::InnerVar(0).into(),
-            Operators::Sub.into(),
+            Operator::Sub.into(),
             Function::Solve.into()
         ],
         res(2)
@@ -1298,9 +1290,9 @@ fn test_solve() {
             Token::Skip(5),
             Token::InnerVar(0).into(),
             num(2),
-            Operators::Pow.into(),
+            Operator::Pow.into(),
             num(2),
-            Operators::Sub.into(),
+            Operator::Sub.into(),
             Function::Solve.into()
         ],
         res(2).sqrt()
@@ -1312,9 +1304,9 @@ fn test_solve() {
             Token::Skip(5),
             num(2),
             Token::InnerVar(0).into(),
-            Operators::Mul.into(),
+            Operator::Mul.into(),
             num(1),
-            Operators::Sub.into(),
+            Operator::Sub.into(),
             Function::Solve.into()
         ],
         res(0.5)
@@ -1326,13 +1318,13 @@ fn test_solve() {
             Token::Skip(9),
             Token::InnerVar(0).into(),
             Token::InnerVar(0).into(),
-            Operators::Mul.into(),
+            Operator::Mul.into(),
             num(2),
             Token::InnerVar(0).into(),
-            Operators::Mul.into(),
-            Operators::Sub.into(),
+            Operator::Mul.into(),
+            Operator::Sub.into(),
             num(1),
-            Operators::Sub.into(),
+            Operator::Sub.into(),
             Function::Solve.into()
         ],
         Float::from(1) - res(2).sqrt()
@@ -1345,14 +1337,14 @@ fn test_solve() {
             Token::InnerVar(0).into(),
             Function::Exp.into(),
             num(2),
-            Operators::Pow.into(),
+            Operator::Pow.into(),
             num(2),
             Token::InnerVar(0).into(),
             Function::Exp.into(),
-            Operators::Mul.into(),
-            Operators::Sub.into(),
+            Operator::Mul.into(),
+            Operator::Sub.into(),
             num(1),
-            Operators::Add.into(),
+            Operator::Add.into(),
             Function::Solve.into()
         ],
         res(0)
@@ -1419,14 +1411,14 @@ fn test_solve() {
             Token::Skip(10),
             Token::InnerVar(0).into(),
             num(3),
-            Operators::Add.into(),
+            Operator::Add.into(),
             Token::Fun(1, Derivative::default()),
             num(3),
-            Operators::Add.into(),
+            Operator::Add.into(),
             num(2),
             Token::Fun(0, Derivative::default()),
             num(1),
-            Operators::Sub.into(),
+            Operator::Sub.into(),
             Function::Solve.into(),
         ],
         res(3).sqrt() - res(3)
@@ -1482,14 +1474,14 @@ fn test_solve() {
             Token::Skip(10),
             Token::InnerVar(0).into(),
             num(3),
-            Operators::Add.into(),
+            Operator::Add.into(),
             Token::Fun(1, Derivative::default()),
             num(3),
-            Operators::Add.into(),
+            Operator::Add.into(),
             num(2),
             Token::Fun(0, Derivative::default()),
             num(1),
-            Operators::Sub.into(),
+            Operator::Sub.into(),
             Function::Solve.into(),
         ],
         res(3).sqrt() - res(3)
@@ -1507,7 +1499,7 @@ fn test_fold() {
             Token::Skip(3),
             Token::InnerVar(0).into(),
             Token::InnerVar(1).into(),
-            Operators::Mul.into(),
+            Operator::Mul.into(),
             Function::Fold.into()
         ],
         res(362880)
@@ -1522,7 +1514,7 @@ fn test_fold() {
             Token::Skip(3),
             Token::InnerVar(0).into(),
             Token::InnerVar(1).into(),
-            Operators::Mul.into(),
+            Operator::Mul.into(),
             Function::Fold.into()
         ],
         res(362880)
@@ -1537,7 +1529,7 @@ fn test_fold() {
             Token::Skip(3),
             Token::InnerVar(0).into(),
             Token::InnerVar(1).into(),
-            Operators::Mul.into(),
+            Operator::Mul.into(),
             Function::Fold.into()
         ],
         res(362880)
@@ -1552,7 +1544,7 @@ fn test_fold() {
             Token::Skip(3),
             Token::InnerVar(0).into(),
             Token::InnerVar(1).into(),
-            Operators::Add.into(),
+            Operator::Add.into(),
             Function::Fold.into()
         ],
         res(45)
@@ -1596,30 +1588,30 @@ fn test_overwrite_var() {
     let vars3 = Variables(vec![Variable::null(res(4))]);
     let funs3 = Functions(vec![FunctionVar::new(
         "n",
-        NonZero::new(1).unwrap(),
+        NonZeroU8::new(1).unwrap(),
         Tokens(vec![
             num(2),
             Token::InnerVar(0).into(),
-            Operators::Mul.into(),
+            Operator::Mul.into(),
         ]),
     )]);
     let vars4 = Variables(vec![Variable::null(res(4))]);
     let funs4 = Functions(vec![FunctionVar::new(
         "n",
-        NonZero::new(1).unwrap(),
+        NonZeroU8::new(1).unwrap(),
         Tokens(vec![
             Token::InnerVar(0).into(),
             num(2),
-            Operators::Mul.into(),
+            Operator::Mul.into(),
         ]),
     )]);
     let vars5 = Variables(vec![Variable::null(res(4)), Variable::new("n", res(8))]);
     let funs5 = Functions(vec![FunctionVar::null(
-        NonZero::new(1).unwrap(),
+        NonZeroU8::new(1).unwrap(),
         Tokens(vec![
             Token::InnerVar(0).into(),
             num(2),
-            Operators::Mul.into(),
+            Operator::Mul.into(),
         ]),
     )]);
     let mut v = Variables(Vec::new());
@@ -1748,9 +1740,9 @@ fn test_custom_var() {
         vec![
             num(2),
             Token::Var(0),
-            Operators::Mul.into(),
+            Operator::Mul.into(),
             num(2),
-            Operators::Mul.into()
+            Operator::Mul.into()
         ],
         res(8)
     );
@@ -1777,18 +1769,18 @@ macro_rules! assert_fun {
 fn test_recursion() {
     let mut funs = Functions(vec![FunctionVar::new(
         "fact",
-        NonZero::new(1).unwrap(),
+        NonZeroU8::new(1).unwrap(),
         Tokens(vec![
             Token::InnerVar(0),
             num(0),
-            Operators::Greater.into(),
+            Operator::Greater.into(),
             Token::Skip(6),
             Token::InnerVar(0),
             Token::InnerVar(0),
             num(1),
-            Operators::Sub.into(),
+            Operator::Sub.into(),
             Token::Fun(0, Derivative::default()),
-            Operators::Mul.into(),
+            Operator::Mul.into(),
             Token::Skip(1),
             num(1),
             Function::If.into(),
@@ -1831,24 +1823,24 @@ fn test_recursion() {
 fn test_inner_functions() {
     let f1 = FunctionVar::new(
         "f",
-        NonZero::new(2).unwrap(),
+        NonZeroU8::new(2).unwrap(),
         Tokens(vec![
             Token::InnerVar(0),
             Token::InnerVar(1),
-            Operators::Sub.into(),
+            Operator::Sub.into(),
         ]),
     );
     let f2 = FunctionVar::new(
         "g",
-        NonZero::new(2).unwrap(),
+        NonZeroU8::new(2).unwrap(),
         Tokens(vec![
             Token::InnerVar(0),
             Token::InnerVar(1),
-            Operators::Mul.into(),
+            Operator::Mul.into(),
             Token::InnerVar(0),
             Token::InnerVar(1),
             Token::Fun(0, Derivative::default()),
-            Operators::Sub.into(),
+            Operator::Sub.into(),
         ]),
     );
     let mut funs = Functions(vec![f1.clone(), f2.clone()]);
@@ -1933,15 +1925,15 @@ fn test_inner_functions() {
             num(3),
             Token::Fun(1, Derivative::default()),
             num(2),
-            Operators::Mul.into(),
+            Operator::Mul.into(),
             num(3),
             num(2),
             Token::Fun(1, Derivative::default()),
             num(2),
-            Operators::Mul.into(),
+            Operator::Mul.into(),
             Token::Fun(0, Derivative::default()),
             num(1),
-            Operators::Sub.into(),
+            Operator::Sub.into(),
             num(2),
             Token::Fun(1, Derivative::default())
         ],
@@ -1952,22 +1944,22 @@ fn test_inner_functions() {
 fn test_composed_functions() {
     let f1 = FunctionVar::new(
         "f",
-        NonZero::new(2).unwrap(),
+        NonZeroU8::new(2).unwrap(),
         Tokens(vec![
             Token::InnerVar(0),
             Token::InnerVar(1),
-            Operators::Sub.into(),
+            Operator::Sub.into(),
         ]),
     );
     let f2 = FunctionVar::new(
         "g",
-        NonZero::new(2).unwrap(),
+        NonZeroU8::new(2).unwrap(),
         Tokens(vec![
             Token::InnerVar(0),
             Token::InnerVar(1),
-            Operators::Mul.into(),
+            Operator::Mul.into(),
             Token::InnerVar(1),
-            Operators::Mul.into(),
+            Operator::Mul.into(),
         ]),
     );
     let mut funs = Functions(vec![f1.clone(), f2.clone()]);
@@ -2006,15 +1998,15 @@ fn test_composed_functions() {
             num(3),
             Token::Fun(1, Derivative::default()),
             num(2),
-            Operators::Mul.into(),
+            Operator::Mul.into(),
             num(3),
             num(2),
             Token::Fun(1, Derivative::default()),
             num(2),
-            Operators::Mul.into(),
+            Operator::Mul.into(),
             Token::Fun(0, Derivative::default()),
             num(1),
-            Operators::Sub.into(),
+            Operator::Sub.into(),
             num(2),
             Token::Fun(1, Derivative::default())
         ],
@@ -2025,11 +2017,11 @@ fn test_composed_functions() {
 fn test_custom_functions() {
     let mut funs = Functions(vec![FunctionVar::new(
         "f",
-        NonZero::new(2).unwrap(),
+        NonZeroU8::new(2).unwrap(),
         Tokens(vec![
             Token::InnerVar(0),
             Token::InnerVar(1),
-            Operators::Sub.into(),
+            Operator::Sub.into(),
         ]),
     )]);
     assert_fun!("f(n,k)=n-k", "n k f = n k -", funs);
@@ -2095,13 +2087,13 @@ fn test_custom_functions() {
             Token::InnerVar(1),
             Token::Fun(0, Derivative::default()),
             num(2),
-            Operators::Pow.into(),
+            Operator::Pow.into(),
             Token::InnerVar(1),
             Token::InnerVar(0),
             Token::Fun(0, Derivative::default()),
-            Operators::Add.into(),
+            Operator::Add.into(),
             num(2),
-            Operators::Sub.into(),
+            Operator::Sub.into(),
             Function::Sum.into(),
             Function::Sum.into()
         ],
@@ -2119,7 +2111,7 @@ fn test_sum() {
             Token::Skip(3),
             Token::InnerVar(0),
             num(2),
-            Operators::Pow.into(),
+            Operator::Pow.into(),
             Function::Sum.into()
         ],
         res(385)
@@ -2130,7 +2122,7 @@ fn test_sum() {
         vec![
             num(2),
             num(2),
-            Operators::Pow.into(),
+            Operator::Pow.into(),
             Token::Skip(23),
             num(1),
             Token::InnerVar(0),
@@ -2146,11 +2138,11 @@ fn test_sum() {
             Token::Skip(7),
             Token::InnerVar(4),
             Token::InnerVar(3),
-            Operators::Add.into(),
+            Operator::Add.into(),
             Token::InnerVar(2),
-            Operators::Add.into(),
+            Operator::Add.into(),
             Token::InnerVar(1),
-            Operators::Add.into(),
+            Operator::Add.into(),
             Function::Sum.into(),
             Function::Sum.into(),
             Function::Sum.into(),
@@ -2172,7 +2164,7 @@ fn test_sum() {
             num(3),
             Function::Sum.into(),
             Token::InnerVar(0),
-            Operators::Add.into(),
+            Operator::Add.into(),
             Function::Sum.into()
         ],
         res(87)
@@ -2186,7 +2178,7 @@ fn test_sum() {
             Token::Skip(3),
             Token::InnerVar(0),
             num(2),
-            Operators::Pow.into(),
+            Operator::Pow.into(),
             Function::Sum.into()
         ],
         res(385)
@@ -2203,7 +2195,7 @@ fn test_sum() {
             Token::Skip(3),
             Token::InnerVar(0),
             Token::InnerVar(1),
-            Operators::Add.into(),
+            Operator::Add.into(),
             Function::Sum.into(),
             Function::Sum.into()
         ],
@@ -2223,7 +2215,7 @@ fn test_sum() {
             Token::InnerVar(1),
             Function::Mul.into(),
             Token::InnerVar(0),
-            Operators::Add.into(),
+            Operator::Add.into(),
             Function::Sum.into(),
             Function::Sum.into()
         ],
@@ -2251,7 +2243,7 @@ fn test_sum() {
             Token::Skip(3),
             var("pi"),
             Token::InnerVar(0),
-            Operators::Mul.into(),
+            Operator::Mul.into(),
             Function::Sum.into()
         ],
         res(55) * res(Constant::Pi)
@@ -2271,16 +2263,16 @@ fn test_inner_fn() {
             Token::Skip(3),
             Token::InnerVar(0),
             Token::InnerVar(1),
-            Operators::Sub.into(),
+            Operator::Sub.into(),
             Function::Sum.into(),
             num(3),
             num(6),
             Token::Skip(3),
             Token::InnerVar(0),
             Token::InnerVar(1),
-            Operators::Sub.into(),
+            Operator::Sub.into(),
             Function::Prod.into(),
-            Operators::Add.into(),
+            Operator::Add.into(),
             Function::Sum.into()
         ],
         res(1870)
@@ -2442,7 +2434,7 @@ fn test_exprs() {
             Token::InnerVar(0),
             Function::Mul.into(),
             Function::Modify(ModifyInputs::Three).into(),
-            Function::Exprs(NonZero::new(3).unwrap()).into(),
+            Function::Exprs(NonZeroU8::new(3).unwrap()).into(),
             Function::While(ModifyInputs::Two).into(),
             Function::Set.into(),
         ],
@@ -2460,7 +2452,7 @@ fn test_prod() {
             Token::Skip(3),
             Token::InnerVar(0),
             num(2),
-            Operators::Pow.into(),
+            Operator::Pow.into(),
             Function::Prod.into()
         ],
         res(576)
@@ -2537,7 +2529,7 @@ fn test_iter() {
             Token::Skip(3),
             Token::InnerVar(0),
             num(2),
-            Operators::Div.into(),
+            Operator::Div.into(),
             Function::Iter.into()
         ],
         res(1) / Float::from(16)
@@ -2551,7 +2543,7 @@ fn test_iter() {
             Token::Skip(3),
             Token::InnerVar(0),
             num(2),
-            Operators::Div.into(),
+            Operator::Div.into(),
             Function::Iter.into()
         ],
         res(1)
@@ -2568,7 +2560,7 @@ fn test_iter() {
             Token::Skip(3),
             Token::InnerVar(0),
             Token::InnerVar(1),
-            Operators::Div.into(),
+            Operator::Div.into(),
             Function::Iter.into(),
             Function::Iter.into()
         ],
@@ -2580,37 +2572,37 @@ fn test_cmp() {
     assert_correct!(
         infix("1>=0"),
         rpn("1 0 >="),
-        vec![num(1), num(0), Operators::GreaterEqual.into()],
+        vec![num(1), num(0), Operator::GreaterEqual.into()],
         res(1)
     );
     assert_correct!(
         infix("1<=0"),
         rpn("1 0 <="),
-        vec![num(1), num(0), Operators::LessEqual.into()],
+        vec![num(1), num(0), Operator::LessEqual.into()],
         res(0)
     );
     assert_correct!(
         infix("1==0"),
         rpn("1 0 =="),
-        vec![num(1), num(0), Operators::Equal.into()],
+        vec![num(1), num(0), Operator::Equal.into()],
         res(0)
     );
     assert_correct!(
         infix("1!=0"),
         rpn("1 0 !="),
-        vec![num(1), num(0), Operators::NotEqual.into()],
+        vec![num(1), num(0), Operator::NotEqual.into()],
         res(1)
     );
     assert_correct!(
         infix("1>0"),
         rpn("1 0 >"),
-        vec![num(1), num(0), Operators::Greater.into()],
+        vec![num(1), num(0), Operator::Greater.into()],
         res(1)
     );
     assert_correct!(
         infix("1<0"),
         rpn("1 0 <"),
-        vec![num(1), num(0), Operators::Less.into()],
+        vec![num(1), num(0), Operator::Less.into()],
         res(0)
     );
     assert_correct!(
@@ -2619,34 +2611,34 @@ fn test_cmp() {
         vec![
             num(1),
             num(0),
-            Operators::Greater.into(),
+            Operator::Greater.into(),
             num(2),
             num(1),
-            Operators::Greater.into(),
-            Operators::And.into(),
+            Operator::Greater.into(),
+            Operator::And.into(),
             num(0),
             num(1),
-            Operators::Greater.into(),
-            Operators::Or.into()
+            Operator::Greater.into(),
+            Operator::Or.into()
         ],
         res(1)
     );
     assert_correct!(
         infix("1&0"),
         rpn("1 0 &"),
-        vec![num(1), num(0), Operators::And.into()],
+        vec![num(1), num(0), Operator::And.into()],
         res(0)
     );
     assert_correct!(
         infix("1?0"),
         rpn("1 0 ?"),
-        vec![num(1), num(0), Operators::Or.into()],
+        vec![num(1), num(0), Operator::Or.into()],
         res(1)
     );
     assert_correct!(
         infix(";1"),
         rpn("1 ;"),
-        vec![num(1), Operators::Not.into()],
+        vec![num(1), Operator::Not.into()],
         res(0)
     );
     assert_correct!(
@@ -2656,8 +2648,8 @@ fn test_cmp() {
             num(1),
             num(1),
             num(1),
-            Operators::Equal.into(),
-            Operators::Equal.into()
+            Operator::Equal.into(),
+            Operator::Equal.into()
         ],
         res(1)
     );
@@ -2668,8 +2660,8 @@ fn test_cmp() {
             num(3),
             num(2),
             num(1),
-            Operators::NotEqual.into(),
-            Operators::NotEqual.into()
+            Operator::NotEqual.into(),
+            Operator::NotEqual.into()
         ],
         res(1)
     );
@@ -2680,8 +2672,8 @@ fn test_cmp() {
             num(3),
             num(2),
             num(4),
-            Operators::Less.into(),
-            Operators::Greater.into()
+            Operator::Less.into(),
+            Operator::Greater.into()
         ],
         res(1)
     );
@@ -2692,8 +2684,8 @@ fn test_cmp() {
             num(3),
             num(2),
             num(4),
-            Operators::Greater.into(),
-            Operators::Greater.into()
+            Operator::Greater.into(),
+            Operator::Greater.into()
         ],
         res(0)
     );
@@ -2703,7 +2695,7 @@ fn test_tetration() {
     assert_correct!(
         infix("2^^3"),
         rpn("2 3 ^^"),
-        vec![num(2), num(3), Operators::Tetration.into()],
+        vec![num(2), num(3), Operator::Tetration.into()],
         res(16)
     );
 }
@@ -2712,7 +2704,7 @@ fn test_subfactorial() {
     assert_correct!(
         infix("!4"),
         rpn("4 ."),
-        vec![num(4), Operators::SubFactorial.into()],
+        vec![num(4), Operator::SubFactorial.into()],
         res(9)
     );
 }
@@ -2759,8 +2751,8 @@ fn test_real() {
             num(1),
             num(2),
             var("i"),
-            Operators::Mul.into(),
-            Operators::Add.into(),
+            Operator::Mul.into(),
+            Operator::Add.into(),
             Function::Real.into()
         ],
         res(1)
@@ -2772,8 +2764,8 @@ fn test_real() {
             num(1),
             num(2),
             var("i"),
-            Operators::Mul.into(),
-            Operators::Add.into(),
+            Operator::Mul.into(),
+            Operator::Add.into(),
             Function::Imag.into()
         ],
         res(2)
@@ -3032,7 +3024,7 @@ fn function_exists() {
         Function::Modify(ModifyInputs::Three),
         Function::While(ModifyInputs::Two),
         Function::While(ModifyInputs::Three),
-        Function::Exprs(NonZero::new(1).unwrap()),
+        Function::Exprs(NonZeroU8::new(1).unwrap()),
         Function::Solve,
         Function::NumericalDerivative,
         Function::NumericalDifferential,

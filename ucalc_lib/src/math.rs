@@ -97,8 +97,11 @@ impl Compute<'_> {
         var: usize,
     ) -> Number {
         if n == 0 {
+            fun_vars[var] = end;
+            let end = self.compute_buffer_with(fun_vars, stack);
             fun_vars[var] = start;
-            return self.compute_buffer_with(fun_vars, stack);
+            let start = self.compute_buffer_with(fun_vars, stack);
+            return end - start;
         }
         let k = 1024;
         let kf = Float::from(k);

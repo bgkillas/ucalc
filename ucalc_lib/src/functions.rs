@@ -3,7 +3,7 @@ use crate::polynomial::PolyRef;
 use crate::{Number, Tokens};
 use std::fmt::{Display, Formatter};
 use std::mem;
-use std::num::{NonZero, NonZeroU8};
+use std::num::NonZeroU8;
 use std::ops::Deref;
 #[cfg(feature = "complex")]
 use ucalc_numbers::{ComplexFunctionsMut, ComplexTrait};
@@ -154,7 +154,7 @@ impl TryFrom<&str> for Function {
             "set" => Self::Set,
             "modify" => Self::Modify(ModifyInputs::Two),
             "while" => Self::While(ModifyInputs::Two),
-            "exprs" => Self::Exprs(NonZero::new(1).unwrap()),
+            "exprs" => Self::Exprs(NonZeroU8::new(1).unwrap()),
             "fold" => Self::Fold,
             "solve" => Self::Solve,
             "add" => Self::Add,
@@ -291,7 +291,7 @@ impl Function {
         )
     }
     pub fn inputs(self) -> NonZeroU8 {
-        NonZero::new(match self {
+        NonZeroU8::new(match self {
             Self::Not
             | Self::Factorial
             | Self::SubFactorial

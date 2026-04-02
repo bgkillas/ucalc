@@ -1,9 +1,9 @@
 use crate::functions::Function;
 use crate::parse::Derivative;
 use std::fmt::{Display, Formatter};
-use std::num::{NonZero, NonZeroU8};
+use std::num::NonZeroU8;
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Operators {
+pub enum Operator {
     Add,
     Sub,
     Mul,
@@ -29,41 +29,41 @@ pub enum Operators {
     Custom(u16, Derivative),
     Function(Function, Derivative),
 }
-impl Display for Operators {
+impl Display for Operator {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
             "{}",
             match self {
-                Operators::Add => "+",
-                Operators::Sub => "-",
-                Operators::Mul => "*",
-                Operators::Div => "/",
-                Operators::Pow => "^",
-                Operators::Tetration => "^^",
-                Operators::Root => "//",
-                Operators::Rem => "%",
-                Operators::Negate => "-",
-                Operators::Factorial => "!",
-                Operators::SubFactorial => "!",
-                Operators::Equal => "==",
-                Operators::NotEqual => "!=",
-                Operators::Greater => ">",
-                Operators::Less => "<",
-                Operators::GreaterEqual => ">=",
-                Operators::LessEqual => "<=",
-                Operators::And => "&",
-                Operators::Or => "?",
-                Operators::Not => ";",
-                Operators::Solve => "=",
-                Operators::Bracket(_) => unreachable!(),
-                Operators::Function(_, _) => unreachable!(),
-                Operators::Custom(_, _) => unreachable!(),
+                Operator::Add => "+",
+                Operator::Sub => "-",
+                Operator::Mul => "*",
+                Operator::Div => "/",
+                Operator::Pow => "^",
+                Operator::Tetration => "^^",
+                Operator::Root => "//",
+                Operator::Rem => "%",
+                Operator::Negate => "-",
+                Operator::Factorial => "!",
+                Operator::SubFactorial => "!",
+                Operator::Equal => "==",
+                Operator::NotEqual => "!=",
+                Operator::Greater => ">",
+                Operator::Less => "<",
+                Operator::GreaterEqual => ">=",
+                Operator::LessEqual => "<=",
+                Operator::And => "&",
+                Operator::Or => "?",
+                Operator::Not => ";",
+                Operator::Solve => "=",
+                Operator::Bracket(_) => unreachable!(),
+                Operator::Function(_, _) => unreachable!(),
+                Operator::Custom(_, _) => unreachable!(),
             }
         )
     }
 }
-impl TryFrom<Function> for Operators {
+impl TryFrom<Function> for Operator {
     type Error = ();
     fn try_from(value: Function) -> Result<Self, Self::Error> {
         Ok(match value {
@@ -91,7 +91,7 @@ impl TryFrom<Function> for Operators {
         })
     }
 }
-impl From<Bracket> for Operators {
+impl From<Bracket> for Operator {
     fn from(value: Bracket) -> Self {
         Self::Bracket(value)
     }
@@ -101,7 +101,7 @@ pub enum Bracket {
     Absolute,
     Parenthesis,
 }
-impl TryFrom<&str> for Operators {
+impl TryFrom<&str> for Operator {
     type Error = ();
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         Ok(match value {
@@ -132,9 +132,10 @@ impl TryFrom<&str> for Operators {
         })
     }
 }
-impl Operators {
+impl Operator {
     pub fn inputs(self) -> NonZeroU8 {
-        NonZero::new(match self {
+        NonZeroU8::new(match self {
+            Self::Negate | Self::Factorial | Self::Not | Self::SubFactorial => 1,
             Self::Mul
             | Self::Div
             | Self::Add
@@ -152,7 +153,6 @@ impl Operators {
             | Self::Or
             | Self::Solve
             | Self::Tetration => 2,
-            Self::Negate | Self::Factorial | Self::Not | Self::SubFactorial => 1,
             Self::Function(fun, _) => return fun.inputs(),
             Self::Custom(_, _) => unreachable!(),
             Self::Bracket(_) => unreachable!(),
@@ -183,13 +183,6 @@ impl Operators {
             | Self::Function(_, _)
             | Self::Custom(_, _)
             | Self::Bracket(_) => unreachable!(),
-        }
-    }
-    pub fn expected_var(self, n: u8) -> bool {
-        if let Self::Function(f, _) = self {
-            f.expected_var(n)
-        } else {
-            false
         }
     }
     pub fn precedence(self) -> u8 {
@@ -243,31 +236,31 @@ impl Operators {
         }
     }
 }
-impl From<Operators> for Function {
-    fn from(value: Operators) -> Self {
+impl From<Operator> for Function {
+    fn from(value: Operator) -> Self {
         match value {
-            Operators::Add => Self::Add,
-            Operators::Sub => Self::Sub,
-            Operators::Mul => Self::Mul,
-            Operators::Div => Self::Div,
-            Operators::Pow => Self::Pow,
-            Operators::Tetration => Self::Tetration,
-            Operators::Root => Self::Root,
-            Operators::Rem => Self::Rem,
-            Operators::Negate => Self::Negate,
-            Operators::Factorial => Self::Factorial,
-            Operators::SubFactorial => Self::SubFactorial,
-            Operators::Equal => Self::Equal,
-            Operators::NotEqual => Self::NotEqual,
-            Operators::Greater => Self::Greater,
-            Operators::Less => Self::Less,
-            Operators::GreaterEqual => Self::GreaterEqual,
-            Operators::LessEqual => Self::LessEqual,
-            Operators::And => Self::And,
-            Operators::Or => Self::Or,
-            Operators::Not => Self::Not,
-            Operators::Function(function, _) => function,
-            Operators::Custom(_, _) | Operators::Bracket(_) | Operators::Solve => unreachable!(),
+            Operator::Add => Self::Add,
+            Operator::Sub => Self::Sub,
+            Operator::Mul => Self::Mul,
+            Operator::Div => Self::Div,
+            Operator::Pow => Self::Pow,
+            Operator::Tetration => Self::Tetration,
+            Operator::Root => Self::Root,
+            Operator::Rem => Self::Rem,
+            Operator::Negate => Self::Negate,
+            Operator::Factorial => Self::Factorial,
+            Operator::SubFactorial => Self::SubFactorial,
+            Operator::Equal => Self::Equal,
+            Operator::NotEqual => Self::NotEqual,
+            Operator::Greater => Self::Greater,
+            Operator::Less => Self::Less,
+            Operator::GreaterEqual => Self::GreaterEqual,
+            Operator::LessEqual => Self::LessEqual,
+            Operator::And => Self::And,
+            Operator::Or => Self::Or,
+            Operator::Not => Self::Not,
+            Operator::Function(function, _) => function,
+            Operator::Custom(_, _) | Operator::Bracket(_) | Operator::Solve => unreachable!(),
         }
     }
 }

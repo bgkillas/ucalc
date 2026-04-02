@@ -30,7 +30,10 @@ impl Compute<'_> {
         while i > start + 1 {
             i -= 1;
             match self.tokens[i] {
-                Token::Fun(n, _) => {
+                Token::Fun(n, d) => {
+                    if d.get() != 0 {
+                        todo!()
+                    }
                     let fun = &self.funs[n as usize];
                     let tokens = TokensRef(&self.tokens[start..=i]);
                     let mut args = tokens.get_lasts(self.funs);
@@ -62,7 +65,10 @@ impl Compute<'_> {
                     fun_vars.drain(end..);
                     return self.tokens(args[0]).cas_inner(fun_vars, ret, stack, None);
                 }
-                Token::Function(operator, _) => {
+                Token::Function(operator, d) => {
+                    if d.get() != 0 {
+                        todo!()
+                    }
                     let inverse = Inverse::from(operator);
                     if inverse.is_none() {
                         return None;

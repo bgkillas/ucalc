@@ -1,6 +1,6 @@
 use std::fmt;
 use std::fmt::{Display, Formatter, Write};
-use ucalc_lib::Operators;
+use ucalc_lib::Operator;
 #[derive(Clone, Copy)]
 pub enum Color {
     Black(bool),
@@ -140,14 +140,14 @@ pub fn color_brackets<'a, 'b: 'a>(line: &'a str, colors: &'b Colors) -> impl Dis
                     write!(f, "{c}")?;
                     let mut l = c.len_utf8();
                     if let Some(next) = line[i + l..].chars().next()
-                        && Operators::try_from(&line[i..i + l + next.len_utf8()]).is_ok()
+                        && Operator::try_from(&line[i..i + l + next.len_utf8()]).is_ok()
                     {
                         chars.next();
                         write!(f, "{next}")?;
                         l += next.len_utf8();
                     }
                     let s = &line[i..i + l];
-                    if let Ok(operator) = Operators::try_from(s)
+                    if let Ok(operator) = Operator::try_from(s)
                         && (operator.inputs().get() == 2 || operator.unary_left())
                     {
                         req_input = true;

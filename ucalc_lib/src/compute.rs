@@ -1,17 +1,22 @@
 use crate::parse::{Token, Tokens, TokensRef};
-use crate::{Functions, Number, Variables};
+use crate::{FunctionVar, Number, Variable};
 use std::array;
 use ucalc_numbers::{Constant, FloatTrait};
 #[derive(Copy, Clone, Debug)]
 pub(crate) struct Compute<'a> {
     pub(crate) tokens: TokensRef<'a>,
     pub(crate) vars: &'a [Number],
-    pub(crate) funs: &'a Functions,
-    pub(crate) custom_vars: &'a Variables,
+    pub(crate) funs: &'a [FunctionVar],
+    pub(crate) custom_vars: &'a [Variable],
     pub(crate) offset: usize,
 }
 impl Tokens {
-    pub fn compute(&self, vars: &[Number], funs: &Functions, custom_vars: &Variables) -> Number {
+    pub fn compute(
+        &self,
+        vars: &[Number],
+        funs: &[FunctionVar],
+        custom_vars: &[Variable],
+    ) -> Number {
         let cap = self.len() + funs.iter().map(|c| c.tokens.len()).sum::<usize>();
         let mut fun_vars = Vec::with_capacity(cap);
         let mut stack = Tokens(Vec::with_capacity(cap));
@@ -21,8 +26,8 @@ impl Tokens {
         &self,
         fun_vars: &mut Vec<Number>,
         vars: &[Number],
-        funs: &Functions,
-        custom_vars: &Variables,
+        funs: &[FunctionVar],
+        custom_vars: &[Variable],
         stack: &mut Tokens,
     ) -> Number {
         self.compute_buffer_with(fun_vars, vars, funs, custom_vars, stack, 0)
@@ -31,8 +36,8 @@ impl Tokens {
         &self,
         fun_vars: &mut Vec<Number>,
         vars: &[Number],
-        funs: &Functions,
-        custom_vars: &Variables,
+        funs: &[FunctionVar],
+        custom_vars: &[Variable],
         stack: &mut Tokens,
         offset: usize,
     ) -> Number {
@@ -129,8 +134,8 @@ impl<'a> Compute<'a> {
     pub fn new(
         tokens: TokensRef<'a>,
         vars: &'a [Number],
-        funs: &'a Functions,
-        custom_vars: &'a Variables,
+        funs: &'a [FunctionVar],
+        custom_vars: &'a [Variable],
         offset: usize,
     ) -> Self {
         Self {
@@ -194,7 +199,7 @@ impl<'a> Compute<'a> {
                         .tokens(TokensRef(&self.funs[index as usize].tokens));
                     if d.get() != 0 {
                         if d.is_integral() {
-                            if d.is_integral_two_input() {
+                            if d.is_integral_twice_input() {
                                 if inputs != 1 {
                                     todo!()
                                 }

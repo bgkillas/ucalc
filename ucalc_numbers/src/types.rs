@@ -48,6 +48,7 @@ pub enum Number<T> {
     List(Vec<Number<T>>),
 }
 #[derive(Debug, PartialEq, Clone)]
+#[repr(transparent)]
 pub struct Vector<T>(pub(crate) Vec<T>);
 #[derive(Debug, PartialEq, Clone)]
 pub struct Matrix<T> {
