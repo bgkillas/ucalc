@@ -90,7 +90,7 @@ impl Compute<'_> {
                                 right_tokens.contains(&Token::InnerVar(fun_vars.len() as u16))
                             })
                         {
-                            let left_tokens = TokensRef(&self.tokens[start..last]);
+                            let left_tokens = TokensRef(&self.tokens[start..start + last]);
                             let (left_tokens, _) = left_tokens.get_from_last(self.funs);
                             if args
                                 .as_ref()
@@ -126,7 +126,7 @@ impl Compute<'_> {
                                 let num = self
                                     .tokens(left_tokens)
                                     .compute_buffer_with(fun_vars, stack);
-                                start = last;
+                                start += last;
                                 inverse.right_inverse(ret, num);
                             }
                         } else {

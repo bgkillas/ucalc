@@ -1250,6 +1250,20 @@ fn test_numerical_solve() {
 #[test]
 fn test_solve() {
     assert_correct!(
+        infix("solve(x,2-3x)"),
+        rpn("x 2 3 x * - solve"),
+        vec![
+            Token::Skip(5),
+            num(2),
+            num(3),
+            Token::InnerVar(0).into(),
+            Operator::Mul.into(),
+            Operator::Sub.into(),
+            Function::Solve.into()
+        ],
+        res(2) / res(3)
+    );
+    assert_correct!(
         infix("solve(x,x^4-2x^2+1)"),
         rpn("x x 4 ^ 2 x 2 ^ * - 1 + solve"),
         vec![

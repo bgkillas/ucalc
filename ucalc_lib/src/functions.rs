@@ -552,21 +552,21 @@ impl Function {
             _ => 0,
         }
     }
-    pub fn expected_var(self, n: u8) -> bool {
+    pub fn expected_var(self, n: NonZeroU8) -> bool {
         match self {
-            Self::Solve => n == 1,
-            Self::Set | Self::NumericalDerivative | Self::NumericalSolve => n == 2,
-            Self::Sum | Self::Prod | Self::Iter | Self::NumericalIntegral => n == 3,
-            Self::Fold | Self::NumericalDifferential => n == 4 || n == 5,
+            Self::Solve => n.get() == 1,
+            Self::Set | Self::NumericalDerivative | Self::NumericalSolve => n.get() == 2,
+            Self::Sum | Self::Prod | Self::Iter | Self::NumericalIntegral => n.get() == 3,
+            Self::Fold | Self::NumericalDifferential => matches!(n.get(), 4 | 5),
             _ => false,
         }
     }
-    pub fn first_expected_var(self, n: u8) -> bool {
+    pub fn first_expected_var(self, n: NonZeroU8) -> bool {
         match self {
-            Self::Solve => n == 1,
-            Self::Set | Self::NumericalDerivative | Self::NumericalSolve => n == 2,
-            Self::Sum | Self::Prod | Self::Iter | Self::NumericalIntegral => n == 3,
-            Self::Fold | Self::NumericalDifferential => n == 4,
+            Self::Solve => n.get() == 1,
+            Self::Set | Self::NumericalDerivative | Self::NumericalSolve => n.get() == 2,
+            Self::Sum | Self::Prod | Self::Iter | Self::NumericalIntegral => n.get() == 3,
+            Self::Fold | Self::NumericalDifferential => n.get() == 4,
             _ => false,
         }
     }

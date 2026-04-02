@@ -440,7 +440,7 @@ impl Tokens {
         let mut tokens = Tokens(Vec::with_capacity(value.len()));
         let mut operator_stack: Vec<Operator> = Vec::with_capacity(value.len());
         let mut inner_vars: Vec<&str> = Vec::with_capacity(value.len());
-        let mut fn_inputs: Vec<u8> = Vec::with_capacity(value.len());
+        let mut fn_inputs: Vec<NonZeroU8> = Vec::with_capacity(value.len());
         let mut inner_vars_count: Vec<u8> = Vec::with_capacity(value.len());
         let mut chars = value.char_indices();
         let mut inputs = None;
@@ -484,7 +484,6 @@ impl Tokens {
                             break;
                         }
                     }
-                    let o = l;
                     loop {
                         let s = &value[i..i + l];
                         if i == 0 && s == "let" {
@@ -497,7 +496,7 @@ impl Tokens {
                             tokens.last_mul(&mut operator_stack, negate, &mut last_mul, false);
                             operator_stack.push(Operator::Custom(i, Derivative::default()));
                             open_input = false;
-                            fn_inputs.push(1);
+                            fn_inputs.push(NonZeroU8::new(1).unwrap());
                         } else if let Some(i) = inner_vars.iter().position(|v| *v == s) {
                             tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
                             tokens.push(Token::InnerVar(i as u16));
@@ -511,7 +510,7 @@ impl Tokens {
                             tokens.push(Token::GraphVar(i as u8));
                             open_input = true;
                         } else if let Ok(fun) = Function::try_from(s) {
-                            if fun.first_expected_var(1) {
+                            if fun.first_expected_var(NonZeroU8::new(1).unwrap()) {
                                 inner_vars.extend(iter::repeat_n("", fun.inner_vars() as usize));
                             }
                             if fun.has_var() {
@@ -520,7 +519,7 @@ impl Tokens {
                             tokens.last_mul(&mut operator_stack, negate, &mut last_mul, false);
                             operator_stack.push(Operator::Function(fun, Derivative::default()));
                             open_input = false;
-                            fn_inputs.push(1);
+                            fn_inputs.push(NonZeroU8::new(1).unwrap());
                         } else if s.chars().all(|c| c.is_ascii_alphabetic())
                             && !inner_vars_count.is_empty()
                             && let Some(n) = Tokens::get_var_position(
@@ -556,10 +555,11 @@ impl Tokens {
                             count -= 1;
                             l -= value[i..i + l].chars().last().unwrap().len_utf8();
                             continue;
-                        } else if o == 1 {
-                            todo!()
                         } else {
-                            return Err(ParseError::UnknownToken(&value[i..i + o]));
+                            tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
+                            tokens.push(Token::InnerVar(inner_vars.len() as u16));
+                            inner_vars.push(&value[i..i + l]);
+                            open_input = true;
                         }
                         break;
                     }
@@ -641,7 +641,7 @@ impl Tokens {
                         )?;
                     }
                     if let Some(last) = fn_inputs.last_mut() {
-                        *last += 1;
+                        *last = last.checked_add(1).unwrap();
                         if operator_stack.len() < 2 {
                             return Err(ParseError::CommaError);
                         }
@@ -819,7 +819,7 @@ impl Tokens {
     }
     pub(crate) fn get_var_position(
         inner_vars_count: &mut [u8],
-        fn_inputs: &[u8],
+        fn_inputs: &[NonZeroU8],
         operator_stack: &[Operator],
         l: usize,
         mut inner_vars: usize,
@@ -913,7 +913,7 @@ impl Tokens {
         inner_vars: &mut Vec<&str>,
         inner_vars_count: &mut Vec<u8>,
         funs: &[FunctionVar],
-        fn_inputs: &mut Vec<u8>,
+        fn_inputs: &mut Vec<NonZeroU8>,
     ) -> Result<(), ParseError<'static>> {
         if let Some(top) = operator_stack
             .pop_if(|l| matches!(l, Operator::Function(_, _) | Operator::Custom(_, _)))
@@ -921,10 +921,10 @@ impl Tokens {
             match top {
                 Operator::Custom(i, mut d) => {
                     let inputs = fn_inputs.pop().unwrap();
-                    let normal = funs.get(i as usize).unwrap().inputs.get();
+                    let normal = funs.get(i as usize).unwrap().inputs;
                     match normal.cmp(&inputs) {
                         Ordering::Greater => return Err(ParseError::MissingInput),
-                        Ordering::Less if d.is_derivative() || inputs != 2 * normal => {
+                        Ordering::Less if d.is_derivative() || inputs.get() != normal.get() * 2 => {
                             return Err(ParseError::ExtraInput);
                         }
                         Ordering::Less => d.set_integral_twice_input(),
@@ -937,11 +937,11 @@ impl Tokens {
                         inner_vars_count.pop().unwrap();
                     }
                     let mut inputs = fn_inputs.pop().unwrap();
-                    fun.set_inputs(NonZeroU8::new(inputs).unwrap());
-                    if fun.inputs().get() + 1 < inputs + fun.inner_vars() {
+                    fun.set_inputs(inputs);
+                    if fun.inputs().get() + 1 < inputs.get() + fun.inner_vars() {
                         let last = TokensRef(self).get_last(funs);
                         let mut t = last;
-                        for _ in fun.inputs().get()..inputs {
+                        for _ in fun.inputs().get()..inputs.get() {
                             let last = TokensRef(&self[..t]).get_last(funs);
                             if t - 1 == last && matches!(self[last], Token::InnerVar(_)) {
                                 self.remove(last);
@@ -950,12 +950,12 @@ impl Tokens {
                             }
                             t = last;
                         }
-                        inputs = fun.inputs().get();
+                        inputs = fun.inputs();
                     }
-                    let normal = fun.inputs().get();
+                    let normal = fun.inputs();
                     match normal.cmp(&inputs) {
                         Ordering::Greater => return Err(ParseError::MissingInput),
-                        Ordering::Less if d.is_derivative() || inputs != 2 * normal => {
+                        Ordering::Less if d.is_derivative() || inputs.get() != normal.get() * 2 => {
                             return Err(ParseError::ExtraInput);
                         }
                         Ordering::Less => d.set_integral_twice_input(),
