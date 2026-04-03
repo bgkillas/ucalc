@@ -113,7 +113,7 @@ impl TryFrom<&str> for Operator {
             "/" => Self::Div,
             "+" => Self::Add,
             "-" => Self::Sub,
-            "_" => Self::Negate,
+            "~" => Self::Negate,
             "!" => Self::Factorial,
             "." => Self::SubFactorial,
             "==" => Self::Equal,
