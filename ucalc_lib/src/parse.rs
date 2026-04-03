@@ -112,6 +112,8 @@ pub enum ParseError<'a> {
     MixedError,
     TooManyDerivatives,
     RpnUnsupported,
+    #[cfg(not(all(feature = "vector", feature = "matrix")))]
+    VecMatNotEnabled,
 }
 impl Display for Tokens {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -892,8 +894,29 @@ impl Tokens {
         funs: &[FunctionVar],
     ) -> Result<(), ParseError<'static>> {
         if operator == Operator::Solve {
-            if inner_vars.len() == operator_stack.iter().map(|a| a.inner_vars() as usize).sum() {
+            let count = operator_stack.iter().map(|a| a.inner_vars() as usize).sum();
+            if inner_vars.len() == count {
                 return Err(ParseError::InnerVarError);
+            }
+            if inner_vars.len() > count + 1 {
+                #[cfg(not(all(feature = "vector", feature = "matrix")))]
+                {
+                    return Err(ParseError::VecMatNotEnabled);
+                }
+                #[cfg(all(feature = "vector", feature = "matrix"))]
+                {
+                    todo!()
+                }
+            }
+            if operator_stack.contains(&Operator::Solve) {
+                #[cfg(not(all(feature = "vector", feature = "matrix")))]
+                {
+                    return Err(ParseError::VecMatNotEnabled);
+                }
+                #[cfg(all(feature = "vector", feature = "matrix"))]
+                {
+                    todo!()
+                }
             }
             self.push(Function::Sub.into());
             self.compact_args(Function::Solve, inner_vars, funs);

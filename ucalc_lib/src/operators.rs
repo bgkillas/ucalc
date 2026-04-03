@@ -214,14 +214,9 @@ impl Operator {
     }
     pub fn left_associative(self) -> bool {
         match self {
-            Self::Add
-            | Self::Sub
-            | Self::Mul
-            | Self::Div
-            | Self::Rem
-            | Self::And
-            | Self::Or
-            | Self::Solve => true,
+            Self::Add | Self::Sub | Self::Mul | Self::Div | Self::Rem | Self::And | Self::Or => {
+                true
+            }
             Self::Pow
             | Self::Root
             | Self::Negate
@@ -232,7 +227,8 @@ impl Operator {
             | Self::Greater
             | Self::Less
             | Self::LessEqual
-            | Self::GreaterEqual => false,
+            | Self::GreaterEqual
+            | Self::Solve => false,
             Self::Bracket(_)
             | Self::Factorial
             | Self::Function(_, _)

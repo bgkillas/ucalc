@@ -164,7 +164,13 @@ fn test_solve_poly() {
 fn parse_neg() {
     assert_correct!(
         infix("-4"),
-        rpn("4 _"),
+        rpn("4 ~"),
+        vec![num(4), Operator::Negate.into()],
+        res(-4)
+    );
+    assert_correct!(
+        infix("~4"),
+        rpn("4 ~"),
         vec![num(4), Operator::Negate.into()],
         res(-4)
     );
@@ -413,7 +419,7 @@ fn parse_pow() {
     );
     assert_correct!(
         infix("2^-4"),
-        rpn("2 4 _ ^"),
+        rpn("2 4 ~ ^"),
         vec![
             num(2),
             num(4),
@@ -424,7 +430,7 @@ fn parse_pow() {
     );
     assert_correct!(
         infix("1+-2^-4"),
-        rpn("1 2 4 _ ^ _ +"),
+        rpn("1 2 4 ~ ^ ~ +"),
         vec![
             num(1),
             num(2),
@@ -856,7 +862,7 @@ fn parse_abs() {
     );
     assert_correct!(
         infix("ln|-1+0.5|"),
-        rpn("1 _ 0.5 + abs ln"),
+        rpn("1 ~ 0.5 + abs ln"),
         vec![
             num(1),
             Function::Negate.into(),
@@ -887,7 +893,7 @@ fn parse_abs() {
     );
     assert_correct!(
         infix("||0!|-|0^1*|0|-|-2|||+|0|"),
-        rpn("0 ! abs 0 1 ^ 0 abs * 2 _ abs - abs - abs 0 abs +"),
+        rpn("0 ! abs 0 1 ^ 0 abs * 2 ~ abs - abs - abs 0 abs +"),
         vec![
             num(0),
             Operator::Factorial.into(),
@@ -991,7 +997,7 @@ fn parse_arctan() {
 fn parse_cubic() {
     assert_correct!(
         infix("cubic(1,-2,0,1)"),
-        rpn("1 2 _ 0 1 cubic"),
+        rpn("1 2 ~ 0 1 cubic"),
         vec![
             num(1),
             num(2),
@@ -1008,7 +1014,7 @@ fn parse_cubic() {
 fn parse_quartic() {
     assert_correct!(
         infix("quartic(1,0,-13,0,36)"),
-        rpn("1 0 13 _ 0 36 quartic"),
+        rpn("1 0 13 ~ 0 36 quartic"),
         vec![
             num(1),
             num(0),
@@ -1025,7 +1031,7 @@ fn parse_quartic() {
 fn parse_quadratic() {
     assert_correct!(
         infix("quadratic(1,-2,-1)"),
-        rpn("1 2 _ 1 _ quadratic"),
+        rpn("1 2 ~ 1 ~ quadratic"),
         vec![
             num(1),
             num(2),
@@ -1038,7 +1044,7 @@ fn parse_quadratic() {
     );
     assert_correct!(
         infix("quadratic((4-2)/2,3-2-3,-ln(e))"),
-        rpn("4 2 - 2 / 3 2 - 3 - e ln _ quadratic"),
+        rpn("4 2 - 2 / 3 2 - 3 - e ln ~ quadratic"),
         vec![
             num(4),
             num(2),
@@ -1066,7 +1072,7 @@ fn parse_number() {
 fn parse_order_of_operations() {
     assert_correct!(
         infix("-2*3+4*7+-2^2^3"),
-        rpn("2 _ 3 * 4 7 * + 2 2 3 ^ ^ _ +"),
+        rpn("2 ~ 3 * 4 7 * + 2 2 3 ^ ^ ~ +"),
         vec![
             num(2),
             Operator::Negate.into(),
