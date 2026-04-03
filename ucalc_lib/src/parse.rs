@@ -520,15 +520,15 @@ impl Tokens {
                             operator_stack.push(Operator::Function(fun, Derivative::default()));
                             open_input = false;
                             fn_inputs.push(NonZeroU8::new(1).unwrap());
-                        } else if s.chars().all(|c| c.is_ascii_alphabetic())
+                        } else if count == 1
+                            && s.chars().all(|c| c.is_ascii_alphabetic())
                             && !inner_vars_count.is_empty()
                             && let Some(n) = Tokens::get_var_position(
                                 &mut inner_vars_count,
                                 &fn_inputs,
                                 &operator_stack,
-                                l,
                                 inner_vars.len(),
-                            )?
+                            )
                         {
                             tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
                             tokens.push(Token::InnerVar(n as u16));
@@ -821,17 +821,21 @@ impl Tokens {
         inner_vars_count: &mut [u8],
         fn_inputs: &[NonZeroU8],
         operator_stack: &[Operator],
-        l: usize,
         mut inner_vars: usize,
-    ) -> Result<Option<usize>, ParseError<'static>> {
+    ) -> Option<usize> {
         let mut n = inner_vars_count.len();
         let mut inputs = fn_inputs.iter();
         let mut last = None;
         if operator_stack
             .iter()
             .rfind(|la| {
-                let Operator::Function(f, _) = la else {
-                    return false;
+                let f = match la {
+                    Operator::Function(f, _) => f,
+                    Operator::Custom(_, _) => {
+                        inputs.next_back();
+                        return false;
+                    }
+                    _ => return false,
                 };
                 last = inputs.next_back();
                 if !f.has_var() {
@@ -852,11 +856,9 @@ impl Tokens {
             .is_some()
         {
             inner_vars_count[n] -= 1;
-            Ok(Some(inner_vars))
-        } else if l == 1 {
-            Err(ParseError::InnerVarError)
+            Some(inner_vars)
         } else {
-            Ok(None)
+            None
         }
     }
     pub fn last_mul(

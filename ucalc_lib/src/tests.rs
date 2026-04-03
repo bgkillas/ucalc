@@ -2068,6 +2068,41 @@ fn test_custom_functions() {
     );
     assert_correct_with!(
         Tokens::infix(
+            "sum(1,2,f(n,4))",
+            &mut Variables::default(),
+            &mut funs,
+            &[],
+            false,
+            10
+        )
+        .unwrap()
+        .unwrap(),
+        Tokens::rpn(
+            "1 2 n n 4 f sum",
+            &mut Variables::default(),
+            &mut funs,
+            &[],
+            false,
+            10
+        )
+        .unwrap()
+        .unwrap(),
+        Variables::default(),
+        &[],
+        funs,
+        vec![
+            num(1),
+            num(2),
+            Token::Skip(3),
+            Token::InnerVar(0),
+            num(4),
+            Token::Fun(0, Derivative::default()),
+            Function::Sum.into()
+        ],
+        res(-5)
+    );
+    assert_correct_with!(
+        Tokens::infix(
             "sum(0,10,n,sum(3,6,k,f(n,k)^2+f(k,n)-2))",
             &mut Variables::default(),
             &mut funs,
