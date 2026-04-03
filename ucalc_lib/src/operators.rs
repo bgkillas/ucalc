@@ -159,6 +159,13 @@ impl Operator {
         })
         .unwrap()
     }
+    pub fn inner_vars(self) -> u8 {
+        if let Self::Function(fun, _) = self {
+            fun.inner_vars()
+        } else {
+            0
+        }
+    }
     pub fn unary_left(self) -> bool {
         match self {
             Self::Negate | Self::Not | Self::SubFactorial => true,

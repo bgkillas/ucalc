@@ -360,7 +360,7 @@ impl Tokens {
                     }
                 }
                 "=" => return Err(ParseError::RpnUnsupported),
-                _ if expect_let && token.chars().all(|c| c.is_ascii_alphabetic()) => {
+                _ if expect_let && token.chars().all(|c| c.is_alphabetic()) => {
                     inner_vars.push(token)
                 }
                 _ if let Ok(operator) = Operator::try_from(token) => tokens.push(operator.into()),
@@ -418,7 +418,7 @@ impl Tokens {
                     }
                     tokens.push(Token::Function(fun, d));
                 }
-                _ if token.chars().all(|c| c.is_ascii_alphabetic()) => inner_vars.push(token),
+                _ if token.chars().all(|c| c.is_alphabetic()) => inner_vars.push(token),
                 #[cfg(feature = "units")]
                 _ if let Some(i) = UNITS.iter().position(|s| *s == token) => {
                     tokens.push(Units::from(i).into())
@@ -464,18 +464,18 @@ impl Tokens {
                     expect_expr = false;
                 }
                 _ if if base > 10 {
-                    c.is_ascii_alphanumeric()
+                    c.is_alphabetic() || c.is_ascii_digit()
                 } else {
-                    c.is_ascii_alphabetic()
+                    c.is_alphabetic()
                 } =>
                 {
                     let mut l = c.len_utf8();
                     let mut count = 1;
                     for t in value[i + l..].chars() {
                         if if base > 10 {
-                            t.is_ascii_alphanumeric() || t == '.'
+                            t.is_alphabetic() || t.is_ascii_digit() || t == '.'
                         } else {
-                            t.is_ascii_alphabetic()
+                            t.is_alphabetic()
                         } || t == '_'
                         {
                             l += t.len_utf8();
@@ -489,7 +489,7 @@ impl Tokens {
                         if i == 0 && s == "let" {
                             expect_let = true;
                             open_input = false;
-                        } else if expect_let && s.chars().all(|c| c.is_ascii_alphabetic()) {
+                        } else if expect_let && s.chars().all(|c| c.is_alphabetic()) {
                             inner_vars.push(s);
                             open_input = true;
                         } else if let Some(i) = funs.position(s) {
@@ -521,7 +521,7 @@ impl Tokens {
                             open_input = false;
                             fn_inputs.push(NonZeroU8::new(1).unwrap());
                         } else if count == 1
-                            && s.chars().all(|c| c.is_ascii_alphabetic())
+                            && s.chars().all(|c| c.is_alphabetic())
                             && !inner_vars_count.is_empty()
                             && let Some(n) = Tokens::get_var_position(
                                 &mut inner_vars_count,
@@ -637,6 +637,7 @@ impl Tokens {
                         tokens.push_operator(
                             operator_stack.pop().unwrap(),
                             &mut inner_vars,
+                            &operator_stack,
                             funs,
                         )?;
                     }
@@ -674,6 +675,7 @@ impl Tokens {
                         tokens.push_operator(
                             operator_stack.pop().unwrap(),
                             &mut inner_vars,
+                            &operator_stack,
                             funs,
                         )?;
                     }
@@ -722,6 +724,7 @@ impl Tokens {
                             tokens.push_operator(
                                 operator_stack.pop().unwrap(),
                                 &mut inner_vars,
+                                &operator_stack,
                                 funs,
                             )?;
                         }
@@ -813,9 +816,16 @@ impl Tokens {
                     Bracket::Parenthesis => Err(ParseError::RightParenthesisNotFound),
                 };
             }
-            tokens.push_operator(operator, &mut inner_vars, funs)?;
+            tokens.push_operator(operator, &mut inner_vars, &operator_stack, funs)?;
         }
-        Ok(tokens.end(inputs, vars, funs))
+        if let Some(res) = tokens.end(inputs, vars, funs) {
+            if !inner_vars.is_empty() {
+                return Err(ParseError::InnerVarError);
+            }
+            Ok(Some(res))
+        } else {
+            Ok(None)
+        }
     }
     pub(crate) fn get_var_position(
         inner_vars_count: &mut [u8],
@@ -878,9 +888,13 @@ impl Tokens {
         &mut self,
         operator: Operator,
         inner_vars: &mut Vec<&str>,
+        operator_stack: &[Operator],
         funs: &[FunctionVar],
     ) -> Result<(), ParseError<'static>> {
         if operator == Operator::Solve {
+            if inner_vars.len() == operator_stack.iter().map(|a| a.inner_vars() as usize).sum() {
+                return Err(ParseError::InnerVarError);
+            }
             self.push(Function::Sub.into());
             self.compact_args(Function::Solve, inner_vars, funs);
             self.push(Function::Solve.into());
@@ -904,7 +918,12 @@ impl Tokens {
                 || (top.precedence() == operator.precedence() && operator.left_associative()))
             && !(negate && operator == Operator::Negate && *top == Operator::Pow)
         {
-            self.push_operator(operator_stack.pop().unwrap(), inner_vars, funs)?;
+            self.push_operator(
+                operator_stack.pop().unwrap(),
+                inner_vars,
+                operator_stack,
+                funs,
+            )?;
         }
         operator_stack.push(operator);
         Ok(())
