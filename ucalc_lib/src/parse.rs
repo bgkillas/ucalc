@@ -8,27 +8,20 @@ use crate::{FunctionVar, Number, NumberBase, Variable};
 use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
 use std::num::NonZeroU8;
-use std::ops::{Deref, DerefMut};
-use std::{fmt, iter};
+use std::ops::{
+    Deref, DerefMut, Index, IndexMut, Range, RangeFrom, RangeFull, RangeInclusive, RangeTo,
+    RangeToInclusive,
+};
+use std::{fmt, iter, mem};
 use ucalc_numbers::FloatTrait;
 #[cfg(feature = "units")]
 use ucalc_numbers::Units;
 #[derive(Default, PartialEq, Debug, Clone)]
 #[repr(transparent)]
 pub struct Tokens(pub Vec<Token>);
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 #[repr(transparent)]
-pub(crate) struct TokensRef<'a>(pub &'a [Token]);
-impl<'a> From<&'a Tokens> for TokensRef<'a> {
-    fn from(value: &'a Tokens) -> Self {
-        Self(value)
-    }
-}
-impl<'a> From<&'a [Token]> for TokensRef<'a> {
-    fn from(value: &'a [Token]) -> Self {
-        Self(value)
-    }
-}
+pub struct TokensSlice(pub [Token]);
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     Num(Number),
@@ -117,10 +110,10 @@ pub enum ParseError<'a> {
 }
 impl Display for Tokens {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", TokensRef(self))
+        write!(f, "{}", &self[..])
     }
 }
-impl<'a> Display for TokensRef<'a> {
+impl Display for TokensSlice {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let mut first = true;
         for token in self.iter() {
@@ -157,9 +150,9 @@ impl Token {
         }
     }
 }
-impl<'a> TokensRef<'a> {
+impl TokensSlice {
     pub fn get_infix(
-        self,
+        &self,
         vars: &[Variable],
         funs: &[FunctionVar],
         graph_vars: &[&str],
@@ -189,9 +182,9 @@ impl<'a> TokensRef<'a> {
             Token::Skip(_) => Ok(()),
             &Token::Function(f, d) => {
                 let l = self.len() - 1;
-                let last = TokensRef(&self[..l]).get_last(funs);
+                let last = self[..l].get_last(funs);
                 if let Ok(o) = Operator::try_from(f) {
-                    let arg = TokensRef(&self[last..l]).get_infix(vars, funs, graph_vars);
+                    let arg = self[last..l].get_infix(vars, funs, graph_vars);
                     let arg = if self[l - 1].greater_precedence(o)
                         || (f.is_chainable()
                             && if let Token::Function(f, _) = self[l - 1] {
@@ -204,7 +197,7 @@ impl<'a> TokensRef<'a> {
                         format_args!("({arg})")
                     };
                     if o.inputs().get() == 2 {
-                        let arg1 = TokensRef(&self[..last]).get_infix(vars, funs, graph_vars);
+                        let arg1 = self[..last].get_infix(vars, funs, graph_vars);
                         let arg1 = if self[last - 1].greater_precedence(o) {
                             format_args!("{arg1}")
                         } else {
@@ -236,7 +229,7 @@ impl<'a> TokensRef<'a> {
         })
     }
     pub fn get_rpn(
-        self,
+        &self,
         vars: &[Variable],
         funs: &[FunctionVar],
         graph_vars: &[&str],
@@ -294,7 +287,7 @@ impl Tokens {
         funs: &[FunctionVar],
         graph_vars: &[&str],
     ) -> impl Display {
-        TokensRef(self).get_infix(vars, funs, graph_vars)
+        self[..].get_infix(vars, funs, graph_vars)
     }
     pub fn get_rpn(
         &self,
@@ -302,7 +295,7 @@ impl Tokens {
         funs: &[FunctionVar],
         graph_vars: &[&str],
     ) -> impl Display {
-        TokensRef(self).get_rpn(vars, funs, graph_vars)
+        self[..].get_rpn(vars, funs, graph_vars)
     }
     fn end(
         mut self,
@@ -971,10 +964,10 @@ impl Tokens {
                     let mut inputs = fn_inputs.pop().unwrap();
                     fun.set_inputs(inputs);
                     if fun.inputs().get() + 1 < inputs.get() + fun.inner_vars() {
-                        let last = TokensRef(self).get_last(funs);
+                        let last = self[..].get_last(funs);
                         let mut t = last;
                         for _ in fun.inputs().get()..inputs.get() {
-                            let last = TokensRef(&self[..t]).get_last(funs);
+                            let last = self[..t].get_last(funs);
                             if t - 1 == last && matches!(self[last], Token::InnerVar(_)) {
                                 self.remove(last);
                             } else {
@@ -1009,7 +1002,7 @@ impl Tokens {
     ) {
         let mut t = self.len();
         for _ in 0..fun.compact() {
-            let last = TokensRef(&self[..t]).get_last(funs);
+            let last = self[..t].get_last(funs);
             self.insert(last, Token::Skip(t - last));
             t = last;
         }
@@ -1062,8 +1055,8 @@ pub(crate) fn get_var_position(
         None
     }
 }
-impl<'a> TokensRef<'a> {
-    pub fn get_last_with_end(self, funs: &[FunctionVar], mut end: usize) -> usize {
+impl TokensSlice {
+    pub fn get_last_with_end(&self, funs: &[FunctionVar], mut end: usize) -> usize {
         let mut inputs = 1;
         while inputs != 0 {
             inputs -= 1;
@@ -1086,21 +1079,21 @@ impl<'a> TokensRef<'a> {
         }
         end
     }
-    pub fn get_last(self, funs: &[FunctionVar]) -> usize {
+    pub fn get_last(&self, funs: &[FunctionVar]) -> usize {
         self.get_last_with_end(funs, self.len())
     }
-    pub fn get_from_last_with_end(self, funs: &[FunctionVar], end: usize) -> (Self, usize) {
+    pub fn get_from_last_with_end(&self, funs: &[FunctionVar], end: usize) -> (&Self, usize) {
         let last = self.get_last_with_end(funs, end);
         if matches!(self[end - 1], Token::Skip(_)) {
-            (Self(&self.0[last..end - 1]), last)
+            (&self[last..end - 1], last)
         } else {
-            (Self(&self.0[last..end]), last)
+            (&self[last..end], last)
         }
     }
-    pub fn get_from_last(self, funs: &[FunctionVar]) -> (Self, usize) {
+    pub fn get_from_last(&self, funs: &[FunctionVar]) -> (&Self, usize) {
         self.get_from_last_with_end(funs, self.len())
     }
-    pub fn get_lasts(self, funs: &[FunctionVar]) -> Vec<Self> {
+    pub fn get_lasts(&self, funs: &[FunctionVar]) -> Vec<&Self> {
         let inputs = match *self.last().unwrap() {
             Token::CustomFun(j, d) if d.is_integral_twice_input() => {
                 2 * funs[j as usize].inputs.get()
@@ -1110,7 +1103,7 @@ impl<'a> TokensRef<'a> {
             Token::Function(o, _) => o.inputs().get(),
             _ => unreachable!(),
         };
-        let mut ret = vec![TokensRef(&[]); inputs as usize];
+        let mut ret = vec![&self[0..0]; inputs as usize];
         let mut end = self.len() - 1;
         for j in (0..inputs).rev() {
             (ret[j as usize], end) = self.get_from_last_with_end(funs, end);
@@ -1200,14 +1193,68 @@ impl Deref for Tokens {
         &self.0
     }
 }
-impl<'a> Deref for TokensRef<'a> {
-    type Target = [Token];
-    fn deref(&self) -> &Self::Target {
-        self.0
-    }
-}
 impl DerefMut for Tokens {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
+    }
+}
+impl Deref for TokensSlice {
+    type Target = [Token];
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl DerefMut for TokensSlice {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+macro_rules! impl_range {
+    ($ty:ty, $range:path) => {
+        impl Index<$range> for $ty {
+            type Output = TokensSlice;
+            fn index(&self, index: $range) -> &Self::Output {
+                unsafe { mem::transmute(&self.0[index]) }
+            }
+        }
+        impl IndexMut<$range> for $ty {
+            fn index_mut(&mut self, index: $range) -> &mut Self::Output {
+                unsafe { mem::transmute(&mut self.0[index]) }
+            }
+        }
+    };
+}
+impl_range!(TokensSlice, RangeInclusive<usize>);
+impl_range!(TokensSlice, Range<usize>);
+impl_range!(TokensSlice, RangeFrom<usize>);
+impl_range!(TokensSlice, RangeTo<usize>);
+impl_range!(TokensSlice, RangeToInclusive<usize>);
+impl_range!(TokensSlice, RangeFull);
+impl_range!(Tokens, RangeInclusive<usize>);
+impl_range!(Tokens, Range<usize>);
+impl_range!(Tokens, RangeFrom<usize>);
+impl_range!(Tokens, RangeTo<usize>);
+impl_range!(Tokens, RangeToInclusive<usize>);
+impl_range!(Tokens, RangeFull);
+impl Index<usize> for Tokens {
+    type Output = Token;
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.0[index]
+    }
+}
+impl Index<usize> for TokensSlice {
+    type Output = Token;
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.0[index]
+    }
+}
+impl IndexMut<usize> for Tokens {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.0[index]
+    }
+}
+impl IndexMut<usize> for TokensSlice {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.0[index]
     }
 }

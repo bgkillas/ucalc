@@ -1,10 +1,10 @@
-use crate::parse::{Token, Tokens, TokensRef};
+use crate::parse::{Token, Tokens, TokensSlice};
 use crate::{FunctionVar, Number, Variable};
 use std::array;
 use ucalc_numbers::{Constant, FloatTrait};
 #[derive(Copy, Clone, Debug)]
 pub(crate) struct Compute<'a> {
-    pub(crate) tokens: TokensRef<'a>,
+    pub(crate) tokens: &'a TokensSlice,
     pub(crate) graph_vars: &'a [Number],
     pub(crate) custom_funs: &'a [FunctionVar],
     pub(crate) custom_vars: &'a [Variable],
@@ -41,13 +41,13 @@ impl Tokens {
         stack: &mut Tokens,
         offset: usize,
     ) -> Number {
-        Compute::new(TokensRef(self), vars, funs, custom_vars, offset)
+        Compute::new(&self[..], vars, funs, custom_vars, offset)
             .compute_buffer_with(inner_vars, stack)
     }
     pub(crate) fn get_skip_mut<'a, const N: usize, const K: usize>(
         &mut self,
-        tokens: TokensRef<'a>,
-    ) -> (&mut Number, [Number; K], [TokensRef<'a>; N]) {
+        tokens: &'a TokensSlice,
+    ) -> (&mut Number, [Number; K], [&'a TokensSlice; N]) {
         let tokens = self.get_skip_tokens(tokens);
         let args = self.get_skip_var();
         (self.last_mut().unwrap().num_mut(), args, tokens)
@@ -61,14 +61,14 @@ impl Tokens {
     }
     pub(crate) fn get_skip_tokens<'a, const N: usize>(
         &mut self,
-        tokens: TokensRef<'a>,
-    ) -> [TokensRef<'a>; N] {
+        tokens: &'a TokensSlice,
+    ) -> [&'a TokensSlice; N] {
         let len = tokens.len();
         let mut t = len - 1;
-        let mut arr = array::from_fn(|_| TokensRef(&[]));
+        let mut arr = array::from_fn(|_| &tokens[0..0]);
         for i in 0..N {
             let back = self.pop().unwrap().skip();
-            let ret = TokensRef(&tokens.0[back..t]);
+            let ret = &tokens[back..t];
             t = back.saturating_sub(1);
             arr[N - (i + 1)] = ret
         }
@@ -76,38 +76,38 @@ impl Tokens {
     }
     pub(crate) fn get_skip_tokens_keep_one<'a, const N: usize>(
         &mut self,
-        tokens: TokensRef<'a>,
-    ) -> [TokensRef<'a>; N] {
+        tokens: &'a TokensSlice,
+    ) -> [&'a TokensSlice; N] {
         let len = tokens.len();
         let mut t = len - 1;
-        let mut arr = array::from_fn(|_| TokensRef(&[]));
+        let mut arr = array::from_fn(|_| &tokens[0..0]);
         for i in 0..N - 1 {
             let back = self.pop().unwrap().skip();
-            let ret = TokensRef(&tokens.0[back..t]);
+            let ret = &tokens[back..t];
             t = back.saturating_sub(1);
             arr[N - (i + 1)] = ret
         }
         let back = self[self.len() - 1].skip();
-        let ret = TokensRef(&tokens.0[back..t]);
+        let ret = &tokens[back..t];
         arr[0] = ret;
         arr
     }
     pub(crate) fn get_skip_tokens_keep_one_vec<'a>(
         &mut self,
-        tokens: TokensRef<'a>,
+        tokens: &'a TokensSlice,
         n: usize,
-    ) -> Vec<TokensRef<'a>> {
+    ) -> Vec<&'a TokensSlice> {
         let len = tokens.len();
         let mut t = len - 1;
-        let mut arr = vec![TokensRef(&[]); n];
+        let mut arr = vec![&tokens[0..0]; n];
         for i in 0..n - 1 {
             let back = self.pop().unwrap().skip();
-            let ret = TokensRef(&tokens.0[back..t]);
+            let ret = &tokens[back..t];
             t = back.saturating_sub(1);
             arr[n - (i + 1)] = ret
         }
         let back = self[self.len() - 1].skip();
-        let ret = TokensRef(&tokens.0[back..t]);
+        let ret = &tokens[back..t];
         arr[0] = ret;
         arr
     }
@@ -122,7 +122,7 @@ impl<'a> Compute<'a> {
             offset,
         }
     }
-    pub fn tokens<'b: 'a>(self, tokens: TokensRef<'b>) -> Self {
+    pub fn tokens<'b: 'a>(self, tokens: &'b TokensSlice) -> Self {
         Self {
             tokens,
             graph_vars: self.graph_vars,
@@ -132,7 +132,7 @@ impl<'a> Compute<'a> {
         }
     }
     pub fn new(
-        tokens: TokensRef<'a>,
+        tokens: &'a TokensSlice,
         vars: &'a [Number],
         funs: &'a [FunctionVar],
         custom_vars: &'a [Variable],
@@ -156,11 +156,7 @@ impl<'a> Compute<'a> {
                     }
                     let inputs = operator.inputs();
                     if operator.has_inner_fn() {
-                        operator.compute_var(
-                            self.tokens(TokensRef(&self.tokens[..=i])),
-                            stack,
-                            inner_vars,
-                        )
+                        operator.compute_var(self.tokens(&self.tokens[..=i]), stack, inner_vars)
                     } else if operator.is_chainable() {
                         let chain = if self.tokens.get(i + 1).is_some_and(|o| {
                             if let Token::Function(o, _) = o {
@@ -196,7 +192,7 @@ impl<'a> Compute<'a> {
                     let len = stack.len();
                     let compute = self
                         .offset(end)
-                        .tokens(TokensRef(&self.custom_funs[index as usize].tokens));
+                        .tokens(&self.custom_funs[index as usize].tokens[..]);
                     if d.get() != 0 {
                         if d.is_integral() {
                             if d.is_integral_twice_input() {

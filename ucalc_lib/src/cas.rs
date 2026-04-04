@@ -1,6 +1,6 @@
 use crate::compute::Compute;
 use crate::inverse::Inverse;
-use crate::parse::{Token, TokensRef};
+use crate::parse::{Token, TokensSlice};
 use crate::{Number, Tokens};
 use std::ops::Deref;
 impl Compute<'_> {
@@ -23,7 +23,7 @@ impl Compute<'_> {
         inner_vars: &mut Vec<Number>,
         ret: &mut Number,
         stack: &mut Tokens,
-        args: Option<&mut Vec<TokensRef>>,
+        args: Option<&mut Vec<&TokensSlice>>,
     ) -> Option<Option<Number>> {
         let mut i = self.tokens.len();
         let mut start = 0;
@@ -35,7 +35,7 @@ impl Compute<'_> {
                         todo!()
                     }
                     let fun = &self.custom_funs[n as usize];
-                    let tokens = TokensRef(&self.tokens[start..=i]);
+                    let tokens = &self.tokens[start..=i];
                     let mut args = tokens.get_lasts(self.custom_funs);
                     let count = args
                         .iter()
@@ -53,7 +53,7 @@ impl Compute<'_> {
                             inner_vars.push(n)
                         }
                     }
-                    let roots = self.tokens(TokensRef(&fun.tokens)).offset(end).cas_inner(
+                    let roots = self.tokens(&fun.tokens[..]).offset(end).cas_inner(
                         inner_vars,
                         ret,
                         stack,
@@ -76,7 +76,7 @@ impl Compute<'_> {
                     if let Some(inv) = inverse.get_inverse() {
                         inv.compute_on_1(ret);
                     } else {
-                        let right_tokens = TokensRef(&self.tokens[start..i]);
+                        let right_tokens = &self.tokens[start..i];
                         let (right_tokens, last) = right_tokens.get_from_last(self.custom_funs);
                         if args
                             .as_ref()
@@ -90,7 +90,7 @@ impl Compute<'_> {
                                 right_tokens.contains(&Token::InnerVar(inner_vars.len() as u16))
                             })
                         {
-                            let left_tokens = TokensRef(&self.tokens[start..start + last]);
+                            let left_tokens = &self.tokens[start..start + last];
                             let (left_tokens, _) = left_tokens.get_from_last(self.custom_funs);
                             if args
                                 .as_ref()
@@ -104,9 +104,8 @@ impl Compute<'_> {
                                     left_tokens.contains(&Token::InnerVar(inner_vars.len() as u16))
                                 })
                             {
-                                let poly = self
-                                    .tokens(TokensRef(&self.tokens[start..=i]))
-                                    .compute_polynomial(
+                                let poly =
+                                    self.tokens(&self.tokens[start..=i]).compute_polynomial(
                                         inner_vars,
                                         stack,
                                         Some(

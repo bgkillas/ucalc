@@ -1,6 +1,5 @@
 use crate::compute::Compute;
 use crate::inverse::Inverse;
-use crate::parse::TokensRef;
 use crate::{Function, Number, Token, Tokens};
 use std::mem;
 #[cfg(feature = "complex")]
@@ -428,7 +427,7 @@ impl Compute<'_> {
                     inner_vars.extend(stack.drain(len + 1 - inputs..).map(|n| n.num()));
                     stack[len - inputs] = self
                         .offset(end)
-                        .tokens(TokensRef(&self.custom_funs[index as usize].tokens))
+                        .tokens(&self.custom_funs[index as usize].tokens[..])
                         .compute_polynomial(inner_vars, stack, None)?;
                     inner_vars.drain(end..);
                 }
