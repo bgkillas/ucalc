@@ -845,16 +845,16 @@ impl Tokens {
                 match bracket {
                     Bracket::Absolute => {
                         tokens.push(Function::Abs.into());
-                        tokens.close_off_bracket(
-                            &mut operator_stack,
-                            &mut inner_vars,
-                            &mut inner_vars_count,
-                            funs,
-                            &mut fn_inputs,
-                        )?;
                     }
                     Bracket::Parenthesis => {}
                 };
+                tokens.close_off_bracket(
+                    &mut operator_stack,
+                    &mut inner_vars,
+                    &mut inner_vars_count,
+                    funs,
+                    &mut fn_inputs,
+                )?;
             } else {
                 tokens.push_operator(operator, &mut inner_vars, &operator_stack, funs)?;
             }

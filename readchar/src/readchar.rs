@@ -1,5 +1,5 @@
 use crate::History;
-use crossterm::cursor::{MoveTo, MoveToColumn, MoveToNextLine, MoveToPreviousLine};
+use crossterm::cursor::{MoveRight, MoveTo, MoveToColumn, MoveToNextLine, MoveToPreviousLine};
 use crossterm::event::{
     DisableBracketedPaste, EnableBracketedPaste, Event, KeyCode, KeyEvent, KeyModifiers,
 };
@@ -131,7 +131,6 @@ impl ReadChar {
         stdout: &mut impl Write,
         run: impl FnOnce(&str, &mut String),
     ) -> io::Result<()> {
-        stdout.flush()?;
         run(&self.line, string);
         self.new_lines = self.out_lines(string);
         stdout.queue(Clear(ClearType::FromCursorDown))?;
@@ -280,6 +279,7 @@ impl ReadChar {
         self.cursor_row_max = (self.line_len + self.carrot.len() as u16) / self.col;
         stdout.queue(Clear(ClearType::FromCursorDown))?;
         self.print_line(stdout, color)?;
+        stdout.flush()?;
         self.print_result(string, stdout, run)?;
         stdout.flush()?;
         Ok(())
@@ -364,6 +364,7 @@ impl ReadChar {
         } else {
             self.print_line(stdout, color)?;
         }
+        stdout.flush()?;
         self.print_result(string, stdout, run)?;
         stdout.flush()?;
         Ok(())
@@ -525,6 +526,7 @@ impl ReadChar {
         if (self.line_len + self.carrot.len() as u16).is_multiple_of(self.col) {
             writeln!(stdout)?;
         }
+        stdout.flush()?;
         self.print_result(string, stdout, run)?;
         stdout.flush()?;
         Ok(())
@@ -551,6 +553,7 @@ impl ReadChar {
         if (self.line_len + self.carrot.len() as u16).is_multiple_of(self.col) {
             writeln!(stdout)?;
         }
+        stdout.flush()?;
         self.print_result(string, stdout, run)?;
         stdout.flush()?;
         Ok(())
@@ -578,6 +581,7 @@ impl ReadChar {
         } else {
             self.print_line(stdout, color)?;
         }
+        stdout.flush()?;
         self.print_result(string, stdout, run)?;
         stdout.flush()?;
         Ok(())
@@ -711,6 +715,15 @@ impl ReadChar {
                 modifiers: KeyModifiers::NONE,
                 ..
             }) if self.cursor != self.line_len => self.delete(stdout, string, run, color, 1)?,
+            Event::Key(KeyEvent {
+                code: KeyCode::Char('r'),
+                modifiers: KeyModifiers::CONTROL,
+                ..
+            }) => {
+                stdout.queue(MoveRight(u16::MAX))?;
+                self.print_result(string, stdout, run)?;
+                stdout.flush()?;
+            }
             Event::Key(KeyEvent {
                 code: KeyCode::Char(c),
                 modifiers: KeyModifiers::NONE,

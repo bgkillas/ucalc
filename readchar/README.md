@@ -37,4 +37,5 @@ will run `calc` on each input line while you type
 | Backspace  | Removes the character left of the cursor, the moves left one character |
 | Delete     | Removes the character on the cursor                                    |
 | Ctrl-C     | Exits buffer                                                           |
+| Ctrl-R     | Repaints Line                                                          |
 | Enter      | Finishes line                                                          |
