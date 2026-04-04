@@ -576,7 +576,7 @@ impl Tokens {
                         } else if let Some(f) = NumberBase::parse_radix(s, base) {
                             tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
                             tokens.push(f.into());
-                            _ = chars.advance_by(l - 1);
+                            chars.advance_by(l - 1).unwrap();
                             open_input = true;
                         } else if count != 1 {
                             count -= 1;
@@ -590,7 +590,7 @@ impl Tokens {
                         }
                         break;
                     }
-                    _ = chars.advance_by(count - 1);
+                    chars.advance_by(count - 1).unwrap();
                     negate = false;
                     last_abs = false;
                     req_input = false;
@@ -647,7 +647,7 @@ impl Tokens {
                     };
                     tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
                     tokens.push(float.into());
-                    _ = chars.advance_by(l - 1);
+                    chars.advance_by(l - 1).unwrap();
                     negate = false;
                     last_abs = false;
                     req_input = false;

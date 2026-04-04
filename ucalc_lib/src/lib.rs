@@ -1,6 +1,5 @@
 #![feature(iter_advance_by)]
 #![feature(vec_try_remove)]
-mod cas;
 mod compute;
 mod functions;
 mod functions_list;
@@ -10,6 +9,7 @@ mod operators;
 mod parse;
 mod polynomial;
 mod polynomial_impls;
+mod solver;
 #[cfg(test)]
 mod tests;
 mod variable;

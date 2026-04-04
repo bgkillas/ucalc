@@ -25,11 +25,10 @@ impl Compute<'_> {
         stack: &mut Tokens,
         args: Option<&mut Vec<&TokensSlice>>,
     ) -> Option<Option<Number>> {
-        let mut i = self.tokens.len();
+        let mut tokens = self.tokens.iter().enumerate();
         let mut start = 0;
-        while i > start + 1 {
-            i -= 1;
-            match self.tokens[i] {
+        while let Some((i, token)) = tokens.next_back() {
+            match *token {
                 Token::CustomFun(n, d) => {
                     if d.get() != 0 {
                         todo!()
@@ -125,6 +124,7 @@ impl Compute<'_> {
                                 let num = self
                                     .tokens(left_tokens)
                                     .compute_buffer_with(inner_vars, stack);
+                                tokens.advance_by(last).unwrap();
                                 start += last;
                                 inverse.right_inverse(ret, num);
                             }
@@ -132,11 +132,12 @@ impl Compute<'_> {
                             let num = self
                                 .tokens(right_tokens)
                                 .compute_buffer_with(inner_vars, stack);
-                            i = last;
+                            tokens.advance_back_by(i - last).unwrap();
                             inverse.left_inverse(ret, num);
                         }
                     }
                 }
+                Token::InnerVar(_) => return Some(None),
                 _ => return None,
             }
         }
