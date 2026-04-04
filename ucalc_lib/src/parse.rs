@@ -675,15 +675,10 @@ impl Tokens {
                     if req_input || expect_expr {
                         return Err(ParseError::MissingInput);
                     }
-                    while let Some(top) = operator_stack.last()
-                        && !matches!(top, Operator::Bracket(_))
+                    while let Some(top) =
+                        operator_stack.pop_if(|top| !matches!(top, Operator::Bracket(_)))
                     {
-                        tokens.push_operator(
-                            operator_stack.pop().unwrap(),
-                            &mut inner_vars,
-                            &operator_stack,
-                            funs,
-                        )?;
+                        tokens.push_operator(top, &mut inner_vars, &operator_stack, funs)?;
                     }
                     if let Some(last) = fn_inputs.last_mut() {
                         *last = last.checked_add(1).unwrap();
@@ -713,22 +708,19 @@ impl Tokens {
                     if req_input || expect_expr {
                         return Err(ParseError::MissingInput);
                     }
-                    while let Some(top) = operator_stack.last()
-                        && !matches!(top, Operator::Bracket(_))
+                    while let Some(top) =
+                        operator_stack.pop_if(|top| !matches!(top, Operator::Bracket(_)))
                     {
-                        tokens.push_operator(
-                            operator_stack.pop().unwrap(),
-                            &mut inner_vars,
-                            &operator_stack,
-                            funs,
-                        )?;
+                        tokens.push_operator(top, &mut inner_vars, &operator_stack, funs)?;
                     }
-                    if !matches!(
-                        operator_stack.pop(),
-                        Some(Operator::Bracket(Bracket::Parenthesis))
+                    if matches!(
+                        operator_stack.last(),
+                        Some(Operator::Bracket(Bracket::Absolute))
                     ) {
-                        return Err(ParseError::LeftParenthesisNotFound);
+                        return Err(ParseError::AbsoluteBracketFailed);
                     }
+                    operator_stack
+                        .pop_if(|top| matches!(top, Operator::Bracket(Bracket::Parenthesis)));
                     tokens.close_off_bracket(
                         &mut operator_stack,
                         &mut inner_vars,
@@ -758,19 +750,14 @@ impl Tokens {
                         abs += 1;
                         negate = true;
                         last_abs = true;
-                        req_input = false;
+                        req_input = true;
                         last_mul = false;
                         open_input = false;
                     } else {
-                        while let Some(top) = operator_stack.last()
-                            && !matches!(top, Operator::Bracket(_))
+                        while let Some(top) =
+                            operator_stack.pop_if(|top| !matches!(top, Operator::Bracket(_)))
                         {
-                            tokens.push_operator(
-                                operator_stack.pop().unwrap(),
-                                &mut inner_vars,
-                                &operator_stack,
-                                funs,
-                            )?;
+                            tokens.push_operator(top, &mut inner_vars, &operator_stack, funs)?;
                         }
                         if !matches!(
                             operator_stack.pop(),
@@ -855,12 +842,22 @@ impl Tokens {
         }
         while let Some(operator) = operator_stack.pop() {
             if let Operator::Bracket(bracket) = operator {
-                return match bracket {
-                    Bracket::Absolute => Err(ParseError::AbsoluteBracketFailed),
-                    Bracket::Parenthesis => Err(ParseError::RightParenthesisNotFound),
+                match bracket {
+                    Bracket::Absolute => {
+                        tokens.push(Function::Abs.into());
+                        tokens.close_off_bracket(
+                            &mut operator_stack,
+                            &mut inner_vars,
+                            &mut inner_vars_count,
+                            funs,
+                            &mut fn_inputs,
+                        )?;
+                    }
+                    Bracket::Parenthesis => {}
                 };
+            } else {
+                tokens.push_operator(operator, &mut inner_vars, &operator_stack, funs)?;
             }
-            tokens.push_operator(operator, &mut inner_vars, &operator_stack, funs)?;
         }
         if let Some(res) = tokens.end(
             inputs,
@@ -939,18 +936,13 @@ impl Tokens {
         operator: Operator,
         negate: bool,
     ) -> Result<(), ParseError<'static>> {
-        while let Some(top) = operator_stack.last()
-            && !matches!(top, Operator::Bracket(_))
-            && (top.precedence() > operator.precedence()
-                || (top.precedence() == operator.precedence() && operator.left_associative()))
-            && !(negate && operator == Operator::Negate && *top == Operator::Pow)
-        {
-            self.push_operator(
-                operator_stack.pop().unwrap(),
-                inner_vars,
-                operator_stack,
-                funs,
-            )?;
+        while let Some(top) = operator_stack.pop_if(|top| {
+            !matches!(top, Operator::Bracket(_))
+                && (top.precedence() > operator.precedence()
+                    || (top.precedence() == operator.precedence() && operator.left_associative()))
+                && !(negate && operator == Operator::Negate && *top == Operator::Pow)
+        }) {
+            self.push_operator(top, inner_vars, operator_stack, funs)?;
         }
         operator_stack.push(operator);
         Ok(())

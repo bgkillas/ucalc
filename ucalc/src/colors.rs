@@ -92,11 +92,11 @@ impl From<Color> for usize {
         }
     }
 }
-fn write_bracket(f: &mut impl Write, colors: &Colors, bracket: usize, c: char) -> fmt::Result {
+fn write_bracket(f: &mut impl Write, colors: &Colors, bracket: isize, c: char) -> fmt::Result {
     write!(
         f,
         "{}",
-        colors.bracket_colors[bracket % colors.bracket_colors.len()]
+        colors.bracket_colors[bracket.rem_euclid(colors.bracket_colors.len() as isize) as usize]
     )?;
     write!(f, "{c}")?;
     write!(f, "{}", colors.default_color)?;
@@ -104,7 +104,7 @@ fn write_bracket(f: &mut impl Write, colors: &Colors, bracket: usize, c: char) -
 }
 pub fn color_brackets<'a, 'b: 'a>(line: &'a str, colors: &'b Colors) -> impl Display + 'a {
     fmt::from_fn(|f| {
-        let mut bracket = 0;
+        let mut bracket: isize = 0;
         let mut abs = 0;
         let mut last_abs = false;
         let mut req_input = false;

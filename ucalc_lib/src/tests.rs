@@ -3073,32 +3073,6 @@ fn test_real() {
 }
 #[test]
 fn test_err() {
-    assert_eq!(
-        Tokens::infix(
-            "(2+3))",
-            &mut Variables::default(),
-            &mut Functions::default(),
-            &[],
-            false,
-            10,
-            #[cfg(feature = "float_rand")]
-            &mut None
-        ),
-        Err(ParseError::LeftParenthesisNotFound)
-    );
-    assert_eq!(
-        Tokens::infix(
-            "((2+3)",
-            &mut Variables::default(),
-            &mut Functions::default(),
-            &[],
-            false,
-            10,
-            #[cfg(feature = "float_rand")]
-            &mut None
-        ),
-        Err(ParseError::RightParenthesisNotFound)
-    );
     assert_teq!(
         Tokens::infix(
             "2.3.4",
@@ -3137,19 +3111,6 @@ fn test_err() {
     );
     assert_eq!(
         Tokens::infix(
-            "|2",
-            &mut Variables::default(),
-            &mut Functions::default(),
-            &[],
-            false,
-            10,
-            #[cfg(feature = "float_rand")]
-            &mut None
-        ),
-        Err(ParseError::AbsoluteBracketFailed)
-    );
-    assert_eq!(
-        Tokens::infix(
             "|(|)",
             &mut Variables::default(),
             &mut Functions::default(),
@@ -3173,6 +3134,19 @@ fn test_err() {
             &mut None
         ),
         Err(ParseError::MissingInput)
+    );
+    assert_eq!(
+        Tokens::infix(
+            "(|2)|",
+            &mut Variables::default(),
+            &mut Functions::default(),
+            &[],
+            false,
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
+        ),
+        Err(ParseError::AbsoluteBracketFailed)
     );
     assert_eq!(
         Tokens::infix(
