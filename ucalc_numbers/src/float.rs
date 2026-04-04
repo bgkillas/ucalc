@@ -15,7 +15,7 @@ use std::f128::consts;
 use std::fmt::{Debug, Display, Formatter};
 use std::iter::{Product, Sum};
 use std::ops::{
-    Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub, SubAssign,
+    Add, AddAssign, Deref, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub, SubAssign,
 };
 use std::{fmt, mem};
 #[cfg(feature = "f16")]
@@ -489,16 +489,75 @@ impl FloatFunctionsMut<Float> for Complex {
         self.imag = Float(0.0);
     }
     fn gamma_mut(&mut self) {
-        //TODO
-        self.real.gamma_mut();
+        if self.imag.is_zero() {
+            self.real.gamma_mut();
+            return;
+        }
+        fn inner1<const N: usize>(s: &Complex) -> Complex {
+            let mut run = Complex::from(1);
+            for i in (1..N).rev() {
+                run.recip_mut();
+                run *= Complex::from(-(i as isize)) + s;
+                run *= Float::from(i);
+                run -= s;
+                run += Float::from(2 * i);
+            }
+            run.recip()
+        }
+        fn inner2<const N: usize>(s: &Complex) -> Complex {
+            let mut run = Complex::from(1);
+            for i in (1..N).rev() {
+                run.recip_mut();
+                run *= Complex::from(i);
+                run += s;
+                run += Float::from(2 * i - 1);
+                run.recip_mut();
+                run *= Complex::from(i - 1) + s;
+                run.neg_assign();
+                run += s;
+                run += Float::from(2 * (i - 1));
+            }
+            run.recip()
+        }
+        *self = (inner1::<64>(self) + inner2::<64>(self)) / Float::from(consts::E)
     }
     fn erf_mut(&mut self) {
-        //TODO
-        self.real.erf_mut();
+        if self.imag.is_zero() {
+            self.real.erf_mut();
+            return;
+        }
+        self.erfc_mut();
+        self.neg_assign();
+        *self += Float::from(1);
     }
     fn erfc_mut(&mut self) {
-        //TODO
-        self.real.erfc_mut();
+        if self.imag.is_zero() {
+            self.real.erfc_mut();
+            return;
+        }
+        let mut sq = self.clone() * self.deref();
+        let s = sq.clone();
+        sq.neg_assign();
+        sq.exp_mut();
+        sq *= self.deref();
+        sq *= Float::from(consts::FRAC_2_SQRT_PI / 2.0);
+        fn inner<const N: usize>(s: &Complex) -> Complex {
+            let mut run =
+                ((Complex::from(N) + Float::from(0.5) + s) + Float::from(1)) / Float::from(N);
+            for i in (1..N).rev() {
+                run *= Float::from(i) + Float::from(0.5);
+                run += s;
+                run.recip_mut();
+                run *= Float::from(i);
+                run += Float::from(1);
+                run.recip_mut();
+            }
+            run *= Float::from(0.5);
+            run += s;
+            run
+        }
+        sq /= inner::<64>(&s);
+        *self = sq;
     }
     fn round_mut(&mut self) {
         self.real.round_mut();

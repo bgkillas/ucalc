@@ -423,7 +423,7 @@ impl Compute<'_> {
                     let inputs = self.custom_funs[index as usize].inputs.get() as usize;
                     let end = inner_vars.len();
                     let len = stack.len();
-                    inner_vars.push(stack[len - inputs].num_ref().clone());
+                    inner_vars.push(stack[len - inputs].num_ref().clone()); //TODO not always num
                     inner_vars.extend(stack.drain(len + 1 - inputs..).map(|n| n.num()));
                     stack[len - inputs] = self
                         .offset(end)
