@@ -10,6 +10,7 @@ use readchar::crossterm::cursor::MoveTo;
 use readchar::crossterm::terminal::{Clear, ClearType};
 use readchar::{ReadChar, Return};
 use std::env::args;
+use std::fmt;
 use std::fmt::Write;
 use std::io::{BufRead, IsTerminal, stdin, stdout};
 use ucalc_lib::{Functions, Number, Tokens, Variable, Variables, get_help};
@@ -67,6 +68,7 @@ fn main() {
                         string,
                         &colors,
                     )
+                    .unwrap()
                 },
                 ToColor(&colors),
                 |readchar, stdout, line| {
@@ -112,13 +114,13 @@ fn process_line(
     base_output: u8,
     str: &mut String,
     colors: &Colors,
-) -> Option<Number> {
+) -> Result<Option<Number>, fmt::Error> {
     str.clear();
-    match line {
+    Ok(match line {
         "" | "exit" | "clear" => None,
         _ if line.starts_with("help") => {
             let arg = line.split_once(' ').map(|(_, a)| a).unwrap_or("");
-            write!(str, "{}", color_brackets(get_help(arg), colors)).unwrap();
+            write!(str, "{}", color_brackets(get_help(arg), colors))?;
             None
         }
         _ => {
@@ -129,17 +131,18 @@ fn process_line(
             } {
                 Ok(Some(tokens)) => {
                     let compute = tokens.compute(&[], funs, vars);
-                    write!(str, "{}", compute.to_string_radix(base_output)).unwrap();
+                    write!(str, "{}", compute.get_closest_fraction())?;
+                    write!(str, "{}", compute.to_string_radix(base_output))?;
                     Some(compute)
                 }
                 Ok(None) => None,
                 Err(e) => {
-                    write!(str, "{e:?}").unwrap();
+                    write!(str, "{e:?}")?;
                     None
                 }
             }
         }
-    }
+    })
 }
 fn run_line(
     line: &str,
@@ -172,7 +175,7 @@ fn run_line(
             //println!("{}", tokens.get_rpn(vars, funs, &[]));
             let compute = tmr(|| tokens.compute(&[], funs, vars));
             //let compute = tokens.compute(&[], funs, vars);
-            //println!("{}", compute.get_closest_fraction());
+            print!("{}", compute.get_closest_fraction());
             println!("{}", compute.to_string_radix(*base_output));
         }
         Ok(None) => {}

@@ -557,7 +557,7 @@ impl Tokens {
                         } else if count == 1
                             && s.chars().all(|c| c.is_alphabetic())
                             && !inner_vars_count.is_empty()
-                            && let Some(n) = Tokens::get_var_position(
+                            && let Some(n) = get_var_position(
                                 &mut inner_vars_count,
                                 &fn_inputs,
                                 &operator_stack,
@@ -861,50 +861,6 @@ impl Tokens {
             Ok(None)
         }
     }
-    pub(crate) fn get_var_position(
-        inner_vars_count: &mut [u8],
-        fn_inputs: &[NonZeroU8],
-        operator_stack: &[Operator],
-        mut inner_vars: usize,
-    ) -> Option<usize> {
-        let mut n = inner_vars_count.len();
-        let mut inputs = fn_inputs.iter();
-        let mut last = None;
-        if operator_stack
-            .iter()
-            .rfind(|la| {
-                let f = match la {
-                    Operator::Function(f, _) => f,
-                    Operator::Custom(_, _) => {
-                        inputs.next_back();
-                        return false;
-                    }
-                    _ => return false,
-                };
-                last = inputs.next_back();
-                if !f.has_var() {
-                    return false;
-                }
-                n -= 1;
-                if !f.expected_var(*last.unwrap()) {
-                    return false;
-                }
-                if inner_vars_count[n] != 0 {
-                    inner_vars -= inner_vars_count[n] as usize;
-                    true
-                } else {
-                    inner_vars -= f.inner_vars() as usize;
-                    false
-                }
-            })
-            .is_some()
-        {
-            inner_vars_count[n] -= 1;
-            Some(inner_vars)
-        } else {
-            None
-        }
-    }
     pub fn last_mul(
         &mut self,
         operator_stack: &mut Vec<Operator>,
@@ -1060,6 +1016,50 @@ impl Tokens {
         for _ in 0..fun.inner_vars() {
             inner_vars.pop().unwrap();
         }
+    }
+}
+pub(crate) fn get_var_position(
+    inner_vars_count: &mut [u8],
+    fn_inputs: &[NonZeroU8],
+    operator_stack: &[Operator],
+    mut inner_vars: usize,
+) -> Option<usize> {
+    let mut n = inner_vars_count.len();
+    let mut inputs = fn_inputs.iter();
+    let mut last = None;
+    if operator_stack
+        .iter()
+        .rfind(|la| {
+            let f = match la {
+                Operator::Function(f, _) => f,
+                Operator::Custom(_, _) => {
+                    inputs.next_back();
+                    return false;
+                }
+                _ => return false,
+            };
+            last = inputs.next_back();
+            if !f.has_var() {
+                return false;
+            }
+            n -= 1;
+            if !f.expected_var(*last.unwrap()) {
+                return false;
+            }
+            if inner_vars_count[n] != 0 {
+                inner_vars -= inner_vars_count[n] as usize;
+                true
+            } else {
+                inner_vars -= f.inner_vars() as usize;
+                false
+            }
+        })
+        .is_some()
+    {
+        inner_vars_count[n] -= 1;
+        Some(inner_vars)
+    } else {
+        None
     }
 }
 impl<'a> TokensRef<'a> {

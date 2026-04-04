@@ -1,6 +1,6 @@
 use crate::compute::Compute;
 use crate::{Number, Tokens};
-use ucalc_numbers::{Float, FloatTrait, UInteger};
+use ucalc_numbers::{Float, FloatFunctions, FloatTrait, UInteger};
 impl Compute<'_> {
     pub fn numerical_solve(
         self,
@@ -16,7 +16,7 @@ impl Compute<'_> {
                 break;
             }
             let val = self.numerical_derivative(inner_vars, stack, inner_vars[var].clone(), var);
-            inner_vars[var] -= y / val;
+            inner_vars[var] -= val.recip() * y;
         }
         inner_vars[var].clone()
     }

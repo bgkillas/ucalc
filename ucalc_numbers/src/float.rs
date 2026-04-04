@@ -135,6 +135,9 @@ impl RealTrait<Float> for Float {
             if fract < 1e-8 {
                 let numerator = (orig * mult) as usize;
                 let denominator = mult as usize;
+                if denominator == 1 {
+                    return None;
+                }
                 return Some((is_positive, numerator, denominator));
             }
         }
@@ -369,13 +372,13 @@ impl FloatTrait<Float> for Float {
     fn get_closest_fraction(&self) -> impl Display {
         fmt::from_fn(move |fmt| {
             if let Some((sign, num, den)) = self.closest_fraction() {
-                if !sign {
-                    write!(fmt, "-")?;
+                if sign {
+                    writeln!(fmt, "{num}/{den}")?;
+                } else {
+                    writeln!(fmt, "-{num}/{den}")?;
                 }
-                write!(fmt, "{num}/{den}")
-            } else {
-                write!(fmt, "")
             }
+            Ok(())
         })
     }
     fn total_cmp(&self, other: &Self) -> Ordering {
@@ -695,36 +698,46 @@ impl FloatTrait<Float> for Complex {
         })
     }
     fn to_string_radix(&self, base: u8) -> String {
-        format!(
-            "{}{}{}i",
-            self.real.to_string_radix(base),
-            if self.imag.is_sign_positive() {
-                "+"
-            } else {
-                ""
-            },
-            self.imag.to_string_radix(base)
-        )
+        match (
+            self.real.is_zero(),
+            self.imag.is_zero(),
+            self.imag.is_sign_positive(),
+        ) {
+            (false, false, true) => format!(
+                "{}+{}i",
+                self.real.to_string_radix(base),
+                self.imag.to_string_radix(base)
+            ),
+            (false, false, false) => format!(
+                "{}{}i",
+                self.real.to_string_radix(base),
+                self.imag.to_string_radix(base)
+            ),
+            (false, true, _) => self.real.to_string_radix(base).to_string(),
+            (true, false, _) => format!("{}i", self.imag.to_string_radix(base)),
+            (true, true, _) => "0".to_string(),
+        }
     }
     fn get_closest_fraction(&self) -> impl Display {
         fmt::from_fn(move |fmt| {
-            if let Some((sign, num, den)) = self.real.closest_fraction() {
-                if !sign {
-                    write!(fmt, "-")?;
+            match (self.real.closest_fraction(), self.imag.closest_fraction()) {
+                (Some((true, num, den)), Some((true, numi, deni))) => {
+                    writeln!(fmt, "{num}/{den}+{numi}i/{deni}")
                 }
-                write!(fmt, "{num}/{den}")?;
-            } else {
-                write!(fmt, "")?;
-            }
-            if let Some((sign, num, den)) = self.imag.closest_fraction() {
-                if sign {
-                    write!(fmt, "+")?;
-                } else {
-                    write!(fmt, "-")?;
+                (Some((true, num, den)), Some((false, numi, deni))) => {
+                    writeln!(fmt, "{num}/{den}-{numi}i/{deni}")
                 }
-                write!(fmt, "{num}i/{den}")
-            } else {
-                write!(fmt, "")
+                (Some((false, num, den)), Some((true, numi, deni))) => {
+                    writeln!(fmt, "-{num}/{den}+{numi}i/{deni}")
+                }
+                (Some((false, num, den)), Some((false, numi, deni))) => {
+                    writeln!(fmt, "-{num}/{den}-{numi}i/{deni}")
+                }
+                (Some((true, num, den)), None) => writeln!(fmt, "{num}/{den}"),
+                (Some((false, num, den)), None) => writeln!(fmt, "-{num}/{den}"),
+                (None, Some((true, numi, deni))) => writeln!(fmt, "{numi}i/{deni}"),
+                (None, Some((false, numi, deni))) => writeln!(fmt, "-{numi}i/{deni}"),
+                (None, None) => Ok(()),
             }
         })
     }

@@ -1,4 +1,4 @@
-pub const FUNCTION_LIST: &[&str] = &[
+pub const FUNCTION_LIST: [&str; 71] = [
     "add(a,b)",
     "sub(a,b)",
     "mul(a,b)",
