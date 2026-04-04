@@ -134,7 +134,7 @@ impl RealTrait<Float> for Float {
             if fract < 1e-8 {
                 let numerator = (orig * mult) as usize;
                 let denominator = mult as usize;
-                if denominator == 1 {
+                if denominator <= 1 {
                     return None;
                 }
                 return Some((is_positive, numerator, denominator));
