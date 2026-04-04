@@ -3,6 +3,8 @@ use crate::UNITS;
 use crate::functions::Function;
 use crate::operators::{Bracket, Operator};
 use crate::polynomial::Polynomial;
+#[cfg(feature = "float_rand")]
+use crate::rand::Rand;
 use crate::variable::{Functions, Variables};
 use crate::{FunctionVar, Number, NumberBase, Variable};
 use std::cmp::Ordering;
@@ -302,13 +304,20 @@ impl Tokens {
         inputs: Option<(&str, bool)>,
         vars: &mut Variables,
         funs: &mut Functions,
+        #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
     ) -> Option<Self> {
         if self.is_empty() {
             self.push(Number::default().into());
         }
         if let Some((name, is_fun)) = inputs {
             if !is_fun {
-                let val = self.compute(&[], funs, vars);
+                let val = self.compute(
+                    &[],
+                    funs,
+                    vars,
+                    #[cfg(feature = "float_rand")]
+                    rand,
+                );
                 if let Some(v) = vars.position(name) {
                     vars[v as usize].value = val;
                 } else {
@@ -336,6 +345,7 @@ impl Tokens {
         graph_vars: &[&str],
         mut expect_let: bool,
         base: u8,
+        #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
     ) -> Result<Option<Self>, ParseError<'a>> {
         let mut tokens = Tokens(Vec::with_capacity(value.len()));
         let mut inner_vars: Vec<&str> = Vec::with_capacity(value.len());
@@ -454,7 +464,13 @@ impl Tokens {
         if open_inputs > 1 || (open_inputs == 0 && !tokens.is_empty()) {
             return Err(ParseError::MissingInput);
         }
-        Ok(tokens.end(inputs, vars, funs))
+        Ok(tokens.end(
+            inputs,
+            vars,
+            funs,
+            #[cfg(feature = "float_rand")]
+            rand,
+        ))
     }
     pub fn infix<'a>(
         value: &'a str,
@@ -463,6 +479,7 @@ impl Tokens {
         graph_vars: &[&str],
         mut expect_let: bool,
         base: u8,
+        #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
     ) -> Result<Option<Self>, ParseError<'a>> {
         let mut tokens = Tokens(Vec::with_capacity(value.len()));
         let mut operator_stack: Vec<Operator> = Vec::with_capacity(value.len());
@@ -845,7 +862,13 @@ impl Tokens {
             }
             tokens.push_operator(operator, &mut inner_vars, &operator_stack, funs)?;
         }
-        if let Some(res) = tokens.end(inputs, vars, funs) {
+        if let Some(res) = tokens.end(
+            inputs,
+            vars,
+            funs,
+            #[cfg(feature = "float_rand")]
+            rand,
+        ) {
             if !inner_vars.is_empty() {
                 return Err(ParseError::InnerVarError);
             }

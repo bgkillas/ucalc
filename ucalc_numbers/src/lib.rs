@@ -10,6 +10,8 @@
 #![feature(const_convert)]
 #[cfg(feature = "float")]
 mod float;
+#[cfg(feature = "float_rand")]
+pub use rand;
 #[cfg(feature = "float")]
 #[cfg(test)]
 mod float_test;

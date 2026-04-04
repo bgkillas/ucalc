@@ -1,13 +1,27 @@
 use crate::compute::Compute;
 use crate::inverse::Inverse;
 use crate::parse::{Token, TokensSlice};
+#[cfg(feature = "float_rand")]
+use crate::rand::Rand;
 use crate::{Number, Tokens};
 use std::ops::Deref;
 impl Compute<'_> {
-    pub(crate) fn solve(self, inner_vars: &mut Vec<Number>, stack: &mut Tokens) -> Option<Number> {
+    pub(crate) fn solve(
+        self,
+        inner_vars: &mut Vec<Number>,
+        stack: &mut Tokens,
+        #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
+    ) -> Option<Number> {
         let mut ret = Number::from(0);
         Some(
-            if let Some(inner) = self.solve_inner(inner_vars, &mut ret, stack, None)? {
+            if let Some(inner) = self.solve_inner(
+                inner_vars,
+                &mut ret,
+                stack,
+                None,
+                #[cfg(feature = "float_rand")]
+                rand,
+            )? {
                 inner
             } else {
                 ret
@@ -20,6 +34,7 @@ impl Compute<'_> {
         ret: &mut Number,
         stack: &mut Tokens,
         args: Option<&mut Vec<&TokensSlice>>,
+        #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
     ) -> Option<Option<Number>> {
         let mut tokens = self.tokens.iter().enumerate();
         let mut start = 0;
@@ -44,7 +59,12 @@ impl Compute<'_> {
                         if arg.contains(&Token::InnerVar(inner_vars.len() as u16)) {
                             inner_vars.push(Number::default())
                         } else {
-                            let n = self.tokens(arg).compute_buffer_with(inner_vars, stack);
+                            let n = self.tokens(arg).compute_buffer_with(
+                                inner_vars,
+                                stack,
+                                #[cfg(feature = "float_rand")]
+                                rand,
+                            );
                             inner_vars.push(n)
                         }
                     }
@@ -53,14 +73,21 @@ impl Compute<'_> {
                         ret,
                         stack,
                         Some(&mut args),
+                        #[cfg(feature = "float_rand")]
+                        rand,
                     )?;
                     if let Some(n) = roots {
                         *ret = n;
                     }
                     inner_vars.drain(end..);
-                    return self
-                        .tokens(args[0])
-                        .solve_inner(inner_vars, ret, stack, None);
+                    return self.tokens(args[0]).solve_inner(
+                        inner_vars,
+                        ret,
+                        stack,
+                        None,
+                        #[cfg(feature = "float_rand")]
+                        rand,
+                    );
                 }
                 Token::Function(operator, d) => {
                     if d.get() != 0 {
@@ -114,22 +141,30 @@ impl Compute<'_> {
                                             .unwrap_or(inner_vars.len())
                                                 as u16,
                                         ),
+                                        #[cfg(feature = "float_rand")]
+                                        rand,
                                     )?;
                                 let poly = *poly.poly() - ret.deref();
                                 let roots = poly.roots();
                                 return Some(roots);
                             } else {
-                                let num = self
-                                    .tokens(left_tokens)
-                                    .compute_buffer_with(inner_vars, stack);
+                                let num = self.tokens(left_tokens).compute_buffer_with(
+                                    inner_vars,
+                                    stack,
+                                    #[cfg(feature = "float_rand")]
+                                    rand,
+                                );
                                 tokens.advance_by(last).unwrap();
                                 start += last;
                                 inverse.right_inverse(ret, num);
                             }
                         } else {
-                            let num = self
-                                .tokens(right_tokens)
-                                .compute_buffer_with(inner_vars, stack);
+                            let num = self.tokens(right_tokens).compute_buffer_with(
+                                inner_vars,
+                                stack,
+                                #[cfg(feature = "float_rand")]
+                                rand,
+                            );
                             tokens.advance_back_by(i - last).unwrap();
                             inverse.left_inverse(ret, num);
                         }

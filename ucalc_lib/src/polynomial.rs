@@ -1,5 +1,7 @@
 use crate::compute::Compute;
 use crate::inverse::Inverse;
+#[cfg(feature = "float_rand")]
+use crate::rand::Rand;
 use crate::{Function, Number, Token, Tokens};
 use std::mem;
 #[cfg(feature = "complex")]
@@ -399,6 +401,7 @@ impl Compute<'_> {
         inner_vars: &mut Vec<Number>,
         stack: &mut Tokens,
         to_poly: Option<u16>,
+        #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
     ) -> Option<Token> {
         let mut poly = Vec::with_capacity(8).into();
         let mut tokens = self.tokens.iter().enumerate();
@@ -410,7 +413,12 @@ impl Compute<'_> {
                     }
                     let inputs = operator.inputs().get() as usize;
                     let len = stack.len();
-                    operator.compute_poly(&mut stack[len - inputs..], &mut poly)?;
+                    operator.compute_poly(
+                        &mut stack[len - inputs..],
+                        &mut poly,
+                        #[cfg(feature = "float_rand")]
+                        rand,
+                    )?;
                     stack.drain(len + 1 - inputs..);
                 }
                 &Token::CustomVar(index) => {
@@ -428,7 +436,13 @@ impl Compute<'_> {
                     stack[len - inputs] = self
                         .offset(end)
                         .tokens(&self.custom_funs[index as usize].tokens[..])
-                        .compute_polynomial(inner_vars, stack, None)?;
+                        .compute_polynomial(
+                            inner_vars,
+                            stack,
+                            None,
+                            #[cfg(feature = "float_rand")]
+                            rand,
+                        )?;
                     inner_vars.drain(end..);
                 }
                 Token::Num(n) => stack.push(n.clone().into()),
@@ -453,11 +467,28 @@ impl Compute<'_> {
     }
 }
 impl Function {
-    pub fn compute_poly(self, a: &mut [Token], buffer: &mut Poly) -> Option<()> {
+    pub fn compute_poly(
+        self,
+        a: &mut [Token],
+        buffer: &mut Poly,
+        #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
+    ) -> Option<()> {
         let ([a], b) = a.split_first_chunk_mut().unwrap();
-        self.compute_poly_on(a, b, buffer)
+        self.compute_poly_on(
+            a,
+            b,
+            buffer,
+            #[cfg(feature = "float_rand")]
+            rand,
+        )
     }
-    fn compute_poly_on(self, a: &mut Token, b: &mut [Token], buffer: &mut Poly) -> Option<()> {
+    fn compute_poly_on(
+        self,
+        a: &mut Token,
+        b: &mut [Token],
+        buffer: &mut Poly,
+        #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
+    ) -> Option<()> {
         if let Token::Polynomial(a) = a {
             if b.len() == 1 {
                 if let Token::Num(n) = b[0].clone() {
@@ -483,7 +514,12 @@ impl Function {
             }
         } else if let Token::Num(_) = b[0] {
             assert_eq!(self.inputs().get(), 2);
-            self.compute_on_2(a.num_mut(), b[0].num_ref().clone())
+            self.compute_on_2(
+                a.num_mut(),
+                b[0].num_ref().clone(),
+                #[cfg(feature = "float_rand")]
+                rand,
+            )
         } else if let Token::Num(c) = a {
             *a = self.num_poly(c, mem::take(b[0].poly_mut()))?.into()
         }

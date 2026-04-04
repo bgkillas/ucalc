@@ -3,6 +3,12 @@ use crate::{
     ComplexFunctions, ComplexFunctionsMut, ComplexTrait, ComplexType, Constant, FloatFunctions,
     FloatFunctionsMut, FloatTrait, FloatType, NegAssign, Pow, RealTrait, RealType,
 };
+#[cfg(feature = "float_rand")]
+use rand::RngExt;
+#[cfg(feature = "float_rand")]
+use rand::distr::uniform::SampleRange;
+#[cfg(feature = "float_rand")]
+use rand::rngs::ThreadRng;
 use std::cmp::Ordering;
 #[cfg(feature = "f16")]
 use std::f16::consts;
@@ -43,6 +49,38 @@ impl RealType for Float {}
 impl Debug for Float {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.0)
+    }
+}
+#[cfg(feature = "float_rand")]
+impl Float {
+    pub fn random_range(thread_rng: &mut ThreadRng, range: impl SampleRange<F>) -> Self {
+        Self(thread_rng.random_range(range))
+    }
+    pub fn random_range_mut(&mut self, b: Self, thread_rng: &mut ThreadRng) {
+        if *self != b {
+            *self = Float::random_range(thread_rng, self.0..=b.0);
+        }
+    }
+}
+#[cfg(feature = "float_rand")]
+impl Complex {
+    pub fn random_range(
+        thread_rng: &mut ThreadRng,
+        range_real: impl SampleRange<F>,
+        range_imag: impl SampleRange<F>,
+    ) -> Self {
+        Self {
+            real: Float::random_range(thread_rng, range_real),
+            imag: Float::random_range(thread_rng, range_imag),
+        }
+    }
+    pub fn random_range_mut(&mut self, b: Self, thread_rng: &mut ThreadRng) {
+        if self.real != b.real {
+            self.real = Float::random_range(thread_rng, self.real.0..=b.real.0);
+        }
+        if self.imag != b.imag {
+            self.imag = Float::random_range(thread_rng, self.imag.0..=b.imag.0);
+        }
     }
 }
 impl Debug for Complex {

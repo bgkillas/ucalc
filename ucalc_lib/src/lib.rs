@@ -9,6 +9,8 @@ mod operators;
 mod parse;
 mod polynomial;
 mod polynomial_impls;
+#[cfg(feature = "float_rand")]
+mod rand;
 mod solver;
 #[cfg(test)]
 mod tests;
@@ -17,6 +19,8 @@ pub use functions::Function;
 pub use functions_list::{FUNCTION_LIST, get_help};
 pub use operators::Operator;
 pub use parse::{Token, Tokens};
+#[cfg(feature = "float_rand")]
+pub use rand::{Rand, rng};
 #[cfg(feature = "units")]
 use ucalc_numbers::Quantity;
 pub use variable::{FunctionVar, Functions, Variable, Variables};

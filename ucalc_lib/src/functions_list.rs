@@ -72,6 +72,8 @@ pub const FUNCTION_LIST: &[&str] = &[
     "modify(x,new(x)(,f(x)))",
     "exprs(a,b,...)",
     "solve((x,)f(x))",
+    #[cfg(feature = "float_rand")]
+    "rand_uniform(a,b)",
     "numerical_solve(start(,x),f(x))",
     "numerical_derivative(point(,x),f(x))",
     "numerical_integral(start,end(,x),f(x))",
@@ -152,6 +154,8 @@ pub fn get_help(str: &str) -> &str {
         "modify" => "modify(new(x),x(,f(x)))",
         "exprs" => "exprs(a,b,...)",
         "solve" => "solve((x,)f(x))",
+        #[cfg(feature = "float_rand")]
+        "rand_uniform" => "rand_uniform(a,b)",
         "numerical_solve" => "numerical_solve(start(,x),f(x))",
         "numerical_derivative" => "numerical_derivative(point(,x),f(x))",
         "numerical_integral" => "numerical_integral(start,end(,x),f(x))",

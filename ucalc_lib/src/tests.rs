@@ -4,7 +4,7 @@ use crate::parse::{Derivative, ParseError};
 use crate::parse::{Token, Tokens};
 use crate::polynomial::Poly;
 use crate::variable::{Functions, Variables};
-use crate::{FUNCTION_LIST, FunctionVar, Number, Variable, get_help};
+use crate::{FUNCTION_LIST, FunctionVar, Number, Variable, get_help, rng};
 use std::num::NonZeroU8;
 use ucalc_numbers::*;
 macro_rules! assert_approx_eq {
@@ -34,7 +34,23 @@ macro_rules! assert_approx_correct {
 macro_rules! assert_approx_correct_with {
     ($a:expr, $b:expr, $v:expr, $vf:expr, $f:expr, $c:expr, $d:expr) => {
         assert_teq!($a, $b, Tokens($c));
-        assert_approx_teq!($a.compute($vf, &$f, &$v), $b.compute($vf, &$f, &$v), $d);
+        assert_approx_teq!(
+            $a.compute(
+                $vf,
+                &$f,
+                &$v,
+                #[cfg(feature = "float_rand")]
+                &mut None
+            ),
+            $b.compute(
+                $vf,
+                &$f,
+                &$v,
+                #[cfg(feature = "float_rand")]
+                &mut None
+            ),
+            $d
+        );
     };
 }
 macro_rules! assert_teq {
@@ -59,7 +75,23 @@ macro_rules! assert_correct {
 macro_rules! assert_correct_with {
     ($a:expr, $b:expr, $v:expr, $vf:expr, $f:expr, $c:expr, $d:expr) => {
         assert_teq!($a, $b, Tokens($c));
-        assert_teq!($a.compute($vf, &$f, &$v), $b.compute($vf, &$f, &$v), $d);
+        assert_teq!(
+            $a.compute(
+                $vf,
+                &$f,
+                &$v,
+                #[cfg(feature = "float_rand")]
+                &mut None
+            ),
+            $b.compute(
+                $vf,
+                &$f,
+                &$v,
+                #[cfg(feature = "float_rand")]
+                &mut None
+            ),
+            $d
+        );
     };
 }
 fn infix(s: &str) -> Tokens {
@@ -70,6 +102,8 @@ fn infix(s: &str) -> Tokens {
         &[],
         false,
         10,
+        #[cfg(feature = "float_rand")]
+        &mut None,
     )
     .unwrap()
     .unwrap()
@@ -82,6 +116,8 @@ fn rpn(s: &str) -> Tokens {
         &[],
         false,
         10,
+        #[cfg(feature = "float_rand")]
+        &mut None,
     )
     .unwrap()
     .unwrap()
@@ -128,7 +164,9 @@ fn test_solve_poly() {
             &mut fun,
             &[],
             true,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         )
         .unwrap()
         .is_none()
@@ -145,17 +183,28 @@ fn test_solve_poly() {
             let s = format!(
                 "p(solve(y,p(y,{a}/2,{b}/2,{c}/2,{d}/2,{e}/2,{f}/2,{g}/2,{h}/2,{i}/2,{j}/2)),{a}/2,{b}/2,{c}/2,{d}/2,{e}/2,{f}/2,{g}/2,{h}/2,{i}/2,{j}/2)"
             );
-            let res = Tokens::infix(&s, &mut Variables::default(), &mut fun, &[], false, 10)
-                .unwrap()
-                .unwrap()
-                .compute_buffer_with(
-                    &mut Vec::with_capacity(8),
-                    &[],
-                    &fun,
-                    &Variables::default(),
-                    &mut buffer,
-                    0,
-                );
+            let res = Tokens::infix(
+                &s,
+                &mut Variables::default(),
+                &mut fun,
+                &[],
+                false,
+                10,
+                #[cfg(feature = "float_rand")]
+                &mut None,
+            )
+            .unwrap()
+            .unwrap()
+            .compute_buffer_with(
+                &mut Vec::with_capacity(8),
+                &[],
+                &fun,
+                &Variables::default(),
+                &mut buffer,
+                0,
+                #[cfg(feature = "float_rand")]
+                &mut None,
+            );
             assert!(res.abs() < Float::from(2.0).pow(Float::from(-8)), "{s}");
         }
     }
@@ -827,6 +876,27 @@ fn parse_gamma() {
     );
 }
 #[test]
+#[cfg(feature = "float_rand")]
+fn parse_rand_uniform() {
+    assert_teq!(
+        infix("rand_uniform(2,3)"),
+        rpn("2 3 rand_uniform"),
+        Tokens(vec![num(2), num(3), Function::RandUniform.into()])
+    );
+    let n = infix("rand_uniform(2,3)").compute(
+        &[],
+        &[],
+        &[],
+        #[cfg(feature = "float_rand")]
+        &mut Some(rng()),
+    );
+    #[cfg(feature = "complex")]
+    assert!(n.imag.is_zero());
+    let n = n.real();
+    assert!(n <= &Float::from(3));
+    assert!(n >= &Float::from(2));
+}
+#[test]
 fn parse_erf() {
     assert_correct!(
         infix("erf(100)"),
@@ -1117,6 +1187,8 @@ fn test_graph_vars() {
         &["x", "y"],
         false,
         10,
+        #[cfg(feature = "float_rand")]
+        &mut None,
     )
     .unwrap()
     .unwrap();
@@ -1127,6 +1199,8 @@ fn test_graph_vars() {
         &["x", "y"],
         false,
         10,
+        #[cfg(feature = "float_rand")]
+        &mut None,
     )
     .unwrap()
     .unwrap();
@@ -1388,7 +1462,9 @@ fn test_solve() {
             &mut funs,
             &[],
             true,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         )
         .is_ok()
     );
@@ -1399,7 +1475,9 @@ fn test_solve() {
             &mut funs,
             &[],
             true,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         )
         .is_ok()
     );
@@ -1410,7 +1488,9 @@ fn test_solve() {
             &mut funs,
             &[],
             false,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         )
         .unwrap()
         .unwrap(),
@@ -1420,7 +1500,9 @@ fn test_solve() {
             &mut funs,
             &[],
             false,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         )
         .unwrap()
         .unwrap(),
@@ -1451,7 +1533,9 @@ fn test_solve() {
             &mut funs,
             &[],
             true,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         )
         .is_ok()
     );
@@ -1462,7 +1546,9 @@ fn test_solve() {
             &mut funs,
             &[],
             true,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         )
         .is_ok()
     );
@@ -1473,7 +1559,9 @@ fn test_solve() {
             &mut funs,
             &[],
             false,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         )
         .unwrap()
         .unwrap(),
@@ -1483,7 +1571,9 @@ fn test_solve() {
             &mut funs,
             &[],
             false,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         )
         .unwrap()
         .unwrap(),
@@ -1637,74 +1727,164 @@ fn test_overwrite_var() {
     let mut v = Variables(Vec::new());
     let mut f = Functions(Vec::new());
     assert!(
-        Tokens::infix("let n=2", &mut v, &mut f, &[], false, 10)
-            .unwrap()
-            .is_none()
+        Tokens::infix(
+            "let n=2",
+            &mut v,
+            &mut f,
+            &[],
+            false,
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
+        )
+        .unwrap()
+        .is_none()
     );
     assert_eq!(v, vars1);
     assert_eq!(f, funs1);
     assert!(
-        Tokens::infix("let n=n2", &mut v, &mut f, &[], false, 10)
-            .unwrap()
-            .is_none()
+        Tokens::infix(
+            "let n=n2",
+            &mut v,
+            &mut f,
+            &[],
+            false,
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
+        )
+        .unwrap()
+        .is_none()
     );
     assert_eq!(v, vars2);
     assert_eq!(f, funs2);
     assert!(
-        Tokens::infix("let n(k)=2k", &mut v, &mut f, &[], false, 10)
-            .unwrap()
-            .is_none()
+        Tokens::infix(
+            "let n(k)=2k",
+            &mut v,
+            &mut f,
+            &[],
+            false,
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
+        )
+        .unwrap()
+        .is_none()
     );
     assert_eq!(v, vars3);
     assert_eq!(f, funs3);
     assert!(
-        Tokens::infix("let n(k)=k2", &mut v, &mut f, &[], false, 10)
-            .unwrap()
-            .is_none()
+        Tokens::infix(
+            "let n(k)=k2",
+            &mut v,
+            &mut f,
+            &[],
+            false,
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
+        )
+        .unwrap()
+        .is_none()
     );
     assert_eq!(v, vars4);
     assert_eq!(f, funs4);
     assert!(
-        Tokens::infix("let n=2n(2)", &mut v, &mut f, &[], false, 10)
-            .unwrap()
-            .is_none()
+        Tokens::infix(
+            "let n=2n(2)",
+            &mut v,
+            &mut f,
+            &[],
+            false,
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
+        )
+        .unwrap()
+        .is_none()
     );
     assert_eq!(v, vars5);
     assert_eq!(f, funs5);
     let mut v = Variables(Vec::new());
     let mut f = Functions(Vec::new());
     assert!(
-        Tokens::rpn("let n = 2", &mut v, &mut f, &[], false, 10)
-            .unwrap()
-            .is_none()
+        Tokens::rpn(
+            "let n = 2",
+            &mut v,
+            &mut f,
+            &[],
+            false,
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
+        )
+        .unwrap()
+        .is_none()
     );
     assert_eq!(v, vars1);
     assert_eq!(f, funs1);
     assert!(
-        Tokens::rpn("let n = n 2 *", &mut v, &mut f, &[], false, 10)
-            .unwrap()
-            .is_none()
+        Tokens::rpn(
+            "let n = n 2 *",
+            &mut v,
+            &mut f,
+            &[],
+            false,
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
+        )
+        .unwrap()
+        .is_none()
     );
     assert_eq!(v, vars2);
     assert_eq!(f, funs2);
     assert!(
-        Tokens::rpn("let k n = 2 k *", &mut v, &mut f, &[], false, 10)
-            .unwrap()
-            .is_none()
+        Tokens::rpn(
+            "let k n = 2 k *",
+            &mut v,
+            &mut f,
+            &[],
+            false,
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
+        )
+        .unwrap()
+        .is_none()
     );
     assert_eq!(v, vars3);
     assert_eq!(f, funs3);
     assert!(
-        Tokens::rpn("let k n = k 2 *", &mut v, &mut f, &[], false, 10)
-            .unwrap()
-            .is_none()
+        Tokens::rpn(
+            "let k n = k 2 *",
+            &mut v,
+            &mut f,
+            &[],
+            false,
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
+        )
+        .unwrap()
+        .is_none()
     );
     assert_eq!(v, vars4);
     assert_eq!(f, funs4);
     assert!(
-        Tokens::rpn("let n = 2 2 n *", &mut v, &mut f, &[], false, 10)
-            .unwrap()
-            .is_none()
+        Tokens::rpn(
+            "let n = 2 2 n *",
+            &mut v,
+            &mut f,
+            &[],
+            false,
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
+        )
+        .unwrap()
+        .is_none()
     );
     assert_eq!(v, vars5);
     assert_eq!(f, funs5);
@@ -1714,9 +1894,18 @@ fn test_custom_var() {
     let mut vars = Variables(vec![Variable::new("n", res(2))]);
     let mut v = Variables(Vec::new());
     assert!(
-        Tokens::infix("let n=2", &mut v, &mut Functions::default(), &[], false, 10)
-            .unwrap()
-            .is_none()
+        Tokens::infix(
+            "let n=2",
+            &mut v,
+            &mut Functions::default(),
+            &[],
+            false,
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
+        )
+        .unwrap()
+        .is_none()
     );
     assert_eq!(v, vars);
     let mut v = Variables(Vec::new());
@@ -1727,7 +1916,9 @@ fn test_custom_var() {
             &mut Functions::default(),
             &[],
             false,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         )
         .unwrap()
         .is_none()
@@ -1740,7 +1931,9 @@ fn test_custom_var() {
             &mut Functions::default(),
             &[],
             false,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         )
         .unwrap()
         .unwrap(),
@@ -1750,7 +1943,9 @@ fn test_custom_var() {
             &mut Functions::default(),
             &[],
             false,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         )
         .unwrap()
         .unwrap(),
@@ -1771,16 +1966,34 @@ macro_rules! assert_fun {
     ($infix:expr, $rpn:expr, $expected:expr) => {
         let mut f = Functions::default();
         assert!(
-            Tokens::infix($infix, &mut Variables::default(), &mut f, &[], true, 10)
-                .unwrap()
-                .is_none()
+            Tokens::infix(
+                $infix,
+                &mut Variables::default(),
+                &mut f,
+                &[],
+                true,
+                10,
+                #[cfg(feature = "float_rand")]
+                &mut None
+            )
+            .unwrap()
+            .is_none()
         );
         assert_eq!(f, $expected);
         let mut f = Functions::default();
         assert!(
-            Tokens::rpn($rpn, &mut Variables::default(), &mut f, &[], true, 10)
-                .unwrap()
-                .is_none()
+            Tokens::rpn(
+                $rpn,
+                &mut Variables::default(),
+                &mut f,
+                &[],
+                true,
+                10,
+                #[cfg(feature = "float_rand")]
+                &mut None
+            )
+            .unwrap()
+            .is_none()
         );
         assert_eq!(f, $expected);
     };
@@ -1818,7 +2031,9 @@ fn test_recursion() {
             &mut funs,
             &[],
             false,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         )
         .unwrap()
         .unwrap(),
@@ -1828,7 +2043,9 @@ fn test_recursion() {
             &mut funs,
             &[],
             false,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         )
         .unwrap()
         .unwrap(),
@@ -1872,7 +2089,9 @@ fn test_inner_functions() {
             &mut f,
             &[],
             true,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         )
         .unwrap()
         .is_none()
@@ -1884,7 +2103,9 @@ fn test_inner_functions() {
             &mut f,
             &[],
             true,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         )
         .unwrap()
         .is_none()
@@ -1898,7 +2119,9 @@ fn test_inner_functions() {
             &mut f,
             &[],
             true,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         )
         .unwrap()
         .is_none()
@@ -1910,7 +2133,9 @@ fn test_inner_functions() {
             &mut f,
             &[],
             true,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         )
         .unwrap()
         .is_none()
@@ -1923,7 +2148,9 @@ fn test_inner_functions() {
             &mut funs,
             &[],
             false,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         )
         .unwrap()
         .unwrap(),
@@ -1933,7 +2160,9 @@ fn test_inner_functions() {
             &mut funs,
             &[],
             false,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         )
         .unwrap()
         .unwrap(),
@@ -1996,7 +2225,9 @@ fn test_composed_functions() {
             &mut funs,
             &[],
             false,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         )
         .unwrap()
         .unwrap(),
@@ -2006,7 +2237,9 @@ fn test_composed_functions() {
             &mut funs,
             &[],
             false,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         )
         .unwrap()
         .unwrap(),
@@ -2052,7 +2285,9 @@ fn test_custom_functions() {
             &mut funs,
             &[],
             false,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         )
         .unwrap()
         .unwrap(),
@@ -2062,7 +2297,9 @@ fn test_custom_functions() {
             &mut funs,
             &[],
             false,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         )
         .unwrap()
         .unwrap(),
@@ -2079,7 +2316,9 @@ fn test_custom_functions() {
             &mut funs,
             &[],
             false,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         )
         .unwrap()
         .unwrap(),
@@ -2089,7 +2328,9 @@ fn test_custom_functions() {
             &mut funs,
             &[],
             false,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         )
         .unwrap()
         .unwrap(),
@@ -2114,7 +2355,9 @@ fn test_custom_functions() {
             &mut funs,
             &[],
             false,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         )
         .unwrap()
         .unwrap(),
@@ -2124,7 +2367,9 @@ fn test_custom_functions() {
             &mut funs,
             &[],
             false,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         )
         .unwrap()
         .unwrap(),
@@ -2835,7 +3080,9 @@ fn test_err() {
             &mut Functions::default(),
             &[],
             false,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         ),
         Err(ParseError::LeftParenthesisNotFound)
     );
@@ -2846,7 +3093,9 @@ fn test_err() {
             &mut Functions::default(),
             &[],
             false,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         ),
         Err(ParseError::RightParenthesisNotFound)
     );
@@ -2857,7 +3106,9 @@ fn test_err() {
             &mut Functions::default(),
             &[],
             false,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         ),
         Tokens::rpn(
             "2.3.4",
@@ -2865,7 +3116,9 @@ fn test_err() {
             &mut Functions::default(),
             &[],
             false,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         ),
         Err(ParseError::UnknownToken("2.3.4"))
     );
@@ -2876,7 +3129,9 @@ fn test_err() {
             &mut Functions::default(),
             &[],
             false,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         ),
         Err(ParseError::MissingInput)
     );
@@ -2887,7 +3142,9 @@ fn test_err() {
             &mut Functions::default(),
             &[],
             false,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         ),
         Err(ParseError::AbsoluteBracketFailed)
     );
@@ -2898,7 +3155,9 @@ fn test_err() {
             &mut Functions::default(),
             &[],
             false,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         ),
         Err(ParseError::AbsoluteBracketFailed)
     );
@@ -2909,7 +3168,9 @@ fn test_err() {
             &mut Functions::default(),
             &[],
             false,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         ),
         Err(ParseError::MissingInput)
     );
@@ -2920,7 +3181,9 @@ fn test_err() {
             &mut Functions::default(),
             &[],
             true,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         ),
         Err(ParseError::VarExpectedName)
     );
@@ -2931,7 +3194,9 @@ fn test_err() {
             &mut Functions::default(),
             &[],
             true,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         ),
         Err(ParseError::VarExpectedName)
     );
@@ -2942,7 +3207,9 @@ fn test_err() {
             &mut Functions::default(),
             &[],
             false,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         ),
         Err(ParseError::MixedError)
     );
@@ -2953,7 +3220,9 @@ fn test_err() {
             &mut Functions::default(),
             &[],
             false,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         ),
         Err(ParseError::MixedError)
     );
@@ -2964,7 +3233,9 @@ fn test_err() {
             &mut Functions::default(),
             &[],
             false,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         ),
         Err(ParseError::ExtraInput)
     );
@@ -2975,7 +3246,9 @@ fn test_err() {
             &mut Functions::default(),
             &[],
             false,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         ),
         Err(ParseError::ExtraInput)
     );
@@ -2986,7 +3259,9 @@ fn test_err() {
             &mut Functions::default(),
             &[],
             true,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         ),
         Err(ParseError::UnknownToken("=-="))
     );
@@ -2997,7 +3272,9 @@ fn test_err() {
             &mut Functions::default(),
             &[],
             true,
-            10
+            10,
+            #[cfg(feature = "float_rand")]
+            &mut None
         ),
         Err(ParseError::UnknownToken("\\"))
     );
@@ -3054,6 +3331,8 @@ fn function_exists() {
         Function::Sum,
         Function::Prod,
         Function::Gamma,
+        #[cfg(feature = "float_rand")]
+        Function::RandUniform,
         Function::Erf,
         Function::Erfc,
         Function::Abs,

@@ -14,6 +14,8 @@ use std::fmt;
 use std::fmt::Write;
 use std::io::{BufRead, IsTerminal, stdin, stdout};
 use ucalc_lib::{Functions, Number, Tokens, Variable, Variables, get_help};
+#[cfg(feature = "float_rand")]
+use ucalc_lib::{Rand, rng};
 use ucalc_numbers::FloatTrait;
 fn main() {
     let colors = Colors::default();
@@ -23,6 +25,8 @@ fn main() {
     let mut quit = false;
     let mut base_input = 10;
     let mut base_output = 10;
+    #[cfg(feature = "float_rand")]
+    let mut rand = Some(rng());
     for arg in args().skip(1) {
         quit = true;
         run_line(
@@ -32,6 +36,8 @@ fn main() {
             &mut base_output,
             &mut vars,
             &mut funs,
+            #[cfg(feature = "float_rand")]
+            &mut rand,
         )
     }
     let stdin = stdin().lock();
@@ -44,6 +50,8 @@ fn main() {
                 &mut base_output,
                 &mut vars,
                 &mut funs,
+                #[cfg(feature = "float_rand")]
+                &mut rand,
             )
         });
     } else if !quit {
@@ -67,6 +75,8 @@ fn main() {
                         base_output,
                         string,
                         &colors,
+                        #[cfg(feature = "float_rand")]
+                        &mut rand,
                     )
                     .unwrap()
                 },
@@ -114,6 +124,7 @@ fn process_line(
     base_output: u8,
     str: &mut String,
     colors: &Colors,
+    #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
 ) -> Result<Option<Number>, fmt::Error> {
     str.clear();
     Ok(match line {
@@ -125,12 +136,36 @@ fn process_line(
         }
         _ => {
             match if infix {
-                Tokens::infix(line, vars, funs, &[], false, base_input)
+                Tokens::infix(
+                    line,
+                    vars,
+                    funs,
+                    &[],
+                    false,
+                    base_input,
+                    #[cfg(feature = "float_rand")]
+                    rand,
+                )
             } else {
-                Tokens::rpn(line, vars, funs, &[], false, base_input)
+                Tokens::rpn(
+                    line,
+                    vars,
+                    funs,
+                    &[],
+                    false,
+                    base_input,
+                    #[cfg(feature = "float_rand")]
+                    rand,
+                )
             } {
                 Ok(Some(tokens)) => {
-                    let compute = tokens.compute(&[], funs, vars);
+                    let compute = tokens.compute(
+                        &[],
+                        funs,
+                        vars,
+                        #[cfg(feature = "float_rand")]
+                        rand,
+                    );
                     write!(str, "{}", compute.get_closest_fraction(base_output))?;
                     write!(str, "{}", compute.to_string_radix(base_output))?;
                     Some(compute)
@@ -151,6 +186,7 @@ fn run_line(
     base_output: &mut u8,
     vars: &mut Variables,
     funs: &mut Functions,
+    #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
 ) {
     if line == "--rpn" {
         *infix = false;
@@ -165,16 +201,42 @@ fn run_line(
         return;
     }
     match if *infix {
-        Tokens::infix(line, vars, funs, &[], false, *base_input)
+        Tokens::infix(
+            line,
+            vars,
+            funs,
+            &[],
+            false,
+            *base_input,
+            #[cfg(feature = "float_rand")]
+            rand,
+        )
     } else {
-        Tokens::rpn(line, vars, funs, &[], false, *base_input)
+        Tokens::rpn(
+            line,
+            vars,
+            funs,
+            &[],
+            false,
+            *base_input,
+            #[cfg(feature = "float_rand")]
+            rand,
+        )
     } {
         Ok(Some(tokens)) => {
             //println!("{tokens:?}");
             //println!("{}", tokens.get_infix(vars, funs, &[]));
             //println!("{}", tokens.get_rpn(vars, funs, &[]));
-            let compute = tmr(|| tokens.compute(&[], funs, vars));
-            //let compute = tokens.compute(&[], funs, vars);
+            let compute = tmr(|| {
+                tokens.compute(
+                    &[],
+                    funs,
+                    vars,
+                    #[cfg(feature = "float_rand")]
+                    rand,
+                )
+            });
+            //let compute = tokens.compute(&[], funs, vars, #[cfg(feature="float_rand")]rand);
             print!("{}", compute.get_closest_fraction(*base_output));
             println!("{}", compute.to_string_radix(*base_output));
         }

@@ -1,4 +1,6 @@
 use crate::parse::{Token, Tokens, TokensSlice};
+#[cfg(feature = "float_rand")]
+use crate::rand::Rand;
 use crate::{FunctionVar, Number, Variable};
 use std::array;
 use ucalc_numbers::{Constant, FloatTrait};
@@ -16,11 +18,20 @@ impl Tokens {
         vars: &[Number],
         funs: &[FunctionVar],
         custom_vars: &[Variable],
+        #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
     ) -> Number {
         let cap = self.len() + funs.iter().map(|c| c.tokens.len()).sum::<usize>();
         let mut inner_vars = Vec::with_capacity(cap);
         let mut stack = Tokens(Vec::with_capacity(cap));
-        self.compute_buffer(&mut inner_vars, vars, funs, custom_vars, &mut stack)
+        self.compute_buffer(
+            &mut inner_vars,
+            vars,
+            funs,
+            custom_vars,
+            &mut stack,
+            #[cfg(feature = "float_rand")]
+            rand,
+        )
     }
     pub fn compute_buffer(
         &self,
@@ -29,9 +40,20 @@ impl Tokens {
         funs: &[FunctionVar],
         custom_vars: &[Variable],
         stack: &mut Tokens,
+        #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
     ) -> Number {
-        self.compute_buffer_with(inner_vars, vars, funs, custom_vars, stack, 0)
+        self.compute_buffer_with(
+            inner_vars,
+            vars,
+            funs,
+            custom_vars,
+            stack,
+            0,
+            #[cfg(feature = "float_rand")]
+            rand,
+        )
     }
+    #[allow(clippy::too_many_arguments)]
     pub fn compute_buffer_with(
         &self,
         inner_vars: &mut Vec<Number>,
@@ -40,9 +62,14 @@ impl Tokens {
         custom_vars: &[Variable],
         stack: &mut Tokens,
         offset: usize,
+        #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
     ) -> Number {
-        Compute::new(&self[..], vars, funs, custom_vars, offset)
-            .compute_buffer_with(inner_vars, stack)
+        Compute::new(&self[..], vars, funs, custom_vars, offset).compute_buffer_with(
+            inner_vars,
+            stack,
+            #[cfg(feature = "float_rand")]
+            rand,
+        )
     }
     pub(crate) fn get_skip_mut<'a, const N: usize, const K: usize>(
         &mut self,
@@ -146,7 +173,12 @@ impl<'a> Compute<'a> {
             offset,
         }
     }
-    pub fn compute_buffer_with(self, inner_vars: &mut Vec<Number>, stack: &mut Tokens) -> Number {
+    pub fn compute_buffer_with(
+        self,
+        inner_vars: &mut Vec<Number>,
+        stack: &mut Tokens,
+        #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
+    ) -> Number {
         let mut tokens = self.tokens.iter().enumerate();
         while let Some((i, token)) = tokens.next() {
             match token {
@@ -156,7 +188,13 @@ impl<'a> Compute<'a> {
                     }
                     let inputs = operator.inputs();
                     if operator.has_inner_fn() {
-                        operator.compute_var(self.tokens(&self.tokens[..=i]), stack, inner_vars)
+                        operator.compute_var(
+                            self.tokens(&self.tokens[..=i]),
+                            stack,
+                            inner_vars,
+                            #[cfg(feature = "float_rand")]
+                            rand,
+                        )
                     } else if operator.is_chainable() {
                         let chain = if self.tokens.get(i + 1).is_some_and(|o| {
                             if let Token::Function(o, _) = o {
@@ -169,7 +207,12 @@ impl<'a> Compute<'a> {
                         } else {
                             None
                         };
-                        operator.compute(stack, inputs);
+                        operator.compute(
+                            stack,
+                            inputs,
+                            #[cfg(feature = "float_rand")]
+                            rand,
+                        );
                         if let Some(b) = chain {
                             let len = stack.len();
                             let a = stack[len - 1].num_mut();
@@ -180,7 +223,12 @@ impl<'a> Compute<'a> {
                             };
                         }
                     } else {
-                        operator.compute(stack, inputs);
+                        operator.compute(
+                            stack,
+                            inputs,
+                            #[cfg(feature = "float_rand")]
+                            rand,
+                        );
                     }
                 }
                 &Token::CustomVar(index) => {
@@ -209,6 +257,8 @@ impl<'a> Compute<'a> {
                                         stack.last().unwrap().num_ref().clone(),
                                         end,
                                         inner_vars.len() - 1,
+                                        #[cfg(feature = "float_rand")]
+                                        rand,
                                     );
                             } else {
                                 if inputs != 1 {
@@ -222,6 +272,8 @@ impl<'a> Compute<'a> {
                                     Number::default(),
                                     stack[len - inputs].num_ref().clone(),
                                     inner_vars.len() - 1,
+                                    #[cfg(feature = "float_rand")]
+                                    rand,
                                 );
                             }
                         } else {
@@ -235,13 +287,19 @@ impl<'a> Compute<'a> {
                                 d.get(),
                                 stack[len - inputs].num_ref().clone(),
                                 inner_vars.len() - 1,
+                                #[cfg(feature = "float_rand")]
+                                rand,
                             );
                         }
                     } else {
                         inner_vars.push(stack[len - inputs].num_ref().clone());
                         inner_vars.extend(stack.drain(len + 1 - inputs..).map(|n| n.num()));
-                        *stack[len - inputs].num_mut() =
-                            compute.compute_buffer_with(inner_vars, stack);
+                        *stack[len - inputs].num_mut() = compute.compute_buffer_with(
+                            inner_vars,
+                            stack,
+                            #[cfg(feature = "float_rand")]
+                            rand,
+                        );
                     }
                     inner_vars.drain(end..);
                 }

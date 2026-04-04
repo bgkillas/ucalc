@@ -185,6 +185,8 @@ impl From<Function> for Inverse {
             | Function::Imag
             | Function::Cubic
             | Function::Quartic => Self::None,
+            #[cfg(feature = "float_rand")]
+            Function::RandUniform => Self::None,
         }
     }
 }
