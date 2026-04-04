@@ -9,7 +9,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Temporarily modify the rust toolchain version
       run: rustup override set nightly
     - name: Install nightly components
@@ -30,42 +30,42 @@ jobs:
   build-linux:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Temporarily modify the rust toolchain version
       run: rustup override set nightly
     - name: Install nightly components
       run: rustup component add rust-src
     - name: Build
       run: cargo build --release
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v7
       with:
         name: ucalc-linux
         path: target/release/ucalc
   build-windows:
     runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Temporarily modify the rust toolchain version
       run: rustup override set nightly
     - name: Install nightly components
       run: rustup component add rust-src
     - name: Build
       run: cargo build --release
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v7
       with:
         name: ucalc.exe
         path: target/release/ucalc.exe
   build-macos:
     runs-on: macos-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Temporarily modify the rust toolchain version
       run: rustup override set nightly
     - name: Install nightly components
       run: rustup component add rust-src
     - name: Build
       run: cargo build --release
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v7
       with:
         name: ucalc-macos
         path: target/release/ucalc

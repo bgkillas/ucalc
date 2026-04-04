@@ -3,8 +3,10 @@ use crate::operators::Operator;
 use crate::parse::{Derivative, ParseError};
 use crate::parse::{Token, Tokens};
 use crate::polynomial::Poly;
+#[cfg(feature = "float_rand")]
+use crate::rng;
 use crate::variable::{Functions, Variables};
-use crate::{FUNCTION_LIST, FunctionVar, Number, Variable, get_help, rng};
+use crate::{FUNCTION_LIST, FunctionVar, Number, Variable, get_help};
 use std::num::NonZeroU8;
 use ucalc_numbers::*;
 macro_rules! assert_approx_eq {
