@@ -585,11 +585,11 @@ impl<F, T: FloatTrait<F>, N, const K: usize> FloatTrait<F> for Quantity<T, N, K>
             units: Units::default(),
         })
     }
-    fn to_string_radix(&self, base: u8) -> String {
+    fn to_string_radix(&self, base: u8) -> impl Display {
         self.num.to_string_radix(base)
     }
-    fn get_closest_fraction(&self) -> impl Display {
-        self.num.get_closest_fraction()
+    fn get_closest_fraction(&self, base: u8) -> impl Display {
+        self.num.get_closest_fraction(base)
     }
     fn total_cmp(&self, other: &Self) -> Ordering {
         self.num.total_cmp(&other.num)

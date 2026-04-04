@@ -3,7 +3,6 @@ use crate::{
     ComplexFunctions, ComplexFunctionsMut, ComplexTrait, ComplexType, Constant, FloatFunctions,
     FloatFunctionsMut, FloatTrait, FloatType, NegAssign, Pow, RealTrait, RealType,
 };
-use lexical::{NumberFormatBuilder, ParseFloatOptions, WriteFloatOptions};
 use std::cmp::Ordering;
 #[cfg(feature = "f16")]
 use std::f16::consts;
@@ -270,108 +269,14 @@ impl FloatTrait<Float> for Float {
         self.0 == 0.0
     }
     fn parse_radix(src: &str, base: u8) -> Option<Self> {
-        let options = ParseFloatOptions::from_radix(base);
-        macro_rules! parses {
-            ($($n:ident = $nu:expr),*) => {
-                match base {
-                    $(
-                        $nu => lexical::parse_with_options::<F, _, $n>(src, &options).map(Self).ok(),
-                    )*
-                    _ => unreachable!()
-                }
-            };
-        }
-        parses!(
-            F2 = 2,
-            F3 = 3,
-            F4 = 4,
-            F5 = 5,
-            F6 = 6,
-            F7 = 7,
-            F8 = 8,
-            F9 = 9,
-            F10 = 10,
-            F11 = 11,
-            F12 = 12,
-            F13 = 13,
-            F14 = 14,
-            F15 = 15,
-            F16 = 16,
-            F17 = 17,
-            F18 = 18,
-            F19 = 19,
-            F20 = 20,
-            F21 = 21,
-            F22 = 22,
-            F23 = 23,
-            F24 = 24,
-            F25 = 25,
-            F26 = 26,
-            F27 = 27,
-            F28 = 28,
-            F29 = 29,
-            F30 = 30,
-            F31 = 31,
-            F32 = 32,
-            F33 = 33,
-            F34 = 34,
-            F35 = 35,
-            F36 = 36
-        )
+        float_base::parse_radix(src, base).map(Self)
     }
-    fn to_string_radix(&self, base: u8) -> String {
-        let options = WriteFloatOptions::from_radix(base);
-        macro_rules! strings {
-            ($($n:ident = $nu:expr),*) => {
-                match base {
-                    $(
-                        $nu => lexical::to_string_with_options::<F, $n>(self.0, &options),
-                    )*
-                    _ => unreachable!()
-                }
-            };
-        }
-        strings!(
-            F2 = 2,
-            F3 = 3,
-            F4 = 4,
-            F5 = 5,
-            F6 = 6,
-            F7 = 7,
-            F8 = 8,
-            F9 = 9,
-            F10 = 10,
-            F11 = 11,
-            F12 = 12,
-            F13 = 13,
-            F14 = 14,
-            F15 = 15,
-            F16 = 16,
-            F17 = 17,
-            F18 = 18,
-            F19 = 19,
-            F20 = 20,
-            F21 = 21,
-            F22 = 22,
-            F23 = 23,
-            F24 = 24,
-            F25 = 25,
-            F26 = 26,
-            F27 = 27,
-            F28 = 28,
-            F29 = 29,
-            F30 = 30,
-            F31 = 31,
-            F32 = 32,
-            F33 = 33,
-            F34 = 34,
-            F35 = 35,
-            F36 = 36
-        )
+    fn to_string_radix(&self, base: u8) -> impl Display {
+        float_base::to_string_radix(self.0, base)
     }
-    fn get_closest_fraction(&self) -> impl Display {
+    fn get_closest_fraction(&self, base: u8) -> impl Display {
         fmt::from_fn(move |fmt| {
-            if let Some((sign, num, den)) = self.closest_fraction() {
+            if let Some((sign, num, den)) = closest_fraction(self, base) {
                 if sign {
                     writeln!(fmt, "{num}/{den}")?;
                 } else {
@@ -385,48 +290,6 @@ impl FloatTrait<Float> for Float {
         self.0.total_cmp(&other.0)
     }
 }
-macro_rules! formats {
-    ($($n:ident = $nu:expr),*) => {
-        $(const $n: u128 = NumberFormatBuilder::new().radix($nu).build_strict();)*
-    };
-}
-formats!(
-    F2 = 2,
-    F3 = 3,
-    F4 = 4,
-    F5 = 5,
-    F6 = 6,
-    F7 = 7,
-    F8 = 8,
-    F9 = 9,
-    F10 = 10,
-    F11 = 11,
-    F12 = 12,
-    F13 = 13,
-    F14 = 14,
-    F15 = 15,
-    F16 = 16,
-    F17 = 17,
-    F18 = 18,
-    F19 = 19,
-    F20 = 20,
-    F21 = 21,
-    F22 = 22,
-    F23 = 23,
-    F24 = 24,
-    F25 = 25,
-    F26 = 26,
-    F27 = 27,
-    F28 = 28,
-    F29 = 29,
-    F30 = 30,
-    F31 = 31,
-    F32 = 32,
-    F33 = 33,
-    F34 = 34,
-    F35 = 35,
-    F36 = 36
-);
 impl ComplexFunctionsMut<Float> for Complex {
     fn arg_mut(&mut self) {
         self.imag.atan2_mut(&self.real);
@@ -697,30 +560,37 @@ impl FloatTrait<Float> for Complex {
             imag: Float(0.0),
         })
     }
-    fn to_string_radix(&self, base: u8) -> String {
-        match (
-            self.real.is_zero(),
-            self.imag.is_zero(),
-            self.imag.is_sign_positive(),
-        ) {
-            (false, false, true) => format!(
-                "{}+{}i",
-                self.real.to_string_radix(base),
-                self.imag.to_string_radix(base)
-            ),
-            (false, false, false) => format!(
-                "{}{}i",
-                self.real.to_string_radix(base),
-                self.imag.to_string_radix(base)
-            ),
-            (false, true, _) => self.real.to_string_radix(base).to_string(),
-            (true, false, _) => format!("{}i", self.imag.to_string_radix(base)),
-            (true, true, _) => "0".to_string(),
-        }
-    }
-    fn get_closest_fraction(&self) -> impl Display {
+    fn to_string_radix(&self, base: u8) -> impl Display {
         fmt::from_fn(move |fmt| {
-            match (self.real.closest_fraction(), self.imag.closest_fraction()) {
+            match (
+                self.real.is_zero(),
+                self.imag.is_zero(),
+                self.imag.is_sign_positive(),
+            ) {
+                (false, false, true) => write!(
+                    fmt,
+                    "{}+{}i",
+                    self.real.to_string_radix(base),
+                    self.imag.to_string_radix(base)
+                ),
+                (false, false, false) => write!(
+                    fmt,
+                    "{}{}i",
+                    self.real.to_string_radix(base),
+                    self.imag.to_string_radix(base)
+                ),
+                (false, true, _) => write!(fmt, "{}", self.real.to_string_radix(base)),
+                (true, false, _) => write!(fmt, "{}i", self.imag.to_string_radix(base)),
+                (true, true, _) => write!(fmt, "0"),
+            }
+        })
+    }
+    fn get_closest_fraction(&self, base: u8) -> impl Display {
+        fmt::from_fn(move |fmt| {
+            match (
+                closest_fraction(&self.real, base),
+                closest_fraction(&self.imag, base),
+            ) {
                 (Some((true, num, den)), Some((true, numi, deni))) => {
                     writeln!(fmt, "{num}/{den}+{numi}i/{deni}")
                 }
@@ -746,6 +616,15 @@ impl FloatTrait<Float> for Complex {
             .total_cmp(&other.real)
             .then(self.imag.total_cmp(&other.imag))
     }
+}
+fn closest_fraction(value: &Float, base: u8) -> Option<(bool, impl Display, impl Display)> {
+    value.closest_fraction().map(|(b, n, d)| {
+        (
+            b,
+            float_base::to_string_radix_usize(n, base),
+            float_base::to_string_radix_usize(d, base),
+        )
+    })
 }
 macro_rules! ops_assign {
     ($ty:ty, $assign:ident, $orig:ident, $assign_fun:ident, $orig_fun:ident) => {

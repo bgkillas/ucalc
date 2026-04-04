@@ -73,8 +73,8 @@ pub trait FloatTrait<F>: Sized {
     fn real_mut(&mut self) -> &mut F;
     fn is_zero(&self) -> bool;
     fn parse_radix(src: &str, base: u8) -> Option<Self>;
-    fn to_string_radix(&self, base: u8) -> String;
-    fn get_closest_fraction(&self) -> impl Display;
+    fn to_string_radix(&self, base: u8) -> impl Display;
+    fn get_closest_fraction(&self, base: u8) -> impl Display;
     fn total_cmp(&self, other: &Self) -> Ordering;
 }
 pub trait FloatFunctions<F>: FloatFunctionsMut<F> + FloatTrait<F> {

@@ -131,7 +131,7 @@ fn process_line(
             } {
                 Ok(Some(tokens)) => {
                     let compute = tokens.compute(&[], funs, vars);
-                    write!(str, "{}", compute.get_closest_fraction())?;
+                    write!(str, "{}", compute.get_closest_fraction(base_output))?;
                     write!(str, "{}", compute.to_string_radix(base_output))?;
                     Some(compute)
                 }
@@ -175,7 +175,7 @@ fn run_line(
             //println!("{}", tokens.get_rpn(vars, funs, &[]));
             let compute = tmr(|| tokens.compute(&[], funs, vars));
             //let compute = tokens.compute(&[], funs, vars);
-            print!("{}", compute.get_closest_fraction());
+            print!("{}", compute.get_closest_fraction(*base_output));
             println!("{}", compute.to_string_radix(*base_output));
         }
         Ok(None) => {}

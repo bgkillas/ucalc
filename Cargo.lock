@@ -124,6 +124,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "float_base"
+version = "0.0.2"
+dependencies = [
+ "lexical",
+]
+
+[[package]]
 name = "gmp-mpfr-sys"
 version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -506,7 +513,7 @@ name = "ucalc_numbers"
 version = "0.0.2"
 dependencies = [
  "fastnum",
- "lexical",
+ "float_base",
  "rug",
  "ucalc_numbers_macros",
 ]

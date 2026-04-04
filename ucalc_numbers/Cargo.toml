@@ -9,10 +9,10 @@ description.workspace = true
 
 [features]
 default = ["f64", "list"]
-f16 = ["float", "lexical/f16"]
-f32 = ["float"]
-f64 = ["float"]
-f128 = ["float", "lexical/f128"]
+f16 = ["float", "float_base/f16"]
+f32 = ["float", "float_base/f32"]
+f64 = ["float", "float_base/f64"]
+f128 = ["float", "float_base/f128"]
 float = []
 rug = ["dep:rug"]
 fastnum = ["dep:fastnum", "float"]
@@ -24,5 +24,5 @@ list = ["ucalc_numbers_macros/list"]
 [dependencies]
 rug = {version="1.29.0",optional=true, default-features=false, features=["complex","float","integer","rand","std"]}
 fastnum = {version = "0.7.4",optional=true}
-lexical = {version = "7.0.5", default-features = false, features = ["radix", "parse-floats", "std", "write-floats"]}
 ucalc_numbers_macros={workspace = true}
+float_base = {workspace = true}
