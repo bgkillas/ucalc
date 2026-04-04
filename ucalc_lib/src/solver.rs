@@ -4,21 +4,17 @@ use crate::parse::{Token, TokensSlice};
 use crate::{Number, Tokens};
 use std::ops::Deref;
 impl Compute<'_> {
-    pub(crate) fn get_inverse(
-        self,
-        inner_vars: &mut Vec<Number>,
-        stack: &mut Tokens,
-    ) -> Option<Number> {
+    pub(crate) fn solve(self, inner_vars: &mut Vec<Number>, stack: &mut Tokens) -> Option<Number> {
         let mut ret = Number::from(0);
         Some(
-            if let Some(inner) = self.cas_inner(inner_vars, &mut ret, stack, None)? {
+            if let Some(inner) = self.solve_inner(inner_vars, &mut ret, stack, None)? {
                 inner
             } else {
                 ret
             },
         )
     }
-    fn cas_inner(
+    fn solve_inner(
         self,
         inner_vars: &mut Vec<Number>,
         ret: &mut Number,
@@ -52,7 +48,7 @@ impl Compute<'_> {
                             inner_vars.push(n)
                         }
                     }
-                    let roots = self.tokens(&fun.tokens[..]).offset(end).cas_inner(
+                    let roots = self.tokens(&fun.tokens[..]).offset(end).solve_inner(
                         inner_vars,
                         ret,
                         stack,
@@ -62,7 +58,9 @@ impl Compute<'_> {
                         *ret = n;
                     }
                     inner_vars.drain(end..);
-                    return self.tokens(args[0]).cas_inner(inner_vars, ret, stack, None);
+                    return self
+                        .tokens(args[0])
+                        .solve_inner(inner_vars, ret, stack, None);
                 }
                 Token::Function(operator, d) => {
                     if d.get() != 0 {

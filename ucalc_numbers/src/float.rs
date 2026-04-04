@@ -737,7 +737,11 @@ impl Pow<&Float> for Float {
         if rhs.0.fract() == 0.0
             && let Ok(rhs) = (rhs.0 as i64).try_into()
         {
-            Self(self.0.powi(rhs))
+            if rhs == 0 && self.is_zero() {
+                Self(f64::NAN)
+            } else {
+                Self(self.0.powi(rhs))
+            }
         } else {
             Self(self.0.powf(rhs.0))
         }

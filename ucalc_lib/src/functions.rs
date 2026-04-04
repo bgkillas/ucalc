@@ -729,7 +729,7 @@ impl Function {
                 let [tokens] = stack.get_skip_tokens_keep_one(compute.tokens);
                 *stack.last_mut().unwrap() = compute
                     .tokens(tokens)
-                    .get_inverse(inner_vars, stack)
+                    .solve(inner_vars, stack)
                     .unwrap_or(Number::from(Constant::Nan))
                     .into();
             }
