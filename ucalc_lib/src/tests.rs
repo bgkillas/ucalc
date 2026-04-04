@@ -99,7 +99,7 @@ where
     res(f).into()
 }
 fn var(n: &str) -> Token {
-    Token::Var(
+    Token::CustomVar(
         Variables::default()
             .iter()
             .position(|v| v.name.as_ref().is_some_and(|v| v.as_ref() == n))
@@ -1432,11 +1432,11 @@ fn test_solve() {
             Token::InnerVar(0).into(),
             num(3),
             Operator::Add.into(),
-            Token::Fun(1, Derivative::default()),
+            Token::CustomFun(1, Derivative::default()),
             num(3),
             Operator::Add.into(),
             num(2),
-            Token::Fun(0, Derivative::default()),
+            Token::CustomFun(0, Derivative::default()),
             num(1),
             Operator::Sub.into(),
             Function::Solve.into(),
@@ -1495,11 +1495,11 @@ fn test_solve() {
             Token::InnerVar(0).into(),
             num(3),
             Operator::Add.into(),
-            Token::Fun(1, Derivative::default()),
+            Token::CustomFun(1, Derivative::default()),
             num(3),
             Operator::Add.into(),
             num(2),
-            Token::Fun(0, Derivative::default()),
+            Token::CustomFun(0, Derivative::default()),
             num(1),
             Operator::Sub.into(),
             Function::Solve.into(),
@@ -1759,7 +1759,7 @@ fn test_custom_var() {
         Functions::default(),
         vec![
             num(2),
-            Token::Var(0),
+            Token::CustomVar(0),
             Operator::Mul.into(),
             num(2),
             Operator::Mul.into()
@@ -1799,7 +1799,7 @@ fn test_recursion() {
             Token::InnerVar(0),
             num(1),
             Operator::Sub.into(),
-            Token::Fun(0, Derivative::default()),
+            Token::CustomFun(0, Derivative::default()),
             Operator::Mul.into(),
             Token::Skip(1),
             num(1),
@@ -1835,7 +1835,7 @@ fn test_recursion() {
         Variables::default(),
         &[],
         funs,
-        vec![num(5), Token::Fun(0, Derivative::default())],
+        vec![num(5), Token::CustomFun(0, Derivative::default())],
         res(120)
     );
 }
@@ -1859,7 +1859,7 @@ fn test_inner_functions() {
             Operator::Mul.into(),
             Token::InnerVar(0),
             Token::InnerVar(1),
-            Token::Fun(0, Derivative::default()),
+            Token::CustomFun(0, Derivative::default()),
             Operator::Sub.into(),
         ]),
     );
@@ -1943,19 +1943,19 @@ fn test_inner_functions() {
         vec![
             num(2),
             num(3),
-            Token::Fun(1, Derivative::default()),
+            Token::CustomFun(1, Derivative::default()),
             num(2),
             Operator::Mul.into(),
             num(3),
             num(2),
-            Token::Fun(1, Derivative::default()),
+            Token::CustomFun(1, Derivative::default()),
             num(2),
             Operator::Mul.into(),
-            Token::Fun(0, Derivative::default()),
+            Token::CustomFun(0, Derivative::default()),
             num(1),
             Operator::Sub.into(),
             num(2),
-            Token::Fun(1, Derivative::default())
+            Token::CustomFun(1, Derivative::default())
         ],
         res(5)
     );
@@ -2016,19 +2016,19 @@ fn test_composed_functions() {
         vec![
             num(2),
             num(3),
-            Token::Fun(1, Derivative::default()),
+            Token::CustomFun(1, Derivative::default()),
             num(2),
             Operator::Mul.into(),
             num(3),
             num(2),
-            Token::Fun(1, Derivative::default()),
+            Token::CustomFun(1, Derivative::default()),
             num(2),
             Operator::Mul.into(),
-            Token::Fun(0, Derivative::default()),
+            Token::CustomFun(0, Derivative::default()),
             num(1),
             Operator::Sub.into(),
             num(2),
-            Token::Fun(1, Derivative::default())
+            Token::CustomFun(1, Derivative::default())
         ],
         res(44)
     );
@@ -2069,7 +2069,7 @@ fn test_custom_functions() {
         Variables::default(),
         &[],
         funs,
-        vec![num(3), num(4), Token::Fun(0, Derivative::default())],
+        vec![num(3), num(4), Token::CustomFun(0, Derivative::default())],
         res(-1)
     );
     assert_correct_with!(
@@ -2102,7 +2102,7 @@ fn test_custom_functions() {
             Token::Skip(3),
             Token::InnerVar(0),
             num(4),
-            Token::Fun(0, Derivative::default()),
+            Token::CustomFun(0, Derivative::default()),
             Function::Sum.into()
         ],
         res(-5)
@@ -2140,12 +2140,12 @@ fn test_custom_functions() {
             Token::Skip(11),
             Token::InnerVar(0),
             Token::InnerVar(1),
-            Token::Fun(0, Derivative::default()),
+            Token::CustomFun(0, Derivative::default()),
             num(2),
             Operator::Pow.into(),
             Token::InnerVar(1),
             Token::InnerVar(0),
-            Token::Fun(0, Derivative::default()),
+            Token::CustomFun(0, Derivative::default()),
             Operator::Add.into(),
             num(2),
             Operator::Sub.into(),

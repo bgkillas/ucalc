@@ -4,39 +4,39 @@ use ucalc_numbers::{Float, FloatTrait, UInteger};
 impl Compute<'_> {
     pub fn numerical_solve(
         self,
-        fun_vars: &mut Vec<Number>,
+        inner_vars: &mut Vec<Number>,
         stack: &mut Tokens,
         point: Number,
         var: usize,
     ) -> Number {
-        fun_vars[var] = point;
+        inner_vars[var] = point;
         for _ in 0..64 {
-            let y = self.compute_buffer_with(fun_vars, stack);
+            let y = self.compute_buffer_with(inner_vars, stack);
             if y.is_zero() {
                 break;
             }
-            let val = self.numerical_derivative(fun_vars, stack, fun_vars[var].clone(), var);
-            fun_vars[var] -= y / val;
+            let val = self.numerical_derivative(inner_vars, stack, inner_vars[var].clone(), var);
+            inner_vars[var] -= y / val;
         }
-        fun_vars[var].clone()
+        inner_vars[var].clone()
     }
     pub fn numerical_derivative(
         self,
-        fun_vars: &mut Vec<Number>,
+        inner_vars: &mut Vec<Number>,
         stack: &mut Tokens,
         point: Number,
         var: usize,
     ) -> Number {
         let epsilon = Float::from(2.0f64.powi(-32));
-        fun_vars[var] = point.clone() - &epsilon;
-        let start = self.compute_buffer_with(fun_vars, stack);
-        fun_vars[var] = point + &epsilon;
-        let end = self.compute_buffer_with(fun_vars, stack);
+        inner_vars[var] = point.clone() - &epsilon;
+        let start = self.compute_buffer_with(inner_vars, stack);
+        inner_vars[var] = point + &epsilon;
+        let end = self.compute_buffer_with(inner_vars, stack);
         (end - start) / (Float::from(2) * epsilon)
     }
     pub fn numerical_nth_derivative(
         self,
-        fun_vars: &mut Vec<Number>,
+        inner_vars: &mut Vec<Number>,
         stack: &mut Tokens,
         n: u8,
         point: Number,
@@ -46,7 +46,7 @@ impl Compute<'_> {
         let e = e - e % n as i32;
         let epsilon = Float::from(2.0f64.powi(e / n as i32));
         let mut sum = Number::default();
-        fun_vars[var] = point;
+        inner_vars[var] = point;
         for k in 0..=n {
             let r = Float::from(
                 UInteger::from(n as usize)
@@ -54,12 +54,12 @@ impl Compute<'_> {
                     .0,
             );
             if (n - k).is_multiple_of(2) {
-                sum += self.compute_buffer_with(fun_vars, stack) * r;
+                sum += self.compute_buffer_with(inner_vars, stack) * r;
             } else {
-                sum -= self.compute_buffer_with(fun_vars, stack) * r;
+                sum -= self.compute_buffer_with(inner_vars, stack) * r;
             }
             if k != n {
-                fun_vars[var] += &epsilon;
+                inner_vars[var] += &epsilon;
             }
         }
         let epsilon = Float::from(2.0f64.powi(e));
@@ -67,7 +67,7 @@ impl Compute<'_> {
     }
     pub fn numerical_integral(
         self,
-        fun_vars: &mut Vec<Number>,
+        inner_vars: &mut Vec<Number>,
         stack: &mut Tokens,
         start: Number,
         end: Number,
@@ -76,12 +76,12 @@ impl Compute<'_> {
         let k = 1024;
         let epsilon = (end - &start) / Float::from(k);
         let mut total = Number::from(0);
-        fun_vars[var] = start;
-        let mut last = self.compute_buffer_with(fun_vars, stack);
+        inner_vars[var] = start;
+        let mut last = self.compute_buffer_with(inner_vars, stack);
         let mid = epsilon.clone() / Float::from(2);
         for _ in 1..=k {
-            fun_vars[var] += &epsilon;
-            let cur = self.compute_buffer_with(fun_vars, stack);
+            inner_vars[var] += &epsilon;
+            let cur = self.compute_buffer_with(inner_vars, stack);
             total += (last + &cur) * &mid;
             last = cur;
         }
@@ -89,7 +89,7 @@ impl Compute<'_> {
     }
     pub fn numerical_nth_integral(
         self,
-        fun_vars: &mut Vec<Number>,
+        inner_vars: &mut Vec<Number>,
         stack: &mut Tokens,
         n: u8,
         start: Number,
@@ -97,10 +97,10 @@ impl Compute<'_> {
         var: usize,
     ) -> Number {
         if n == 0 {
-            fun_vars[var] = end;
-            let end = self.compute_buffer_with(fun_vars, stack);
-            fun_vars[var] = start;
-            let start = self.compute_buffer_with(fun_vars, stack);
+            inner_vars[var] = end;
+            let end = self.compute_buffer_with(inner_vars, stack);
+            inner_vars[var] = start;
+            let start = self.compute_buffer_with(inner_vars, stack);
             return end - start;
         }
         let k = 1024;
@@ -108,8 +108,8 @@ impl Compute<'_> {
         let fact = Float::from(UInteger::from((n - 1) as usize).factorial().0);
         let epsilon = (end - &start) / &kf;
         let mut total = Number::from(0);
-        fun_vars[var] = start;
-        let mut last = self.compute_buffer_with(fun_vars, stack);
+        inner_vars[var] = start;
+        let mut last = self.compute_buffer_with(inner_vars, stack);
         for _ in 1..n {
             last *= &epsilon;
             last *= &kf;
@@ -117,8 +117,8 @@ impl Compute<'_> {
         last /= &fact;
         let mid = epsilon.clone() / Float::from(2);
         for i in 1..=k {
-            fun_vars[var] += &epsilon;
-            let mut cur = self.compute_buffer_with(fun_vars, stack);
+            inner_vars[var] += &epsilon;
+            let mut cur = self.compute_buffer_with(inner_vars, stack);
             let kf = Float::from(k - i);
             for _ in 1..n {
                 cur *= &epsilon;
@@ -133,7 +133,7 @@ impl Compute<'_> {
     #[allow(clippy::too_many_arguments)]
     pub fn numerical_differential(
         self,
-        fun_vars: &mut Vec<Number>,
+        inner_vars: &mut Vec<Number>,
         stack: &mut Tokens,
         x_0: Number,
         t_0: Number,
@@ -143,13 +143,13 @@ impl Compute<'_> {
     ) -> Number {
         let n = 1024;
         let epsilon = (t_1 - &t_0) / Float::from(n);
-        fun_vars[x_var] = x_0;
-        fun_vars[t_var] = t_0;
+        inner_vars[x_var] = x_0;
+        inner_vars[t_var] = t_0;
         for _ in 1..=n {
-            let delta = self.compute_buffer_with(fun_vars, stack) * &epsilon;
-            fun_vars[x_var] += delta;
-            fun_vars[t_var] += &epsilon;
+            let delta = self.compute_buffer_with(inner_vars, stack) * &epsilon;
+            inner_vars[x_var] += delta;
+            inner_vars[t_var] += &epsilon;
         }
-        fun_vars[x_var].clone()
+        inner_vars[x_var].clone()
     }
 }

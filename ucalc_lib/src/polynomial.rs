@@ -299,7 +299,7 @@ impl Polynomial {
         };
         ret.iter_mut().for_each(|a| {
             self.functions.iter().rev().for_each(|f| match f {
-                Func::Function(f) => Inverse::from(*f).get_inverse().unwrap().compute_on_1(a),
+                &Func::Function(f) => Inverse::from(f).get_inverse().unwrap().compute_on_1(a),
                 Func::Power(p) => Inverse::pow_assign(a, p.clone().recip()),
             })
         });
@@ -397,7 +397,7 @@ impl Polynomial {
 impl Compute<'_> {
     pub fn compute_polynomial(
         self,
-        fun_vars: &mut Vec<Number>,
+        inner_vars: &mut Vec<Number>,
         stack: &mut Tokens,
         to_poly: Option<u16>,
     ) -> Option<Token> {
@@ -405,7 +405,7 @@ impl Compute<'_> {
         let mut tokens = self.tokens.iter().enumerate();
         while let Some((i, token)) = tokens.next() {
             match token {
-                Token::Function(operator, d) => {
+                &Token::Function(operator, d) => {
                     if d.get() != 0 {
                         todo!()
                     }
@@ -414,38 +414,38 @@ impl Compute<'_> {
                     operator.compute_poly(&mut stack[len - inputs..], &mut poly)?;
                     stack.drain(len + 1 - inputs..);
                 }
-                Token::Var(index) => {
-                    stack.push(Token::Num(self.custom_vars[*index as usize].value.clone()))
+                &Token::CustomVar(index) => {
+                    stack.push(self.custom_vars[index as usize].value.clone().into())
                 }
-                Token::Fun(index, d) => {
+                &Token::CustomFun(index, d) => {
                     if d.get() != 0 {
                         todo!()
                     }
-                    let inputs = self.funs[*index as usize].inputs.get() as usize;
-                    let end = fun_vars.len();
+                    let inputs = self.custom_funs[index as usize].inputs.get() as usize;
+                    let end = inner_vars.len();
                     let len = stack.len();
-                    fun_vars.push(stack[len - inputs].num_ref().clone());
-                    fun_vars.extend(stack.drain(len + 1 - inputs..).map(|n| n.num()));
+                    inner_vars.push(stack[len - inputs].num_ref().clone());
+                    inner_vars.extend(stack.drain(len + 1 - inputs..).map(|n| n.num()));
                     stack[len - inputs] = self
                         .offset(end)
-                        .tokens(TokensRef(&self.funs[*index as usize].tokens))
-                        .compute_polynomial(fun_vars, stack, None)?;
-                    fun_vars.drain(end..);
+                        .tokens(TokensRef(&self.custom_funs[index as usize].tokens))
+                        .compute_polynomial(inner_vars, stack, None)?;
+                    inner_vars.drain(end..);
                 }
-                Token::Num(n) => stack.push(Token::Num(n.clone())),
-                Token::InnerVar(index) => {
-                    if Some(*index) == to_poly {
+                Token::Num(n) => stack.push(n.clone().into()),
+                &Token::InnerVar(index) => {
+                    if Some(index) == to_poly {
                         stack.push(Polynomial::new().into())
                     } else {
-                        stack.push(Token::Num(fun_vars[self.offset + *index as usize].clone()))
+                        stack.push(inner_vars[self.offset + index as usize].clone().into())
                     }
                 }
-                Token::GraphVar(index) => {
-                    stack.push(Token::Num(self.vars[*index as usize].clone()))
+                &Token::GraphVar(index) => {
+                    stack.push(self.graph_vars[index as usize].clone().into())
                 }
-                Token::Skip(to) => {
+                &Token::Skip(to) => {
                     stack.push(Token::Skip(i + 1));
-                    tokens.nth(*to - 1);
+                    tokens.nth(to - 1);
                 }
                 Token::Polynomial(_) => unreachable!(),
             }

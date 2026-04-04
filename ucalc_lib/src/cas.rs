@@ -6,12 +6,12 @@ use std::ops::Deref;
 impl Compute<'_> {
     pub(crate) fn get_inverse(
         self,
-        fun_vars: &mut Vec<Number>,
+        inner_vars: &mut Vec<Number>,
         stack: &mut Tokens,
     ) -> Option<Number> {
         let mut ret = Number::from(0);
         Some(
-            if let Some(inner) = self.cas_inner(fun_vars, &mut ret, stack, None)? {
+            if let Some(inner) = self.cas_inner(inner_vars, &mut ret, stack, None)? {
                 inner
             } else {
                 ret
@@ -20,7 +20,7 @@ impl Compute<'_> {
     }
     fn cas_inner(
         self,
-        fun_vars: &mut Vec<Number>,
+        inner_vars: &mut Vec<Number>,
         ret: &mut Number,
         stack: &mut Tokens,
         args: Option<&mut Vec<TokensRef>>,
@@ -30,31 +30,31 @@ impl Compute<'_> {
         while i > start + 1 {
             i -= 1;
             match self.tokens[i] {
-                Token::Fun(n, d) => {
+                Token::CustomFun(n, d) => {
                     if d.get() != 0 {
                         todo!()
                     }
-                    let fun = &self.funs[n as usize];
+                    let fun = &self.custom_funs[n as usize];
                     let tokens = TokensRef(&self.tokens[start..=i]);
-                    let mut args = tokens.get_lasts(self.funs);
+                    let mut args = tokens.get_lasts(self.custom_funs);
                     let count = args
                         .iter()
-                        .filter(|a| a.contains(&Token::InnerVar(fun_vars.len() as u16)))
+                        .filter(|a| a.contains(&Token::InnerVar(inner_vars.len() as u16)))
                         .count();
                     if count != 1 {
                         todo!() //polynomial
                     }
-                    let end = fun_vars.len();
+                    let end = inner_vars.len();
                     for arg in args.iter().copied() {
-                        if arg.contains(&Token::InnerVar(fun_vars.len() as u16)) {
-                            fun_vars.push(Number::default())
+                        if arg.contains(&Token::InnerVar(inner_vars.len() as u16)) {
+                            inner_vars.push(Number::default())
                         } else {
-                            let n = self.tokens(arg).compute_buffer_with(fun_vars, stack);
-                            fun_vars.push(n)
+                            let n = self.tokens(arg).compute_buffer_with(inner_vars, stack);
+                            inner_vars.push(n)
                         }
                     }
                     let roots = self.tokens(TokensRef(&fun.tokens)).offset(end).cas_inner(
-                        fun_vars,
+                        inner_vars,
                         ret,
                         stack,
                         Some(&mut args),
@@ -62,8 +62,8 @@ impl Compute<'_> {
                     if let Some(n) = roots {
                         *ret = n;
                     }
-                    fun_vars.drain(end..);
-                    return self.tokens(args[0]).cas_inner(fun_vars, ret, stack, None);
+                    inner_vars.drain(end..);
+                    return self.tokens(args[0]).cas_inner(inner_vars, ret, stack, None);
                 }
                 Token::Function(operator, d) => {
                     if d.get() != 0 {
@@ -77,7 +77,7 @@ impl Compute<'_> {
                         inv.compute_on_1(ret);
                     } else {
                         let right_tokens = TokensRef(&self.tokens[start..i]);
-                        let (right_tokens, last) = right_tokens.get_from_last(self.funs);
+                        let (right_tokens, last) = right_tokens.get_from_last(self.custom_funs);
                         if args
                             .as_ref()
                             .map(|a| {
@@ -87,11 +87,11 @@ impl Compute<'_> {
                                 })
                             })
                             .unwrap_or_else(|| {
-                                right_tokens.contains(&Token::InnerVar(fun_vars.len() as u16))
+                                right_tokens.contains(&Token::InnerVar(inner_vars.len() as u16))
                             })
                         {
                             let left_tokens = TokensRef(&self.tokens[start..start + last]);
-                            let (left_tokens, _) = left_tokens.get_from_last(self.funs);
+                            let (left_tokens, _) = left_tokens.get_from_last(self.custom_funs);
                             if args
                                 .as_ref()
                                 .map(|a| {
@@ -101,13 +101,13 @@ impl Compute<'_> {
                                     })
                                 })
                                 .unwrap_or_else(|| {
-                                    left_tokens.contains(&Token::InnerVar(fun_vars.len() as u16))
+                                    left_tokens.contains(&Token::InnerVar(inner_vars.len() as u16))
                                 })
                             {
                                 let poly = self
                                     .tokens(TokensRef(&self.tokens[start..=i]))
                                     .compute_polynomial(
-                                        fun_vars,
+                                        inner_vars,
                                         stack,
                                         Some(
                                             args.and_then(|a| {
@@ -115,7 +115,7 @@ impl Compute<'_> {
                                                     a.contains(&Token::InnerVar(self.offset as u16))
                                                 })
                                             })
-                                            .unwrap_or(fun_vars.len())
+                                            .unwrap_or(inner_vars.len())
                                                 as u16,
                                         ),
                                     )?;
@@ -125,14 +125,14 @@ impl Compute<'_> {
                             } else {
                                 let num = self
                                     .tokens(left_tokens)
-                                    .compute_buffer_with(fun_vars, stack);
+                                    .compute_buffer_with(inner_vars, stack);
                                 start += last;
                                 inverse.right_inverse(ret, num);
                             }
                         } else {
                             let num = self
                                 .tokens(right_tokens)
-                                .compute_buffer_with(fun_vars, stack);
+                                .compute_buffer_with(inner_vars, stack);
                             i = last;
                             inverse.left_inverse(ret, num);
                         }

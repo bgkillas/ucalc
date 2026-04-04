@@ -608,7 +608,7 @@ impl Function {
         self,
         compute: Compute,
         stack: &mut Tokens,
-        fun_vars: &mut Vec<Number>,
+        inner_vars: &mut Vec<Number>,
     ) {
         match self {
             Self::Sum => {
@@ -616,75 +616,83 @@ impl Function {
                 let start = mem::take(start);
                 let start = start.to_real().into_isize();
                 let end = end.to_real().into_isize();
-                fun_vars.push(Number::from(start));
+                inner_vars.push(Number::from(start));
                 *stack.last_mut().unwrap().num_mut() = (start..=end)
                     .map(|_| {
-                        let ret = compute.tokens(tokens).compute_buffer_with(fun_vars, stack);
-                        *fun_vars.last_mut().unwrap() += Float::from(1);
+                        let ret = compute
+                            .tokens(tokens)
+                            .compute_buffer_with(inner_vars, stack);
+                        *inner_vars.last_mut().unwrap() += Float::from(1);
                         ret
                     })
                     .sum();
-                fun_vars.pop().unwrap();
+                inner_vars.pop().unwrap();
             }
             Self::Prod => {
                 let (start, [end], [tokens]) = stack.get_skip_mut(compute.tokens);
                 let start = mem::take(start);
                 let start = start.to_real().into_isize();
                 let end = end.to_real().into_isize();
-                fun_vars.push(Number::from(start));
+                inner_vars.push(Number::from(start));
                 *stack.last_mut().unwrap().num_mut() = (start..=end)
                     .map(|_| {
-                        let ret = compute.tokens(tokens).compute_buffer_with(fun_vars, stack);
-                        *fun_vars.last_mut().unwrap() += Float::from(1);
+                        let ret = compute
+                            .tokens(tokens)
+                            .compute_buffer_with(inner_vars, stack);
+                        *inner_vars.last_mut().unwrap() += Float::from(1);
                         ret
                     })
                     .product();
-                fun_vars.pop().unwrap();
+                inner_vars.pop().unwrap();
             }
             Self::Fold => {
                 let (start, [end, value], [tokens]) = stack.get_skip_mut(compute.tokens);
                 let start = mem::take(start);
                 let start = start.to_real().into_isize();
                 let end = end.to_real().into_isize();
-                fun_vars.push(value);
-                fun_vars.push(Number::from(start));
-                let nl = fun_vars.len();
+                inner_vars.push(value);
+                inner_vars.push(Number::from(start));
+                let nl = inner_vars.len();
                 (start..=end).for_each(|_| {
-                    fun_vars[nl - 2] = compute.tokens(tokens).compute_buffer_with(fun_vars, stack);
-                    *fun_vars.last_mut().unwrap() += Float::from(1);
+                    inner_vars[nl - 2] = compute
+                        .tokens(tokens)
+                        .compute_buffer_with(inner_vars, stack);
+                    *inner_vars.last_mut().unwrap() += Float::from(1);
                 });
-                fun_vars.pop().unwrap();
-                *stack.last_mut().unwrap().num_mut() = fun_vars.pop().unwrap();
+                inner_vars.pop().unwrap();
+                *stack.last_mut().unwrap().num_mut() = inner_vars.pop().unwrap();
             }
             Self::Set => {
                 let (value, [], [tokens]) = stack.get_skip_mut(compute.tokens);
                 let value = mem::take(value);
-                fun_vars.push(value);
-                *stack.last_mut().unwrap().num_mut() =
-                    compute.tokens(tokens).compute_buffer_with(fun_vars, stack);
-                fun_vars.pop().unwrap();
+                inner_vars.push(value);
+                *stack.last_mut().unwrap().num_mut() = compute
+                    .tokens(tokens)
+                    .compute_buffer_with(inner_vars, stack);
+                inner_vars.pop().unwrap();
             }
             Self::Modify(ModifyInputs::Two) => {
                 let (value, [], [var]) = stack.get_skip_mut(compute.tokens);
                 let value = mem::take(value);
-                fun_vars[var[0].inner_var_ref() as usize] = value;
+                inner_vars[var[0].inner_var_ref() as usize] = value;
             }
             Self::Modify(ModifyInputs::Three) => {
                 let (value, [], [var, tokens]) = stack.get_skip_mut(compute.tokens);
                 let value = mem::take(value);
-                fun_vars[var[0].inner_var_ref() as usize] = value;
-                *stack.last_mut().unwrap().num_mut() =
-                    compute.tokens(tokens).compute_buffer_with(fun_vars, stack);
+                inner_vars[var[0].inner_var_ref() as usize] = value;
+                *stack.last_mut().unwrap().num_mut() = compute
+                    .tokens(tokens)
+                    .compute_buffer_with(inner_vars, stack);
             }
             Self::While(ModifyInputs::Two) => {
                 let [cond, expr] = stack.get_skip_tokens_keep_one(compute.tokens);
                 let mut last = Number::default();
                 while !compute
                     .tokens(cond)
-                    .compute_buffer_with(fun_vars, stack)
+                    .compute_buffer_with(inner_vars, stack)
                     .is_zero()
                 {
-                    last = compute.tokens(expr).compute_buffer_with(fun_vars, stack);
+                    last = compute.tokens(expr).compute_buffer_with(inner_vars, stack);
                 }
                 *stack.last_mut().unwrap() = last.into();
             }
@@ -692,14 +700,14 @@ impl Function {
                 let [cond, expr, ret] = stack.get_skip_tokens_keep_one(compute.tokens);
                 while !compute
                     .tokens(cond)
-                    .compute_buffer_with(fun_vars, stack)
+                    .compute_buffer_with(inner_vars, stack)
                     .is_zero()
                 {
-                    compute.tokens(expr).compute_buffer_with(fun_vars, stack);
+                    compute.tokens(expr).compute_buffer_with(inner_vars, stack);
                 }
                 *stack.last_mut().unwrap() = compute
                     .tokens(ret)
-                    .compute_buffer_with(fun_vars, stack)
+                    .compute_buffer_with(inner_vars, stack)
                     .into();
             }
             Self::Exprs(n) => {
@@ -710,94 +718,97 @@ impl Function {
                 for _ in 1..n {
                     compute
                         .tokens(tokens.next().unwrap())
-                        .compute_buffer_with(fun_vars, stack);
+                        .compute_buffer_with(inner_vars, stack);
                 }
                 let last = compute
                     .tokens(tokens.next().unwrap())
-                    .compute_buffer_with(fun_vars, stack);
+                    .compute_buffer_with(inner_vars, stack);
                 *stack.last_mut().unwrap() = last.into();
             }
             Self::Solve => {
                 let [tokens] = stack.get_skip_tokens_keep_one(compute.tokens);
                 *stack.last_mut().unwrap() = compute
                     .tokens(tokens)
-                    .get_inverse(fun_vars, stack)
+                    .get_inverse(inner_vars, stack)
                     .unwrap_or(Number::from(Constant::Nan))
                     .into();
             }
             Self::Iter => {
                 let (first, [steps], [tokens]) = stack.get_skip_mut(compute.tokens);
                 let first = mem::take(first);
-                fun_vars.push(first);
+                inner_vars.push(first);
                 let steps = steps.to_real().into_isize();
                 (0..steps).for_each(|_| {
-                    *fun_vars.last_mut().unwrap() =
-                        compute.tokens(tokens).compute_buffer_with(fun_vars, stack);
+                    *inner_vars.last_mut().unwrap() = compute
+                        .tokens(tokens)
+                        .compute_buffer_with(inner_vars, stack);
                 });
-                *stack.last_mut().unwrap().num_mut() = fun_vars.pop().unwrap();
+                *stack.last_mut().unwrap().num_mut() = inner_vars.pop().unwrap();
             }
             Self::If => {
                 let (condition, [], [ifthen, ifelse]) = stack.get_skip_mut(compute.tokens);
                 let tokens = if condition.is_zero() { ifelse } else { ifthen };
                 *stack.last_mut().unwrap().num_mut() =
                     stacker::maybe_grow(2usize.pow(16), 2usize.pow(20), || {
-                        compute.tokens(tokens).compute_buffer_with(fun_vars, stack)
+                        compute
+                            .tokens(tokens)
+                            .compute_buffer_with(inner_vars, stack)
                     });
             }
             Self::NumericalDerivative => {
                 let (point, [], [tokens]) = stack.get_skip_mut(compute.tokens);
                 let point = mem::take(point);
-                fun_vars.push(Number::default());
+                inner_vars.push(Number::default());
                 *stack.last_mut().unwrap().num_mut() = compute.tokens(tokens).numerical_derivative(
-                    fun_vars,
+                    inner_vars,
                     stack,
                     point,
-                    fun_vars.len() - 1,
+                    inner_vars.len() - 1,
                 );
-                fun_vars.pop().unwrap();
+                inner_vars.pop().unwrap();
             }
             Self::NumericalIntegral => {
                 let (start, [end], [tokens]) = stack.get_skip_mut(compute.tokens);
                 let start = mem::take(start);
-                fun_vars.push(Number::default());
+                inner_vars.push(Number::default());
                 *stack.last_mut().unwrap().num_mut() = compute.tokens(tokens).numerical_integral(
-                    fun_vars,
+                    inner_vars,
                     stack,
                     start,
                     end,
-                    fun_vars.len() - 1,
+                    inner_vars.len() - 1,
                 );
-                fun_vars.pop().unwrap();
+                inner_vars.pop().unwrap();
             }
             Self::NumericalDifferential => {
                 let (x_0, [t_0, t_1], [tokens]) = stack.get_skip_mut(compute.tokens);
                 let x_0 = mem::take(x_0);
-                fun_vars.push(Number::default());
-                fun_vars.push(Number::default());
+                inner_vars.push(Number::default());
+                inner_vars.push(Number::default());
                 *stack.last_mut().unwrap().num_mut() =
                     compute.tokens(tokens).numerical_differential(
-                        fun_vars,
+                        inner_vars,
                         stack,
                         x_0,
                         t_0,
                         t_1,
-                        fun_vars.len() - 2,
-                        fun_vars.len() - 1,
+                        inner_vars.len() - 2,
+                        inner_vars.len() - 1,
                     );
-                fun_vars.pop().unwrap();
-                fun_vars.pop().unwrap();
+                inner_vars.pop().unwrap();
+                inner_vars.pop().unwrap();
             }
             Self::NumericalSolve => {
                 let (point, [], [tokens]) = stack.get_skip_mut(compute.tokens);
                 let point = mem::take(point);
-                fun_vars.push(Number::default());
+                inner_vars.push(Number::default());
                 *stack.last_mut().unwrap().num_mut() = compute.tokens(tokens).numerical_solve(
-                    fun_vars,
+                    inner_vars,
                     stack,
                     point,
-                    fun_vars.len() - 1,
+                    inner_vars.len() - 1,
                 );
-                fun_vars.pop().unwrap();
+                inner_vars.pop().unwrap();
             }
             _ => {}
         }
