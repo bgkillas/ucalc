@@ -393,7 +393,7 @@ impl Function {
         self,
         v: &mut Tokens,
         inputs: NonZeroU8,
-        #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
+        #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) {
         match inputs.get() {
             1 => self.compute_on_1(v.last_mut().unwrap().num_mut()),
@@ -485,7 +485,7 @@ impl Function {
         self,
         a: &mut Number,
         b: Number,
-        #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
+        #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) {
         match self {
             Self::Add => *a += b,
@@ -506,9 +506,7 @@ impl Function {
             Self::Or => *a = Number::from(!a.is_zero() || !b.is_zero()),
             Self::Atan(AtanInputs::Two) => a.atan2_mut(&b),
             #[cfg(feature = "float_rand")]
-            Self::RandUniform if let Some(rand) = rand => a.random_range_mut(b, rand),
-            #[cfg(feature = "float_rand")]
-            Self::RandUniform => {}
+            Self::RandUniform => a.random_range_mut(b, rand),
             Self::Max => a.max_mut(&b),
             Self::Min => a.min_mut(&b),
             _ => unreachable!(),
@@ -638,7 +636,7 @@ impl Function {
         compute: Compute,
         stack: &mut Tokens,
         inner_vars: &mut Vec<Number>,
-        #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
+        #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) {
         match self {
             Self::Sum => {

@@ -18,7 +18,7 @@ impl Tokens {
         vars: &[Number],
         funs: &[FunctionVar],
         custom_vars: &[Variable],
-        #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
+        #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Number {
         let cap = self.len() + funs.iter().map(|c| c.tokens.len()).sum::<usize>();
         let mut inner_vars = Vec::with_capacity(cap);
@@ -40,7 +40,7 @@ impl Tokens {
         funs: &[FunctionVar],
         custom_vars: &[Variable],
         stack: &mut Tokens,
-        #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
+        #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Number {
         self.compute_buffer_with(
             inner_vars,
@@ -62,7 +62,7 @@ impl Tokens {
         custom_vars: &[Variable],
         stack: &mut Tokens,
         offset: usize,
-        #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
+        #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Number {
         Compute::new(&self[..], vars, funs, custom_vars, offset).compute_buffer_with(
             inner_vars,
@@ -177,7 +177,7 @@ impl<'a> Compute<'a> {
         self,
         inner_vars: &mut Vec<Number>,
         stack: &mut Tokens,
-        #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
+        #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Number {
         let mut tokens = self.tokens.iter().enumerate();
         while let Some((i, token)) = tokens.next() {

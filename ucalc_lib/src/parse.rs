@@ -304,7 +304,7 @@ impl Tokens {
         inputs: Option<(&str, bool)>,
         vars: &mut Variables,
         funs: &mut Functions,
-        #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
+        #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Option<Self> {
         if self.is_empty() {
             self.push(Number::default().into());
@@ -345,7 +345,7 @@ impl Tokens {
         graph_vars: &[&str],
         mut expect_let: bool,
         base: u8,
-        #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
+        #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Result<Option<Self>, ParseError<'a>> {
         let mut tokens = Tokens(Vec::with_capacity(value.len()));
         let mut inner_vars: Vec<&str> = Vec::with_capacity(value.len());
@@ -479,7 +479,7 @@ impl Tokens {
         graph_vars: &[&str],
         mut expect_let: bool,
         base: u8,
-        #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
+        #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Result<Option<Self>, ParseError<'a>> {
         let mut tokens = Tokens(Vec::with_capacity(value.len()));
         let mut operator_stack: Vec<Operator> = Vec::with_capacity(value.len());

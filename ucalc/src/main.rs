@@ -26,7 +26,7 @@ fn main() {
     let mut base_input = 10;
     let mut base_output = 10;
     #[cfg(feature = "float_rand")]
-    let mut rand = Some(rng());
+    let mut rand = rng();
     for arg in args().skip(1) {
         quit = true;
         run_line(
@@ -124,7 +124,7 @@ fn process_line(
     base_output: u8,
     str: &mut String,
     colors: &Colors,
-    #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
+    #[cfg(feature = "float_rand")] rand: &mut Rand,
 ) -> Result<Option<Number>, fmt::Error> {
     str.clear();
     Ok(match line {
@@ -186,7 +186,7 @@ fn run_line(
     base_output: &mut u8,
     vars: &mut Variables,
     funs: &mut Functions,
-    #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
+    #[cfg(feature = "float_rand")] rand: &mut Rand,
 ) {
     if line == "--rpn" {
         *infix = false;

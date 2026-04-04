@@ -10,7 +10,7 @@ impl Compute<'_> {
         self,
         inner_vars: &mut Vec<Number>,
         stack: &mut Tokens,
-        #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
+        #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Option<Number> {
         let mut ret = Number::from(0);
         Some(
@@ -34,7 +34,7 @@ impl Compute<'_> {
         ret: &mut Number,
         stack: &mut Tokens,
         args: Option<&mut Vec<&TokensSlice>>,
-        #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
+        #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Option<Option<Number>> {
         let mut tokens = self.tokens.iter().enumerate();
         let mut start = 0;

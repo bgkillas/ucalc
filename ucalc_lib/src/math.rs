@@ -10,7 +10,7 @@ impl Compute<'_> {
         stack: &mut Tokens,
         point: Number,
         var: usize,
-        #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
+        #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Number {
         inner_vars[var] = point;
         for _ in 0..64 {
@@ -41,7 +41,7 @@ impl Compute<'_> {
         stack: &mut Tokens,
         point: Number,
         var: usize,
-        #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
+        #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Number {
         let epsilon = Float::from(2.0f64.powi(-32));
         inner_vars[var] = point.clone() - &epsilon;
@@ -67,7 +67,7 @@ impl Compute<'_> {
         n: u8,
         point: Number,
         var: usize,
-        #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
+        #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Number {
         let e = -32;
         let e = e - e % n as i32;
@@ -109,7 +109,7 @@ impl Compute<'_> {
         start: Number,
         end: Number,
         var: usize,
-        #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
+        #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Number {
         let k = 1024;
         let epsilon = (end - &start) / Float::from(k);
@@ -144,7 +144,7 @@ impl Compute<'_> {
         start: Number,
         end: Number,
         var: usize,
-        #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
+        #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Number {
         if n == 0 {
             inner_vars[var] = end;
@@ -210,7 +210,7 @@ impl Compute<'_> {
         t_1: Number,
         x_var: usize,
         t_var: usize,
-        #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
+        #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Number {
         let n = 1024;
         let epsilon = (t_1 - &t_0) / Float::from(n);

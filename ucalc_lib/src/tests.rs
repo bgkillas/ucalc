@@ -40,14 +40,14 @@ macro_rules! assert_approx_correct_with {
                 &$f,
                 &$v,
                 #[cfg(feature = "float_rand")]
-                &mut None
+                &mut rng()
             ),
             $b.compute(
                 $vf,
                 &$f,
                 &$v,
                 #[cfg(feature = "float_rand")]
-                &mut None
+                &mut rng()
             ),
             $d
         );
@@ -81,14 +81,14 @@ macro_rules! assert_correct_with {
                 &$f,
                 &$v,
                 #[cfg(feature = "float_rand")]
-                &mut None
+                &mut rng()
             ),
             $b.compute(
                 $vf,
                 &$f,
                 &$v,
                 #[cfg(feature = "float_rand")]
-                &mut None
+                &mut rng()
             ),
             $d
         );
@@ -103,7 +103,7 @@ fn infix(s: &str) -> Tokens {
         false,
         10,
         #[cfg(feature = "float_rand")]
-        &mut None,
+        &mut rng(),
     )
     .unwrap()
     .unwrap()
@@ -117,7 +117,7 @@ fn rpn(s: &str) -> Tokens {
         false,
         10,
         #[cfg(feature = "float_rand")]
-        &mut None,
+        &mut rng(),
     )
     .unwrap()
     .unwrap()
@@ -166,7 +166,7 @@ fn test_solve_poly() {
             true,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .is_none()
@@ -191,7 +191,7 @@ fn test_solve_poly() {
                 false,
                 10,
                 #[cfg(feature = "float_rand")]
-                &mut None,
+                &mut rng(),
             )
             .unwrap()
             .unwrap()
@@ -203,7 +203,7 @@ fn test_solve_poly() {
                 &mut buffer,
                 0,
                 #[cfg(feature = "float_rand")]
-                &mut None,
+                &mut rng(),
             );
             assert!(res.abs() < Float::from(2.0).pow(Float::from(-8)), "{s}");
         }
@@ -888,7 +888,7 @@ fn parse_rand_uniform() {
         &[],
         &[],
         #[cfg(feature = "float_rand")]
-        &mut Some(rng()),
+        &mut rng(),
     );
     #[cfg(feature = "complex")]
     assert!(n.imag.is_zero());
@@ -1188,7 +1188,7 @@ fn test_graph_vars() {
         false,
         10,
         #[cfg(feature = "float_rand")]
-        &mut None,
+        &mut rng(),
     )
     .unwrap()
     .unwrap();
@@ -1200,7 +1200,7 @@ fn test_graph_vars() {
         false,
         10,
         #[cfg(feature = "float_rand")]
-        &mut None,
+        &mut rng(),
     )
     .unwrap()
     .unwrap();
@@ -1464,7 +1464,7 @@ fn test_solve() {
             true,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .is_ok()
     );
@@ -1477,7 +1477,7 @@ fn test_solve() {
             true,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .is_ok()
     );
@@ -1490,7 +1490,7 @@ fn test_solve() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .unwrap(),
@@ -1502,7 +1502,7 @@ fn test_solve() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .unwrap(),
@@ -1535,7 +1535,7 @@ fn test_solve() {
             true,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .is_ok()
     );
@@ -1548,7 +1548,7 @@ fn test_solve() {
             true,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .is_ok()
     );
@@ -1561,7 +1561,7 @@ fn test_solve() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .unwrap(),
@@ -1573,7 +1573,7 @@ fn test_solve() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .unwrap(),
@@ -1735,7 +1735,7 @@ fn test_overwrite_var() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .is_none()
@@ -1751,7 +1751,7 @@ fn test_overwrite_var() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .is_none()
@@ -1767,7 +1767,7 @@ fn test_overwrite_var() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .is_none()
@@ -1783,7 +1783,7 @@ fn test_overwrite_var() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .is_none()
@@ -1799,7 +1799,7 @@ fn test_overwrite_var() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .is_none()
@@ -1817,7 +1817,7 @@ fn test_overwrite_var() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .is_none()
@@ -1833,7 +1833,7 @@ fn test_overwrite_var() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .is_none()
@@ -1849,7 +1849,7 @@ fn test_overwrite_var() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .is_none()
@@ -1865,7 +1865,7 @@ fn test_overwrite_var() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .is_none()
@@ -1881,7 +1881,7 @@ fn test_overwrite_var() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .is_none()
@@ -1902,7 +1902,7 @@ fn test_custom_var() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .is_none()
@@ -1918,7 +1918,7 @@ fn test_custom_var() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .is_none()
@@ -1933,7 +1933,7 @@ fn test_custom_var() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .unwrap(),
@@ -1945,7 +1945,7 @@ fn test_custom_var() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .unwrap(),
@@ -1974,7 +1974,7 @@ macro_rules! assert_fun {
                 true,
                 10,
                 #[cfg(feature = "float_rand")]
-                &mut None
+                &mut rng()
             )
             .unwrap()
             .is_none()
@@ -1990,7 +1990,7 @@ macro_rules! assert_fun {
                 true,
                 10,
                 #[cfg(feature = "float_rand")]
-                &mut None
+                &mut rng()
             )
             .unwrap()
             .is_none()
@@ -2033,7 +2033,7 @@ fn test_recursion() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .unwrap(),
@@ -2045,7 +2045,7 @@ fn test_recursion() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .unwrap(),
@@ -2091,7 +2091,7 @@ fn test_inner_functions() {
             true,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .is_none()
@@ -2105,7 +2105,7 @@ fn test_inner_functions() {
             true,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .is_none()
@@ -2121,7 +2121,7 @@ fn test_inner_functions() {
             true,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .is_none()
@@ -2135,7 +2135,7 @@ fn test_inner_functions() {
             true,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .is_none()
@@ -2150,7 +2150,7 @@ fn test_inner_functions() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .unwrap(),
@@ -2162,7 +2162,7 @@ fn test_inner_functions() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .unwrap(),
@@ -2227,7 +2227,7 @@ fn test_composed_functions() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .unwrap(),
@@ -2239,7 +2239,7 @@ fn test_composed_functions() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .unwrap(),
@@ -2287,7 +2287,7 @@ fn test_custom_functions() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .unwrap(),
@@ -2299,7 +2299,7 @@ fn test_custom_functions() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .unwrap(),
@@ -2318,7 +2318,7 @@ fn test_custom_functions() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .unwrap(),
@@ -2330,7 +2330,7 @@ fn test_custom_functions() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .unwrap(),
@@ -2357,7 +2357,7 @@ fn test_custom_functions() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .unwrap(),
@@ -2369,7 +2369,7 @@ fn test_custom_functions() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         )
         .unwrap()
         .unwrap(),
@@ -3082,7 +3082,7 @@ fn test_err() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         ),
         Tokens::rpn(
             "2.3.4",
@@ -3092,7 +3092,7 @@ fn test_err() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         ),
         Err(ParseError::UnknownToken("2.3.4"))
     );
@@ -3105,7 +3105,7 @@ fn test_err() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         ),
         Err(ParseError::MissingInput)
     );
@@ -3118,7 +3118,7 @@ fn test_err() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         ),
         Err(ParseError::AbsoluteBracketFailed)
     );
@@ -3131,7 +3131,7 @@ fn test_err() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         ),
         Err(ParseError::MissingInput)
     );
@@ -3144,7 +3144,7 @@ fn test_err() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         ),
         Err(ParseError::AbsoluteBracketFailed)
     );
@@ -3157,7 +3157,7 @@ fn test_err() {
             true,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         ),
         Err(ParseError::VarExpectedName)
     );
@@ -3170,7 +3170,7 @@ fn test_err() {
             true,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         ),
         Err(ParseError::VarExpectedName)
     );
@@ -3183,7 +3183,7 @@ fn test_err() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         ),
         Err(ParseError::MixedError)
     );
@@ -3196,7 +3196,7 @@ fn test_err() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         ),
         Err(ParseError::MixedError)
     );
@@ -3209,7 +3209,7 @@ fn test_err() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         ),
         Err(ParseError::ExtraInput)
     );
@@ -3222,7 +3222,7 @@ fn test_err() {
             false,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         ),
         Err(ParseError::ExtraInput)
     );
@@ -3235,7 +3235,7 @@ fn test_err() {
             true,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         ),
         Err(ParseError::UnknownToken("=-="))
     );
@@ -3248,7 +3248,7 @@ fn test_err() {
             true,
             10,
             #[cfg(feature = "float_rand")]
-            &mut None
+            &mut rng()
         ),
         Err(ParseError::UnknownToken("\\"))
     );

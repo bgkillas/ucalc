@@ -401,7 +401,7 @@ impl Compute<'_> {
         inner_vars: &mut Vec<Number>,
         stack: &mut Tokens,
         to_poly: Option<u16>,
-        #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
+        #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Option<Token> {
         let mut poly = Vec::with_capacity(8).into();
         let mut tokens = self.tokens.iter().enumerate();
@@ -471,7 +471,7 @@ impl Function {
         self,
         a: &mut [Token],
         buffer: &mut Poly,
-        #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
+        #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Option<()> {
         let ([a], b) = a.split_first_chunk_mut().unwrap();
         self.compute_poly_on(
@@ -487,7 +487,7 @@ impl Function {
         a: &mut Token,
         b: &mut [Token],
         buffer: &mut Poly,
-        #[cfg(feature = "float_rand")] rand: &mut Option<Rand>,
+        #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Option<()> {
         if let Token::Polynomial(a) = a {
             if b.len() == 1 {
