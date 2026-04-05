@@ -1350,6 +1350,24 @@ fn test_solve() {
         res(1)
     );
     assert_correct!(
+        infix("0.5^2+y^2=1"),
+        rpn("y 0.5 2 ^ y 2 ^ + 1 - solve"),
+        vec![
+            Token::Skip(9),
+            num(0.5),
+            num(2),
+            Operator::Pow.into(),
+            Token::InnerVar(0),
+            num(2),
+            Operator::Pow.into(),
+            Operator::Add.into(),
+            num(1),
+            Operator::Sub.into(),
+            Function::Solve.into()
+        ],
+        res(3).sqrt() / res(2)
+    );
+    assert_correct!(
         infix("solve(x,2-3x)"),
         rpn("x 2 3 x * - solve"),
         vec![

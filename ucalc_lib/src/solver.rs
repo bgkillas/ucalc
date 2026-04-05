@@ -154,9 +154,7 @@ impl Compute<'_> {
                                     #[cfg(feature = "float_rand")]
                                     rand,
                                 );
-                                if tokens.advance_by(last).is_err() {
-                                    return Some(None);
-                                }
+                                tokens.advance_by(last).unwrap();
                                 start += last;
                                 inverse.right_inverse(ret, num);
                             }
@@ -167,9 +165,7 @@ impl Compute<'_> {
                                 #[cfg(feature = "float_rand")]
                                 rand,
                             );
-                            if tokens.advance_back_by(i - last).is_err() {
-                                return Some(None);
-                            }
+                            tokens.advance_back_by(i - (start + last)).unwrap();
                             inverse.left_inverse(ret, num);
                         }
                     }
