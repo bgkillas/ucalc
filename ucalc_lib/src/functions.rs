@@ -298,6 +298,16 @@ impl Function {
                 | Self::While(ModifyInputs::Three)
         )
     }
+    pub fn is_volatile(self) -> bool {
+        #[cfg(feature = "float_rand")]
+        {
+            matches!(self, Self::RandUniform)
+        }
+        #[cfg(not(feature = "float_rand"))]
+        {
+            false
+        }
+    }
     pub fn inputs(self) -> NonZeroU8 {
         NonZeroU8::new(match self {
             Self::Not

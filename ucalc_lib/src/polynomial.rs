@@ -407,6 +407,7 @@ impl Compute<'_> {
         let mut tokens = self.tokens.iter().enumerate();
         while let Some((i, token)) = tokens.next() {
             match token {
+                &Token::FunctionConstant(_, _, _) => todo!(),
                 &Token::Function(operator, d) => {
                     if d.get() != 0 {
                         todo!()
@@ -445,7 +446,7 @@ impl Compute<'_> {
                         )?;
                     inner_vars.drain(end..);
                 }
-                Token::Num(n) => stack.push(n.clone().into()),
+                Token::Number(n) => stack.push(n.clone().into()),
                 &Token::InnerVar(index) => {
                     if Some(index) == to_poly {
                         stack.push(Polynomial::new().into())
@@ -491,7 +492,7 @@ impl Function {
     ) -> Option<()> {
         if let Token::Polynomial(a) = a {
             if b.len() == 1 {
-                if let Token::Num(n) = b[0].clone() {
+                if let Token::Number(n) = b[0].clone() {
                     self.poly_num(a, n);
                 } else {
                     let b = b[0].poly_ref();
@@ -512,7 +513,7 @@ impl Function {
                     }
                 }
             }
-        } else if let Token::Num(_) = b[0] {
+        } else if let Token::Number(_) = b[0] {
             assert_eq!(self.inputs().get(), 2);
             self.compute_on_2(
                 a.num_mut(),
@@ -520,7 +521,7 @@ impl Function {
                 #[cfg(feature = "float_rand")]
                 rand,
             )
-        } else if let Token::Num(c) = a {
+        } else if let Token::Number(c) = a {
             *a = self.num_poly(c, mem::take(b[0].poly_mut()))?.into()
         }
         Some(())

@@ -58,7 +58,7 @@ fn main() {
     } else if !quit {
         let mut readchar = ReadChar::default();
         let mut stdout = stdout().lock();
-        vars.push(Variable::new("@", Number::default()));
+        vars.push(Variable::new("@", Number::default(), false));
         readchar.init(&mut stdout).unwrap();
         let mut string = String::with_capacity(64);
         let mut last = None;

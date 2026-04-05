@@ -182,6 +182,7 @@ impl<'a> Compute<'a> {
         let mut tokens = self.tokens.iter().enumerate();
         while let Some((i, token)) = tokens.next() {
             match token {
+                &Token::FunctionConstant(_, _, _) => todo!(),
                 &Token::Function(operator, d) => {
                     if d.get() != 0 {
                         todo!()
@@ -313,7 +314,7 @@ impl<'a> Compute<'a> {
                     stack.push(Token::Skip(i + 1));
                     tokens.nth(to - 1);
                 }
-                Token::Num(n) => stack.push(n.clone().into()),
+                Token::Number(n) => stack.push(n.clone().into()),
                 Token::Polynomial(_) => unreachable!(),
             }
         }

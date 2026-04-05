@@ -26,262 +26,22 @@ pub struct Tokens(pub Vec<Token>);
 pub struct TokensSlice(pub [Token]);
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
-    Num(Number),
+    Number(Number),
     Polynomial(Box<Polynomial>),
     InnerVar(u16),
     GraphVar(u8),
     CustomVar(u16),
     CustomFun(u16, Derivative),
     Function(Function, Derivative),
+    FunctionConstant(Function, Derivative, [Constant; 4]),
     Skip(usize),
 }
 #[derive(Debug, PartialEq, Clone, Copy, Default)]
 #[repr(transparent)]
+pub struct Constant(u16);
+#[derive(Debug, PartialEq, Clone, Copy, Default)]
+#[repr(transparent)]
 pub struct Derivative(u8);
-impl Derivative {
-    pub fn get(self) -> u8 {
-        self.0 & 0b0011_1111
-    }
-    pub fn set_integral(&mut self) {
-        self.0 |= 0b1000_0000;
-    }
-    pub fn set_integral_twice_input(&mut self) {
-        self.0 |= 0b1100_0000;
-    }
-    pub fn set_derivative(&mut self) {
-        self.0 &= 0b0011_1111;
-    }
-    pub fn is_integral(self) -> bool {
-        self.0 & 0b1000_0000 == 0b1000_0000
-    }
-    pub fn is_integral_twice_input(self) -> bool {
-        self.0 & 0b1100_0000 == 0b1100_0000
-    }
-    pub fn is_derivative(self) -> bool {
-        self.0 & 0b1000_0000 == 0
-    }
-    pub fn from(n: u8) -> Result<Self, ParseError<'static>> {
-        if n > 0b0011_1111 {
-            Err(ParseError::TooManyDerivatives)
-        } else {
-            Ok(Self(n))
-        }
-    }
-    pub fn increment(&mut self) -> Result<(), ParseError<'static>> {
-        if self.get() == 0b0011_1111 {
-            Err(ParseError::TooManyDerivatives)
-        } else {
-            self.0 += 1;
-            Ok(())
-        }
-    }
-}
-impl Display for Token {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Num(n) => write!(f, "{}", n.real()),
-            &Self::Function(fun, _) => {
-                if let Ok(o) = Operator::try_from(fun) {
-                    write!(f, "{o}")
-                } else {
-                    write!(f, "{fun}")
-                }
-            }
-            _ => write!(f, "{self:?}"),
-        }
-    }
-}
-#[derive(Debug, PartialEq)]
-pub enum ParseError<'a> {
-    UnknownToken(&'a str),
-    LeftParenthesisNotFound,
-    RightParenthesisNotFound,
-    AbsoluteBracketFailed,
-    MissingInput,
-    ExtraInput,
-    InnerVarError,
-    VarExpectedName,
-    CommaError,
-    DerivativeError,
-    IntegralError,
-    MixedError,
-    TooManyDerivatives,
-    RpnUnsupported,
-    #[cfg(not(all(feature = "vector", feature = "matrix")))]
-    VecMatNotEnabled,
-}
-impl Display for Tokens {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", &self[..])
-    }
-}
-impl Display for TokensSlice {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let mut first = true;
-        for token in self.iter() {
-            if !first {
-                write!(f, " ")?;
-            }
-            write!(f, "{}", token)?;
-            first = false
-        }
-        Ok(())
-    }
-}
-impl Token {
-    fn greater_precedence(&self, o: Operator) -> bool {
-        match self {
-            Token::Num(_) => true,
-            Token::Polynomial(_) => {
-                unreachable!()
-            }
-            Token::InnerVar(_) => true,
-            Token::GraphVar(_) => true,
-            Token::CustomFun(_, _) => true,
-            Token::CustomVar(_) => true,
-            Token::Skip(_) => {
-                unreachable!()
-            }
-            Token::Function(f, _) => {
-                if let Ok(f) = Operator::try_from(*f) {
-                    (f == o && f.left_associative()) || f.precedence() > o.precedence()
-                } else {
-                    true
-                }
-            }
-        }
-    }
-}
-impl TokensSlice {
-    pub fn get_infix(
-        &self,
-        vars: &[Variable],
-        funs: &[FunctionVar],
-        graph_vars: &[&str],
-    ) -> impl Display {
-        fmt::from_fn(move |fmt| match self.last().unwrap() {
-            Token::Num(n) => write!(fmt, "{}", n.real()),
-            Token::Polynomial(_) => unreachable!(),
-            &Token::InnerVar(i) => write!(fmt, "{}", (b'n' + i as u8) as char),
-            &Token::GraphVar(i) => write!(fmt, "{}", graph_vars[i as usize]),
-            &Token::CustomFun(i, d) => {
-                let lasts = self.get_lasts(funs);
-                let mut first = true;
-                write!(fmt, "{}", funs[i as usize].name.as_ref().unwrap())?;
-                write_commas(fmt, d)?;
-                for arg in lasts {
-                    let arg = arg.get_infix(vars, funs, graph_vars);
-                    if first {
-                        first = false;
-                        write!(fmt, "{arg}")?;
-                    } else {
-                        write!(fmt, ",{arg}")?;
-                    }
-                }
-                write!(fmt, ")")
-            }
-            &Token::CustomVar(i) => write!(fmt, "{}", vars[i as usize].name.as_ref().unwrap()),
-            Token::Skip(_) => Ok(()),
-            &Token::Function(f, d) => {
-                let l = self.len() - 1;
-                let last = self[..l].get_last(funs);
-                if let Ok(o) = Operator::try_from(f) {
-                    let arg = self[last..l].get_infix(vars, funs, graph_vars);
-                    let arg = if self[l - 1].greater_precedence(o)
-                        || (f.is_chainable()
-                            && if let Token::Function(f, _) = self[l - 1] {
-                                f.is_chainable()
-                            } else {
-                                false
-                            }) {
-                        format_args!("{arg}")
-                    } else {
-                        format_args!("({arg})")
-                    };
-                    if o.inputs().get() == 2 {
-                        let arg1 = self[..last].get_infix(vars, funs, graph_vars);
-                        let arg1 = if self[last - 1].greater_precedence(o) {
-                            format_args!("{arg1}")
-                        } else {
-                            format_args!("({arg1})")
-                        };
-                        write!(fmt, "{arg1}{o}{arg}")
-                    } else if o.unary_left() {
-                        write!(fmt, "{o}{arg}")
-                    } else {
-                        write!(fmt, "{arg}{o}")
-                    }
-                } else {
-                    let lasts = self.get_lasts(funs);
-                    let mut first = true;
-                    write!(fmt, "{f}(")?;
-                    write_commas(fmt, d)?;
-                    for arg in lasts {
-                        let arg = arg.get_infix(vars, funs, graph_vars);
-                        if first {
-                            first = false;
-                            write!(fmt, "{arg}")?;
-                        } else {
-                            write!(fmt, ",{arg}")?;
-                        }
-                    }
-                    write!(fmt, ")")
-                }
-            }
-        })
-    }
-    pub fn get_rpn(
-        &self,
-        vars: &[Variable],
-        funs: &[FunctionVar],
-        graph_vars: &[&str],
-    ) -> impl Display {
-        fmt::from_fn(move |fmt| {
-            let mut first = true;
-            for token in self.iter() {
-                if !first {
-                    write!(fmt, " ")?;
-                }
-                first = false;
-                match token {
-                    Token::Num(n) => write!(fmt, "{}", n.real())?,
-                    Token::Polynomial(_) => unreachable!(),
-                    &Token::InnerVar(i) => write!(fmt, "{}", (b'n' + i as u8) as char)?,
-                    &Token::GraphVar(i) => write!(fmt, "{}", graph_vars[i as usize])?,
-                    &Token::CustomFun(i, d) => {
-                        write!(fmt, "{}", funs[i as usize].name.as_ref().unwrap())?;
-                        write_commas(fmt, d)?;
-                    }
-                    &Token::CustomVar(i) => {
-                        write!(fmt, "{}", vars[i as usize].name.as_ref().unwrap())?
-                    }
-                    &Token::Function(fun, d) => {
-                        if let Ok(o) = Operator::try_from(fun) {
-                            write!(fmt, "{o}")?;
-                        } else {
-                            write!(fmt, "{fun}")?;
-                            write_commas(fmt, d)?;
-                        }
-                    }
-                    Token::Skip(_) => first = true,
-                }
-            }
-            Ok(())
-        })
-    }
-}
-fn write_commas(fmt: &mut Formatter, d: Derivative) -> fmt::Result {
-    if d.is_derivative() {
-        for _ in 0..d.get() {
-            write!(fmt, "\'")?;
-        }
-    } else {
-        for _ in 0..d.get() {
-            write!(fmt, "`")?;
-        }
-    }
-    Ok(())
-}
 impl Tokens {
     pub fn get_infix(
         &self,
@@ -299,9 +59,17 @@ impl Tokens {
     ) -> impl Display {
         self[..].get_rpn(vars, funs, graph_vars)
     }
+    fn simplify_run(
+        &mut self,
+        _vars: &mut Variables,
+        _funs: &mut Functions,
+        #[cfg(feature = "float_rand")] _rand: &mut Rand,
+    ) -> bool {
+        false
+    }
     fn end(
         mut self,
-        inputs: Option<(&str, bool)>,
+        inputs: Option<Option<&str>>,
         vars: &mut Variables,
         funs: &mut Functions,
         #[cfg(feature = "float_rand")] rand: &mut Rand,
@@ -309,8 +77,14 @@ impl Tokens {
         if self.is_empty() {
             self.push(Number::default().into());
         }
-        if let Some((name, is_fun)) = inputs {
-            if !is_fun {
+        while self.simplify_run(
+            vars,
+            funs,
+            #[cfg(feature = "float_rand")]
+            rand,
+        ) {}
+        if let Some(name) = inputs {
+            if let Some(name) = name {
                 let val = self.compute(
                     &[],
                     funs,
@@ -321,15 +95,15 @@ impl Tokens {
                 if let Some(v) = vars.position(name) {
                     vars[v as usize].value = val;
                 } else {
-                    vars.push(Variable::new(name, val));
+                    vars.push(Variable::new(name, val, false));
                 }
                 funs.iter_mut().for_each(|v| {
                     if v.name.as_ref().is_some_and(|n| n.as_ref() == name) {
                         v.name = None;
                     }
                 });
-            } else if let Some(v) = funs.position(name) {
-                funs[v as usize].tokens = self;
+            } else if let Some(v) = funs.last_mut() {
+                v.tokens = self;
             } else {
                 unreachable!()
             }
@@ -362,9 +136,13 @@ impl Tokens {
                     };
                     if !inner_vars.is_empty() {
                         funs.add(vars, name, NonZeroU8::new(inner_vars.len() as u8).unwrap());
-                        inputs = Some((name, true));
+                        inputs = Some(None);
                     } else {
-                        inputs = Some((name, false));
+                        inner_vars.pop();
+                        if !inner_vars.is_empty() {
+                            return Err(ParseError::InnerVarError);
+                        }
+                        inputs = Some(Some(name));
                     }
                 }
                 "=" => return Err(ParseError::RpnUnsupported),
@@ -802,9 +580,13 @@ impl Tokens {
                                     name,
                                     NonZeroU8::new(inner_vars.len() as u8).unwrap(),
                                 );
-                                inputs = Some((name, true));
+                                inputs = Some(None);
                             } else {
-                                inputs = Some((name, false));
+                                inner_vars.pop();
+                                if !inner_vars.is_empty() {
+                                    return Err(ParseError::InnerVarError);
+                                }
+                                inputs = Some(Some(name));
                             }
                         } else {
                             match operator {
@@ -859,6 +641,9 @@ impl Tokens {
                 tokens.push_operator(operator, &mut inner_vars, &operator_stack, funs)?;
             }
         }
+        if !inner_vars.is_empty() && matches!(inputs, None | Some(Some(_))) {
+            return Err(ParseError::InnerVarError);
+        }
         if let Some(res) = tokens.end(
             inputs,
             vars,
@@ -866,9 +651,6 @@ impl Tokens {
             #[cfg(feature = "float_rand")]
             rand,
         ) {
-            if !inner_vars.is_empty() {
-                return Err(ParseError::InnerVarError);
-            }
             Ok(Some(res))
         } else {
             Ok(None)
@@ -1126,9 +908,256 @@ impl TokensSlice {
         ret
     }
 }
+impl Derivative {
+    pub fn get(self) -> u8 {
+        self.0 & 0b0011_1111
+    }
+    pub fn set_integral(&mut self) {
+        self.0 |= 0b1000_0000;
+    }
+    pub fn set_integral_twice_input(&mut self) {
+        self.0 |= 0b1100_0000;
+    }
+    pub fn set_derivative(&mut self) {
+        self.0 &= 0b0011_1111;
+    }
+    pub fn is_integral(self) -> bool {
+        self.0 & 0b1000_0000 == 0b1000_0000
+    }
+    pub fn is_integral_twice_input(self) -> bool {
+        self.0 & 0b1100_0000 == 0b1100_0000
+    }
+    pub fn is_derivative(self) -> bool {
+        self.0 & 0b1000_0000 == 0
+    }
+    pub fn from(n: u8) -> Result<Self, ParseError<'static>> {
+        if n > 0b0011_1111 {
+            Err(ParseError::TooManyDerivatives)
+        } else {
+            Ok(Self(n))
+        }
+    }
+    pub fn increment(&mut self) -> Result<(), ParseError<'static>> {
+        if self.get() == 0b0011_1111 {
+            Err(ParseError::TooManyDerivatives)
+        } else {
+            self.0 += 1;
+            Ok(())
+        }
+    }
+}
+impl Display for Token {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Number(n) => write!(f, "{}", n),
+            &Self::Function(fun, _) => {
+                if let Ok(o) = Operator::try_from(fun) {
+                    write!(f, "{o}")
+                } else {
+                    write!(f, "{fun}")
+                }
+            }
+            _ => write!(f, "{self:?}"),
+        }
+    }
+}
+#[derive(Debug, PartialEq)]
+pub enum ParseError<'a> {
+    UnknownToken(&'a str),
+    LeftParenthesisNotFound,
+    RightParenthesisNotFound,
+    AbsoluteBracketFailed,
+    MissingInput,
+    ExtraInput,
+    InnerVarError,
+    VarExpectedName,
+    CommaError,
+    DerivativeError,
+    IntegralError,
+    MixedError,
+    TooManyDerivatives,
+    RpnUnsupported,
+    #[cfg(not(all(feature = "vector", feature = "matrix")))]
+    VecMatNotEnabled,
+}
+impl Display for Tokens {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", &self[..])
+    }
+}
+impl Display for TokensSlice {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let mut first = true;
+        for token in self.iter() {
+            if !first {
+                write!(f, " ")?;
+            }
+            write!(f, "{}", token)?;
+            first = false
+        }
+        Ok(())
+    }
+}
+impl Token {
+    fn greater_precedence(&self, o: Operator) -> bool {
+        match self {
+            Token::Number(_) => true,
+            Token::Polynomial(_) => {
+                unreachable!()
+            }
+            Token::InnerVar(_) => true,
+            Token::GraphVar(_) => true,
+            Token::CustomFun(_, _) => true,
+            Token::CustomVar(_) => true,
+            Token::Skip(_) => {
+                unreachable!()
+            }
+            &Token::FunctionConstant(_, _, _) => todo!(),
+            &Token::Function(f, _) => {
+                if let Ok(f) = Operator::try_from(f) {
+                    (f == o && f.left_associative()) || f.precedence() > o.precedence()
+                } else {
+                    true
+                }
+            }
+        }
+    }
+}
+impl TokensSlice {
+    pub fn get_infix(
+        &self,
+        vars: &[Variable],
+        funs: &[FunctionVar],
+        graph_vars: &[&str],
+    ) -> impl Display {
+        fmt::from_fn(move |fmt| match self.last().unwrap() {
+            Token::Number(n) => write!(fmt, "{}", n),
+            Token::Polynomial(_) => unreachable!(),
+            &Token::InnerVar(i) => write!(fmt, "{}", (b'n' + i as u8) as char),
+            &Token::GraphVar(i) => write!(fmt, "{}", graph_vars[i as usize]),
+            &Token::CustomFun(i, d) => {
+                let lasts = self.get_lasts(funs);
+                let mut first = true;
+                write!(fmt, "{}", funs[i as usize].name.as_ref().unwrap())?;
+                write_commas(fmt, d)?;
+                for arg in lasts {
+                    let arg = arg.get_infix(vars, funs, graph_vars);
+                    if first {
+                        first = false;
+                        write!(fmt, "{arg}")?;
+                    } else {
+                        write!(fmt, ",{arg}")?;
+                    }
+                }
+                write!(fmt, ")")
+            }
+            &Token::CustomVar(i) => write!(fmt, "{}", vars[i as usize].name.as_ref().unwrap()),
+            Token::Skip(_) => Ok(()),
+            &Token::FunctionConstant(_, _, _) => todo!(),
+            &Token::Function(f, d) => {
+                let l = self.len() - 1;
+                let last = self[..l].get_last(funs);
+                if let Ok(o) = Operator::try_from(f) {
+                    let arg = self[last..l].get_infix(vars, funs, graph_vars);
+                    let arg = if self[l - 1].greater_precedence(o)
+                        || (f.is_chainable()
+                            && if let Token::Function(f, _) = self[l - 1] {
+                                f.is_chainable()
+                            } else {
+                                false
+                            }) {
+                        format_args!("{arg}")
+                    } else {
+                        format_args!("({arg})")
+                    };
+                    if o.inputs().get() == 2 {
+                        let arg1 = self[..last].get_infix(vars, funs, graph_vars);
+                        let arg1 = if self[last - 1].greater_precedence(o) {
+                            format_args!("{arg1}")
+                        } else {
+                            format_args!("({arg1})")
+                        };
+                        write!(fmt, "{arg1}{o}{arg}")
+                    } else if o.unary_left() {
+                        write!(fmt, "{o}{arg}")
+                    } else {
+                        write!(fmt, "{arg}{o}")
+                    }
+                } else {
+                    let lasts = self.get_lasts(funs);
+                    let mut first = true;
+                    write!(fmt, "{f}(")?;
+                    write_commas(fmt, d)?;
+                    for arg in lasts {
+                        let arg = arg.get_infix(vars, funs, graph_vars);
+                        if first {
+                            first = false;
+                            write!(fmt, "{arg}")?;
+                        } else {
+                            write!(fmt, ",{arg}")?;
+                        }
+                    }
+                    write!(fmt, ")")
+                }
+            }
+        })
+    }
+    pub fn get_rpn(
+        &self,
+        vars: &[Variable],
+        funs: &[FunctionVar],
+        graph_vars: &[&str],
+    ) -> impl Display {
+        fmt::from_fn(move |fmt| {
+            let mut first = true;
+            for token in self.iter() {
+                if !first {
+                    write!(fmt, " ")?;
+                }
+                first = false;
+                match token {
+                    Token::Number(n) => write!(fmt, "{}", n)?,
+                    Token::Polynomial(_) => unreachable!(),
+                    &Token::InnerVar(i) => write!(fmt, "{}", (b'n' + i as u8) as char)?,
+                    &Token::GraphVar(i) => write!(fmt, "{}", graph_vars[i as usize])?,
+                    &Token::CustomFun(i, d) => {
+                        write!(fmt, "{}", funs[i as usize].name.as_ref().unwrap())?;
+                        write_commas(fmt, d)?;
+                    }
+                    &Token::CustomVar(i) => {
+                        write!(fmt, "{}", vars[i as usize].name.as_ref().unwrap())?
+                    }
+                    &Token::FunctionConstant(_, _, _) => todo!(),
+                    &Token::Function(fun, d) => {
+                        if let Ok(o) = Operator::try_from(fun) {
+                            write!(fmt, "{o}")?;
+                        } else {
+                            write!(fmt, "{fun}")?;
+                            write_commas(fmt, d)?;
+                        }
+                    }
+                    Token::Skip(_) => first = true,
+                }
+            }
+            Ok(())
+        })
+    }
+}
+fn write_commas(fmt: &mut Formatter, d: Derivative) -> fmt::Result {
+    if d.is_derivative() {
+        for _ in 0..d.get() {
+            write!(fmt, "\'")?;
+        }
+    } else {
+        for _ in 0..d.get() {
+            write!(fmt, "`")?;
+        }
+    }
+    Ok(())
+}
 impl From<Number> for Token {
     fn from(value: Number) -> Self {
-        Self::Num(value)
+        Self::Number(value)
     }
 }
 impl From<Operator> for Token {
@@ -1148,7 +1177,7 @@ impl From<Polynomial> for Token {
 }
 impl Token {
     pub fn num(self) -> Number {
-        let Token::Num(num) = self else {
+        let Token::Number(num) = self else {
             unreachable!()
         };
         num
@@ -1160,7 +1189,7 @@ impl Token {
         *num
     }
     pub fn num_ref(&self) -> &Number {
-        let Token::Num(num) = self else {
+        let Token::Number(num) = self else {
             unreachable!()
         };
         num
@@ -1178,7 +1207,7 @@ impl Token {
         *n
     }
     pub fn num_mut(&mut self) -> &mut Number {
-        let Token::Num(num) = self else {
+        let Token::Number(num) = self else {
             unreachable!()
         };
         num
