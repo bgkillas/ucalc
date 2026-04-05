@@ -17,22 +17,33 @@ use ucalc_lib::{Functions, Number, Tokens, Variable, Variables, get_help};
 #[cfg(feature = "float_rand")]
 use ucalc_lib::{Rand, rng};
 use ucalc_numbers::FloatTrait;
+#[derive(Clone, Copy)]
+pub struct Options {
+    rpn: bool,
+    base_input: u8,
+    base_output: u8,
+}
+impl Default for Options {
+    fn default() -> Self {
+        Self {
+            rpn: false,
+            base_input: 10,
+            base_output: 10,
+        }
+    }
+}
 fn main() {
     let colors = Colors::default();
     let mut vars = Variables::default();
     let mut funs = Functions::default();
-    let mut infix = true;
     let mut quit = false;
-    let mut base_input = 10;
-    let mut base_output = 10;
+    let mut options = Options::default();
     #[cfg(feature = "float_rand")]
     let mut rand = rng();
     for arg in args().skip(1) {
         run_line(
             arg.as_str(),
-            &mut infix,
-            &mut base_input,
-            &mut base_output,
+            &mut options,
             &mut vars,
             &mut funs,
             &mut quit,
@@ -45,9 +56,7 @@ fn main() {
         stdin.lines().for_each(|l| {
             run_line(
                 l.unwrap().as_str(),
-                &mut infix,
-                &mut base_input,
-                &mut base_output,
+                &mut options,
                 &mut vars,
                 &mut funs,
                 &mut false,
@@ -71,9 +80,7 @@ fn main() {
                         line,
                         &mut vars,
                         &mut funs,
-                        infix,
-                        base_input,
-                        base_output,
+                        options,
                         string,
                         &colors,
                         #[cfg(feature = "float_rand")]
@@ -120,9 +127,7 @@ fn process_line(
     line: &str,
     vars: &mut Variables,
     funs: &mut Functions,
-    infix: bool,
-    base_input: u8,
-    base_output: u8,
+    options: Options,
     str: &mut String,
     colors: &Colors,
     #[cfg(feature = "float_rand")] rand: &mut Rand,
@@ -136,25 +141,25 @@ fn process_line(
             None
         }
         _ => {
-            match if infix {
-                Tokens::infix(
-                    line,
-                    vars,
-                    funs,
-                    &[],
-                    false,
-                    base_input,
-                    #[cfg(feature = "float_rand")]
-                    rand,
-                )
-            } else {
+            match if options.rpn {
                 Tokens::rpn(
                     line,
                     vars,
                     funs,
                     &[],
                     false,
-                    base_input,
+                    options.base_input,
+                    #[cfg(feature = "float_rand")]
+                    rand,
+                )
+            } else {
+                Tokens::infix(
+                    line,
+                    vars,
+                    funs,
+                    &[],
+                    false,
+                    options.base_input,
                     #[cfg(feature = "float_rand")]
                     rand,
                 )
@@ -167,8 +172,8 @@ fn process_line(
                         #[cfg(feature = "float_rand")]
                         rand,
                     );
-                    write!(str, "{}", compute.get_closest_fraction(base_output))?;
-                    write!(str, "{}", compute.to_string_radix(base_output))?;
+                    write!(str, "{}", compute.get_closest_fraction(options.base_output))?;
+                    write!(str, "{}", compute.to_string_radix(options.base_output))?;
                     Some(compute)
                 }
                 Ok(None) => None,
@@ -183,46 +188,44 @@ fn process_line(
 #[allow(clippy::too_many_arguments)]
 fn run_line(
     line: &str,
-    infix: &mut bool,
-    base_input: &mut u8,
-    base_output: &mut u8,
+    options: &mut Options,
     vars: &mut Variables,
     funs: &mut Functions,
     quit: &mut bool,
     #[cfg(feature = "float_rand")] rand: &mut Rand,
 ) {
     if line == "--rpn" {
-        *infix = false;
+        options.rpn = true;
         return;
     }
     if let Some(s) = line.strip_prefix("--base_input=") {
-        *base_input = s.parse().unwrap();
+        options.base_input = s.parse().unwrap();
         return;
     }
     if let Some(s) = line.strip_prefix("--base_output=") {
-        *base_output = s.parse().unwrap();
+        options.base_output = s.parse().unwrap();
         return;
     }
     *quit = true;
-    match if *infix {
-        Tokens::infix(
-            line,
-            vars,
-            funs,
-            &[],
-            false,
-            *base_input,
-            #[cfg(feature = "float_rand")]
-            rand,
-        )
-    } else {
+    match if options.rpn {
         Tokens::rpn(
             line,
             vars,
             funs,
             &[],
             false,
-            *base_input,
+            options.base_input,
+            #[cfg(feature = "float_rand")]
+            rand,
+        )
+    } else {
+        Tokens::infix(
+            line,
+            vars,
+            funs,
+            &[],
+            false,
+            options.base_input,
             #[cfg(feature = "float_rand")]
             rand,
         )
@@ -241,8 +244,8 @@ fn run_line(
                 )
             });
             //let compute = tokens.compute(&[], funs, vars, #[cfg(feature="float_rand")]rand);
-            print!("{}", compute.get_closest_fraction(*base_output));
-            println!("{}", compute.to_string_radix(*base_output));
+            print!("{}", compute.get_closest_fraction(options.base_output));
+            println!("{}", compute.to_string_radix(options.base_output));
         }
         Ok(None) => {}
         Err(e) => println!("{e:?}"),

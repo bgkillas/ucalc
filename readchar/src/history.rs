@@ -97,7 +97,8 @@ impl LocalHistory {
                 .history
                 .as_bytes()
                 .get(self.char_index + 1 + cur.len())
-                .map(|c| *c != b'\n')
+                .copied()
+                .map(|c| c != b'\n')
                 .unwrap_or(false)
     }
     pub(crate) fn history_modified(&self, cur: &str) -> bool {

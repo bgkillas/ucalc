@@ -1,13 +1,13 @@
-use crate::compute::Compute;
+use crate::Number;
+use crate::compute::{Compute, StackToken};
 #[cfg(feature = "float_rand")]
 use crate::rand::Rand;
-use crate::{Number, Tokens};
 use ucalc_numbers::{Float, FloatFunctions, FloatTrait, UInteger};
 impl Compute<'_> {
     pub fn numerical_solve(
         self,
         inner_vars: &mut Vec<Number>,
-        stack: &mut Tokens,
+        stack: &mut Vec<StackToken>,
         point: Number,
         var: usize,
         #[cfg(feature = "float_rand")] rand: &mut Rand,
@@ -38,7 +38,7 @@ impl Compute<'_> {
     pub fn numerical_derivative(
         self,
         inner_vars: &mut Vec<Number>,
-        stack: &mut Tokens,
+        stack: &mut Vec<StackToken>,
         point: Number,
         var: usize,
         #[cfg(feature = "float_rand")] rand: &mut Rand,
@@ -63,7 +63,7 @@ impl Compute<'_> {
     pub fn numerical_nth_derivative(
         self,
         inner_vars: &mut Vec<Number>,
-        stack: &mut Tokens,
+        stack: &mut Vec<StackToken>,
         n: u8,
         point: Number,
         var: usize,
@@ -105,7 +105,7 @@ impl Compute<'_> {
     pub fn numerical_integral(
         self,
         inner_vars: &mut Vec<Number>,
-        stack: &mut Tokens,
+        stack: &mut Vec<StackToken>,
         start: Number,
         end: Number,
         var: usize,
@@ -139,7 +139,7 @@ impl Compute<'_> {
     pub fn numerical_nth_integral(
         self,
         inner_vars: &mut Vec<Number>,
-        stack: &mut Tokens,
+        stack: &mut Vec<StackToken>,
         n: u8,
         start: Number,
         end: Number,
@@ -204,7 +204,7 @@ impl Compute<'_> {
     pub fn numerical_differential(
         self,
         inner_vars: &mut Vec<Number>,
-        stack: &mut Tokens,
+        stack: &mut Vec<StackToken>,
         x_0: Number,
         t_0: Number,
         t_1: Number,

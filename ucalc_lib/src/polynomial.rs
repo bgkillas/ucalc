@@ -1,8 +1,8 @@
-use crate::compute::Compute;
+use crate::compute::{Compute, StackToken};
 use crate::inverse::Inverse;
 #[cfg(feature = "float_rand")]
 use crate::rand::Rand;
-use crate::{Function, Number, Token, Tokens};
+use crate::{Function, Number, Token};
 use std::mem;
 #[cfg(feature = "complex")]
 use ucalc_numbers::ComplexFunctions;
@@ -399,15 +399,14 @@ impl Compute<'_> {
     pub fn compute_polynomial(
         self,
         inner_vars: &mut Vec<Number>,
-        stack: &mut Tokens,
+        stack: &mut Vec<StackToken>,
         to_poly: Option<u16>,
         #[cfg(feature = "float_rand")] rand: &mut Rand,
-    ) -> Option<Token> {
+    ) -> Option<StackToken> {
         let mut poly = Vec::with_capacity(8).into();
         let mut tokens = self.tokens.iter().enumerate();
         while let Some((i, token)) = tokens.next() {
             match token {
-                &Token::FunctionConstant(_, _, _) => todo!(),
                 &Token::Function(operator, d) => {
                     if d.get() != 0 {
                         todo!()
@@ -458,10 +457,9 @@ impl Compute<'_> {
                     stack.push(self.graph_vars[index as usize].clone().into())
                 }
                 &Token::Skip(to) => {
-                    stack.push(Token::Skip(i + 1));
+                    stack.push(StackToken::Skip(i + 1));
                     tokens.nth(to - 1);
                 }
-                Token::Polynomial(_) => unreachable!(),
             }
         }
         Some(stack.pop().unwrap())
@@ -470,7 +468,7 @@ impl Compute<'_> {
 impl Function {
     pub fn compute_poly(
         self,
-        a: &mut [Token],
+        a: &mut [StackToken],
         buffer: &mut Poly,
         #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Option<()> {
@@ -485,15 +483,15 @@ impl Function {
     }
     fn compute_poly_on(
         self,
-        a: &mut Token,
-        b: &mut [Token],
+        a: &mut StackToken,
+        b: &mut [StackToken],
         buffer: &mut Poly,
         #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Option<()> {
-        if let Token::Polynomial(a) = a {
+        if let StackToken::Polynomial(a) = a {
             if b.len() == 1 {
-                if let Token::Number(n) = b[0].clone() {
-                    self.poly_num(a, n);
+                if let StackToken::Number(n) = &b[0] {
+                    self.poly_num(a, n.clone());
                 } else {
                     let b = b[0].poly_ref();
                     self.poly(a, b, buffer);
@@ -513,7 +511,7 @@ impl Function {
                     }
                 }
             }
-        } else if let Token::Number(_) = b[0] {
+        } else if let StackToken::Number(_) = b[0] {
             assert_eq!(self.inputs().get(), 2);
             self.compute_on_2(
                 a.num_mut(),
@@ -521,7 +519,7 @@ impl Function {
                 #[cfg(feature = "float_rand")]
                 rand,
             )
-        } else if let Token::Number(c) = a {
+        } else if let StackToken::Number(c) = a {
             *a = self.num_poly(c, mem::take(b[0].poly_mut()))?.into()
         }
         Some(())

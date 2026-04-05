@@ -2,7 +2,6 @@
 use crate::UNITS;
 use crate::functions::Function;
 use crate::operators::{Bracket, Operator};
-use crate::polynomial::Polynomial;
 #[cfg(feature = "float_rand")]
 use crate::rand::Rand;
 use crate::variable::{Functions, Variables};
@@ -27,18 +26,13 @@ pub struct TokensSlice(pub [Token]);
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     Number(Number),
-    Polynomial(Box<Polynomial>),
     InnerVar(u16),
     GraphVar(u8),
     CustomVar(u16),
     CustomFun(u16, Derivative),
     Function(Function, Derivative),
-    FunctionConstant(Function, Derivative, [Constant; 4]),
     Skip(usize),
 }
-#[derive(Debug, PartialEq, Clone, Copy, Default)]
-#[repr(transparent)]
-pub struct Constant(u16);
 #[derive(Debug, PartialEq, Clone, Copy, Default)]
 #[repr(transparent)]
 pub struct Derivative(u8);
@@ -161,7 +155,7 @@ impl Tokens {
                         .ok_or(ParseError::ExtraInput)?;
                     tokens.push(Token::CustomFun(i, Derivative::default()))
                 }
-                _ if let Some(i) = inner_vars.iter().position(|v| *v == token) => {
+                _ if let Some(i) = inner_vars.iter().copied().position(|v| v == token) => {
                     open_inputs += 1;
                     tokens.push(Token::InnerVar(i as u16))
                 }
@@ -169,7 +163,7 @@ impl Tokens {
                     open_inputs += 1;
                     tokens.push(Token::CustomVar(i))
                 }
-                _ if let Some(i) = graph_vars.iter().position(|v| v == &token) => {
+                _ if let Some(i) = graph_vars.iter().copied().position(|v| v == token) => {
                     open_inputs += 1;
                     tokens.push(Token::GraphVar(i as u8))
                 }
@@ -228,7 +222,7 @@ impl Tokens {
                 }
                 _ if token.chars().all(|c| c.is_alphabetic()) => inner_vars.push(token),
                 #[cfg(feature = "units")]
-                _ if let Some(i) = UNITS.iter().position(|s| *s == token) => {
+                _ if let Some(i) = UNITS.iter().copied().position(|s| s == token) => {
                     open_inputs += 1;
                     tokens.push(Units::from(i).into())
                 }
@@ -319,7 +313,7 @@ impl Tokens {
                             operator_stack.push(Operator::Custom(i, Derivative::default()));
                             open_input = false;
                             fn_inputs.push(NonZeroU8::new(1).unwrap());
-                        } else if let Some(i) = inner_vars.iter().position(|v| *v == s) {
+                        } else if let Some(i) = inner_vars.iter().copied().position(|v| v == s) {
                             tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
                             tokens.push(Token::InnerVar(i as u16));
                             open_input = true;
@@ -327,7 +321,7 @@ impl Tokens {
                             tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
                             tokens.push(Token::CustomVar(i));
                             open_input = true;
-                        } else if let Some(i) = graph_vars.iter().position(|v| *v == s) {
+                        } else if let Some(i) = graph_vars.iter().copied().position(|v| v == s) {
                             tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
                             tokens.push(Token::GraphVar(i as u8));
                             open_input = true;
@@ -1002,9 +996,6 @@ impl Token {
     fn greater_precedence(&self, o: Operator) -> bool {
         match self {
             Token::Number(_) => true,
-            Token::Polynomial(_) => {
-                unreachable!()
-            }
             Token::InnerVar(_) => true,
             Token::GraphVar(_) => true,
             Token::CustomFun(_, _) => true,
@@ -1012,7 +1003,6 @@ impl Token {
             Token::Skip(_) => {
                 unreachable!()
             }
-            &Token::FunctionConstant(_, _, _) => todo!(),
             &Token::Function(f, _) => {
                 if let Ok(f) = Operator::try_from(f) {
                     (f == o && f.left_associative()) || f.precedence() > o.precedence()
@@ -1032,7 +1022,6 @@ impl TokensSlice {
     ) -> impl Display {
         fmt::from_fn(move |fmt| match self.last().unwrap() {
             Token::Number(n) => write!(fmt, "{}", n),
-            Token::Polynomial(_) => unreachable!(),
             &Token::InnerVar(i) => write!(fmt, "{}", (b'n' + i as u8) as char),
             &Token::GraphVar(i) => write!(fmt, "{}", graph_vars[i as usize]),
             &Token::CustomFun(i, d) => {
@@ -1053,7 +1042,6 @@ impl TokensSlice {
             }
             &Token::CustomVar(i) => write!(fmt, "{}", vars[i as usize].name.as_ref().unwrap()),
             Token::Skip(_) => Ok(()),
-            &Token::FunctionConstant(_, _, _) => todo!(),
             &Token::Function(f, d) => {
                 let l = self.len() - 1;
                 let last = self[..l].get_last(funs);
@@ -1117,7 +1105,6 @@ impl TokensSlice {
                 first = false;
                 match token {
                     Token::Number(n) => write!(fmt, "{}", n)?,
-                    Token::Polynomial(_) => unreachable!(),
                     &Token::InnerVar(i) => write!(fmt, "{}", (b'n' + i as u8) as char)?,
                     &Token::GraphVar(i) => write!(fmt, "{}", graph_vars[i as usize])?,
                     &Token::CustomFun(i, d) => {
@@ -1127,7 +1114,6 @@ impl TokensSlice {
                     &Token::CustomVar(i) => {
                         write!(fmt, "{}", vars[i as usize].name.as_ref().unwrap())?
                     }
-                    &Token::FunctionConstant(_, _, _) => todo!(),
                     &Token::Function(fun, d) => {
                         if let Ok(o) = Operator::try_from(fun) {
                             write!(fmt, "{o}")?;
@@ -1170,65 +1156,42 @@ impl From<Function> for Token {
         Self::Function(value, Derivative::default())
     }
 }
-impl From<Polynomial> for Token {
-    fn from(value: Polynomial) -> Self {
-        Self::Polynomial(value.into())
-    }
-}
 impl Token {
     pub fn num(self) -> Number {
-        let Token::Number(num) = self else {
+        let Self::Number(num) = self else {
             unreachable!()
         };
         num
     }
     pub fn skip(&self) -> usize {
-        let Token::Skip(num) = self else {
+        let &Self::Skip(num) = self else {
             unreachable!()
         };
-        *num
+        num
     }
     pub fn num_ref(&self) -> &Number {
-        let Token::Number(num) = self else {
+        let Self::Number(num) = self else {
             unreachable!()
         };
         num
     }
     pub fn inner_var(self) -> u16 {
-        let Token::InnerVar(n) = self else {
+        let Self::InnerVar(n) = self else {
             unreachable!()
         };
         n
     }
     pub fn inner_var_ref(&self) -> u16 {
-        let Token::InnerVar(n) = self else {
+        let &Self::InnerVar(n) = self else {
             unreachable!()
         };
-        *n
+        n
     }
     pub fn num_mut(&mut self) -> &mut Number {
-        let Token::Number(num) = self else {
+        let Self::Number(num) = self else {
             unreachable!()
         };
         num
-    }
-    pub fn poly_mut(&mut self) -> &mut Polynomial {
-        let Token::Polynomial(poly) = self else {
-            unreachable!()
-        };
-        poly
-    }
-    pub fn poly(self) -> Box<Polynomial> {
-        let Token::Polynomial(poly) = self else {
-            unreachable!()
-        };
-        poly
-    }
-    pub fn poly_ref(&self) -> &Polynomial {
-        let Token::Polynomial(poly) = self else {
-            unreachable!()
-        };
-        poly
     }
 }
 impl Deref for Tokens {

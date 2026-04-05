@@ -1,4 +1,5 @@
 use crate::parse::{Token, Tokens, TokensSlice};
+use crate::polynomial::Polynomial;
 #[cfg(feature = "float_rand")]
 use crate::rand::Rand;
 use crate::{FunctionVar, Number, Variable};
@@ -22,7 +23,7 @@ impl Tokens {
     ) -> Number {
         let cap = self.len() + funs.iter().map(|c| c.tokens.len()).sum::<usize>();
         let mut inner_vars = Vec::with_capacity(cap);
-        let mut stack = Tokens(Vec::with_capacity(cap));
+        let mut stack = Vec::with_capacity(cap);
         self.compute_buffer(
             &mut inner_vars,
             vars,
@@ -39,7 +40,7 @@ impl Tokens {
         vars: &[Number],
         funs: &[FunctionVar],
         custom_vars: &[Variable],
-        stack: &mut Tokens,
+        stack: &mut Vec<StackToken>,
         #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Number {
         self.compute_buffer_with(
@@ -60,7 +61,7 @@ impl Tokens {
         vars: &[Number],
         funs: &[FunctionVar],
         custom_vars: &[Variable],
-        stack: &mut Tokens,
+        stack: &mut Vec<StackToken>,
         offset: usize,
         #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Number {
@@ -71,70 +72,72 @@ impl Tokens {
             rand,
         )
     }
+}
+pub fn get_skip_var<const N: usize>(stack: &mut Vec<StackToken>) -> [Number; N] {
+    let mut arr = array::from_fn(|_| Number::default());
+    for i in 0..N {
+        arr[N - (i + 1)] = stack.pop().unwrap().num();
+    }
+    arr
+}
+impl TokensSlice {
     pub(crate) fn get_skip_mut<'a, const N: usize, const K: usize>(
-        &mut self,
-        tokens: &'a TokensSlice,
-    ) -> (&mut Number, [Number; K], [&'a TokensSlice; N]) {
-        let tokens = self.get_skip_tokens(tokens);
-        let args = self.get_skip_var();
-        (self.last_mut().unwrap().num_mut(), args, tokens)
+        &self,
+        stack: &'a mut Vec<StackToken>,
+    ) -> (&'a mut Number, [Number; K], [&TokensSlice; N]) {
+        let tokens = self.get_skip_tokens(stack);
+        let args = get_skip_var(stack);
+        (stack.last_mut().unwrap().num_mut(), args, tokens)
     }
-    pub fn get_skip_var<const N: usize>(&mut self) -> [Number; N] {
-        let mut arr = array::from_fn(|_| Number::default());
-        for i in 0..N {
-            arr[N - (i + 1)] = self.pop().unwrap().num();
-        }
-        arr
-    }
-    pub(crate) fn get_skip_tokens<'a, const N: usize>(
-        &mut self,
-        tokens: &'a TokensSlice,
-    ) -> [&'a TokensSlice; N] {
-        let len = tokens.len();
+    pub(crate) fn get_skip_tokens<const N: usize>(
+        &self,
+        stack: &mut Vec<StackToken>,
+    ) -> [&TokensSlice; N] {
+        let len = self.len();
         let mut t = len - 1;
-        let mut arr = array::from_fn(|_| &tokens[0..0]);
+        let mut arr = array::from_fn(|_| &self[0..0]);
         for i in 0..N {
-            let back = self.pop().unwrap().skip();
-            let ret = &tokens[back..t];
+            let back = stack.pop().unwrap().skip();
+            let ret = &self[back..t];
             t = back.saturating_sub(1);
             arr[N - (i + 1)] = ret
         }
         arr
     }
-    pub(crate) fn get_skip_tokens_keep_one<'a, const N: usize>(
-        &mut self,
-        tokens: &'a TokensSlice,
-    ) -> [&'a TokensSlice; N] {
-        let len = tokens.len();
+    pub(crate) fn get_skip_tokens_keep_one<const N: usize>(
+        &self,
+        stack: &mut Vec<StackToken>,
+    ) -> [&TokensSlice; N] {
+        let len = self.len();
         let mut t = len - 1;
-        let mut arr = array::from_fn(|_| &tokens[0..0]);
+        let mut arr = array::from_fn(|_| &self[0..0]);
         for i in 0..N - 1 {
-            let back = self.pop().unwrap().skip();
-            let ret = &tokens[back..t];
+            let back = stack.pop().unwrap().skip();
+            let ret = &self[back..t];
             t = back.saturating_sub(1);
             arr[N - (i + 1)] = ret
         }
-        let back = self[self.len() - 1].skip();
-        let ret = &tokens[back..t];
+        let back = stack[stack.len() - 1].skip();
+        let ret = &self[back..t];
         arr[0] = ret;
         arr
     }
-    pub(crate) fn get_skip_tokens_keep_one_vec<'a>(
-        &mut self,
-        tokens: &'a TokensSlice,
+    pub(crate) fn get_skip_tokens_keep_one_vec(
+        &self,
+        stack: &mut Vec<StackToken>,
         n: usize,
-    ) -> Vec<&'a TokensSlice> {
-        let len = tokens.len();
+    ) -> Vec<&TokensSlice> {
+        let len = self.len();
         let mut t = len - 1;
-        let mut arr = vec![&tokens[0..0]; n];
+        let mut arr = vec![&self[0..0]; n];
         for i in 0..n - 1 {
-            let back = self.pop().unwrap().skip();
-            let ret = &tokens[back..t];
+            let back = stack.pop().unwrap().skip();
+            let ret = &self[back..t];
             t = back.saturating_sub(1);
             arr[n - (i + 1)] = ret
         }
-        let back = self[self.len() - 1].skip();
-        let ret = &tokens[back..t];
+        let back = stack[stack.len() - 1].skip();
+        let ret = &self[back..t];
         arr[0] = ret;
         arr
     }
@@ -176,13 +179,12 @@ impl<'a> Compute<'a> {
     pub fn compute_buffer_with(
         self,
         inner_vars: &mut Vec<Number>,
-        stack: &mut Tokens,
+        stack: &mut Vec<StackToken>,
         #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Number {
         let mut tokens = self.tokens.iter().enumerate();
         while let Some((i, token)) = tokens.next() {
             match token {
-                &Token::FunctionConstant(_, _, _) => todo!(),
                 &Token::Function(operator, d) => {
                     if d.get() != 0 {
                         todo!()
@@ -311,13 +313,71 @@ impl<'a> Compute<'a> {
                     stack.push(self.graph_vars[index as usize].clone().into())
                 }
                 &Token::Skip(to) => {
-                    stack.push(Token::Skip(i + 1));
+                    stack.push(StackToken::Skip(i + 1));
                     tokens.nth(to - 1);
                 }
                 Token::Number(n) => stack.push(n.clone().into()),
-                Token::Polynomial(_) => unreachable!(),
             }
         }
         stack.pop().unwrap().num()
+    }
+}
+pub enum StackToken {
+    Number(Number),
+    Polynomial(Box<Polynomial>),
+    Skip(usize),
+}
+impl StackToken {
+    pub fn num(self) -> Number {
+        let Self::Number(num) = self else {
+            unreachable!()
+        };
+        num
+    }
+    pub fn skip(&self) -> usize {
+        let &Self::Skip(num) = self else {
+            unreachable!()
+        };
+        num
+    }
+    pub fn num_ref(&self) -> &Number {
+        let Self::Number(num) = self else {
+            unreachable!()
+        };
+        num
+    }
+    pub fn num_mut(&mut self) -> &mut Number {
+        let Self::Number(num) = self else {
+            unreachable!()
+        };
+        num
+    }
+    pub fn poly_mut(&mut self) -> &mut Polynomial {
+        let Self::Polynomial(poly) = self else {
+            unreachable!()
+        };
+        poly
+    }
+    pub fn poly(self) -> Box<Polynomial> {
+        let Self::Polynomial(poly) = self else {
+            unreachable!()
+        };
+        poly
+    }
+    pub fn poly_ref(&self) -> &Polynomial {
+        let Self::Polynomial(poly) = self else {
+            unreachable!()
+        };
+        poly
+    }
+}
+impl From<Number> for StackToken {
+    fn from(value: Number) -> Self {
+        Self::Number(value)
+    }
+}
+impl From<Polynomial> for StackToken {
+    fn from(value: Polynomial) -> Self {
+        Self::Polynomial(value.into())
     }
 }

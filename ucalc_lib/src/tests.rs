@@ -173,7 +173,7 @@ fn test_solve_poly() {
         .unwrap()
         .is_none()
     );
-    let mut buffer = Tokens(Vec::with_capacity(8));
+    let mut buffer = Vec::with_capacity(8);
     for i in 0..n.pow(k) {
         if i.is_multiple_of(2048) {
             println!("{i} {}", n.pow(k));

@@ -18,7 +18,7 @@ mod variable;
 pub use functions::Function;
 pub use functions_list::{FUNCTION_LIST, get_help};
 pub use operators::Operator;
-pub use parse::{Token, Tokens};
+pub use parse::{Derivative, Token, Tokens, TokensSlice};
 #[cfg(feature = "float_rand")]
 pub use rand::{Rand, rng};
 #[cfg(feature = "units")]

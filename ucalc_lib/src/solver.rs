@@ -1,15 +1,15 @@
-use crate::compute::Compute;
+use crate::Number;
+use crate::compute::{Compute, StackToken};
 use crate::inverse::Inverse;
 use crate::parse::{Token, TokensSlice};
 #[cfg(feature = "float_rand")]
 use crate::rand::Rand;
-use crate::{Number, Tokens};
 use std::ops::Deref;
 impl Compute<'_> {
     pub(crate) fn solve(
         self,
         inner_vars: &mut Vec<Number>,
-        stack: &mut Tokens,
+        stack: &mut Vec<StackToken>,
         #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Option<Number> {
         let mut ret = Number::from(0);
@@ -32,7 +32,7 @@ impl Compute<'_> {
         self,
         inner_vars: &mut Vec<Number>,
         ret: &mut Number,
-        stack: &mut Tokens,
+        stack: &mut Vec<StackToken>,
         args: Option<&mut Vec<&TokensSlice>>,
         #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Option<Option<Number>> {

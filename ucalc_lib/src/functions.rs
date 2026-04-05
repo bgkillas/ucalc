@@ -1,8 +1,8 @@
-use crate::compute::Compute;
+use crate::Number;
+use crate::compute::{Compute, StackToken};
 use crate::polynomial::PolyRef;
 #[cfg(feature = "float_rand")]
 use crate::rand::Rand;
-use crate::{Number, Tokens};
 use std::fmt::{Display, Formatter};
 use std::mem;
 use std::num::NonZeroU8;
@@ -401,15 +401,15 @@ impl Function {
     }
     pub fn compute(
         self,
-        v: &mut Tokens,
+        stack: &mut Vec<StackToken>,
         inputs: NonZeroU8,
         #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) {
         match inputs.get() {
-            1 => self.compute_on_1(v.last_mut().unwrap().num_mut()),
+            1 => self.compute_on_1(stack.last_mut().unwrap().num_mut()),
             2 => {
-                let b = v.pop().unwrap().num();
-                let a = v.last_mut().unwrap().num_mut();
+                let b = stack.pop().unwrap().num();
+                let a = stack.last_mut().unwrap().num_mut();
                 self.compute_on_2(
                     a,
                     b,
@@ -418,26 +418,26 @@ impl Function {
                 )
             }
             3 => {
-                let c = v.pop().unwrap().num();
-                let b = v.pop().unwrap().num();
-                let a = v.last_mut().unwrap().num_mut();
+                let c = stack.pop().unwrap().num();
+                let b = stack.pop().unwrap().num();
+                let a = stack.last_mut().unwrap().num_mut();
                 self.compute_on_3(a, b, c)
             }
             #[cfg(feature = "complex")]
             4 => {
-                let d = v.pop().unwrap().num();
-                let c = v.pop().unwrap().num();
-                let b = v.pop().unwrap().num();
-                let a = v.last_mut().unwrap().num_mut();
+                let d = stack.pop().unwrap().num();
+                let c = stack.pop().unwrap().num();
+                let b = stack.pop().unwrap().num();
+                let a = stack.last_mut().unwrap().num_mut();
                 self.compute_on_4(a, b, c, d)
             }
             #[cfg(feature = "complex")]
             5 => {
-                let e = v.pop().unwrap().num();
-                let d = v.pop().unwrap().num();
-                let c = v.pop().unwrap().num();
-                let b = v.pop().unwrap().num();
-                let a = v.last_mut().unwrap().num_mut();
+                let e = stack.pop().unwrap().num();
+                let d = stack.pop().unwrap().num();
+                let c = stack.pop().unwrap().num();
+                let b = stack.pop().unwrap().num();
+                let a = stack.last_mut().unwrap().num_mut();
                 self.compute_on_5(a, b, c, d, e)
             }
             _ => unreachable!(),
@@ -644,13 +644,13 @@ impl Function {
     pub(crate) fn compute_var(
         self,
         compute: Compute,
-        stack: &mut Tokens,
+        stack: &mut Vec<StackToken>,
         inner_vars: &mut Vec<Number>,
         #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) {
         match self {
             Self::Sum => {
-                let (start, [end], [tokens]) = stack.get_skip_mut(compute.tokens);
+                let (start, [end], [tokens]) = compute.tokens.get_skip_mut(stack);
                 let start = mem::take(start);
                 let start = start.to_real().into_isize();
                 let end = end.to_real().into_isize();
@@ -670,7 +670,7 @@ impl Function {
                 inner_vars.pop().unwrap();
             }
             Self::Prod => {
-                let (start, [end], [tokens]) = stack.get_skip_mut(compute.tokens);
+                let (start, [end], [tokens]) = compute.tokens.get_skip_mut(stack);
                 let start = mem::take(start);
                 let start = start.to_real().into_isize();
                 let end = end.to_real().into_isize();
@@ -690,7 +690,7 @@ impl Function {
                 inner_vars.pop().unwrap();
             }
             Self::Fold => {
-                let (start, [end, value], [tokens]) = stack.get_skip_mut(compute.tokens);
+                let (start, [end, value], [tokens]) = compute.tokens.get_skip_mut(stack);
                 let start = mem::take(start);
                 let start = start.to_real().into_isize();
                 let end = end.to_real().into_isize();
@@ -710,7 +710,7 @@ impl Function {
                 *stack.last_mut().unwrap().num_mut() = inner_vars.pop().unwrap();
             }
             Self::Set => {
-                let (value, [], [tokens]) = stack.get_skip_mut(compute.tokens);
+                let (value, [], [tokens]) = compute.tokens.get_skip_mut(stack);
                 let value = mem::take(value);
                 inner_vars.push(value);
                 *stack.last_mut().unwrap().num_mut() = compute.tokens(tokens).compute_buffer_with(
@@ -722,12 +722,12 @@ impl Function {
                 inner_vars.pop().unwrap();
             }
             Self::Modify(ModifyInputs::Two) => {
-                let (value, [], [var]) = stack.get_skip_mut(compute.tokens);
+                let (value, [], [var]) = compute.tokens.get_skip_mut(stack);
                 let value = mem::take(value);
                 inner_vars[var[0].inner_var_ref() as usize] = value;
             }
             Self::Modify(ModifyInputs::Three) => {
-                let (value, [], [var, tokens]) = stack.get_skip_mut(compute.tokens);
+                let (value, [], [var, tokens]) = compute.tokens.get_skip_mut(stack);
                 let value = mem::take(value);
                 inner_vars[var[0].inner_var_ref() as usize] = value;
                 *stack.last_mut().unwrap().num_mut() = compute.tokens(tokens).compute_buffer_with(
@@ -738,7 +738,7 @@ impl Function {
                 );
             }
             Self::While(ModifyInputs::Two) => {
-                let [cond, expr] = stack.get_skip_tokens_keep_one(compute.tokens);
+                let [cond, expr] = compute.tokens.get_skip_tokens_keep_one(stack);
                 let mut last = Number::default();
                 while !compute
                     .tokens(cond)
@@ -760,7 +760,7 @@ impl Function {
                 *stack.last_mut().unwrap() = last.into();
             }
             Self::While(ModifyInputs::Three) => {
-                let [cond, expr, ret] = stack.get_skip_tokens_keep_one(compute.tokens);
+                let [cond, expr, ret] = compute.tokens.get_skip_tokens_keep_one(stack);
                 while !compute
                     .tokens(cond)
                     .compute_buffer_with(
@@ -790,8 +790,9 @@ impl Function {
             }
             Self::Exprs(n) => {
                 let n = n.get();
-                let mut tokens = stack
-                    .get_skip_tokens_keep_one_vec(compute.tokens, n as usize)
+                let mut tokens = compute
+                    .tokens
+                    .get_skip_tokens_keep_one_vec(stack, n as usize)
                     .into_iter();
                 for _ in 1..n {
                     compute.tokens(tokens.next().unwrap()).compute_buffer_with(
@@ -810,7 +811,7 @@ impl Function {
                 *stack.last_mut().unwrap() = last.into();
             }
             Self::Solve => {
-                let [tokens] = stack.get_skip_tokens_keep_one(compute.tokens);
+                let [tokens] = compute.tokens.get_skip_tokens_keep_one(stack);
                 *stack.last_mut().unwrap() = compute
                     .tokens(tokens)
                     .solve(
@@ -823,7 +824,7 @@ impl Function {
                     .into();
             }
             Self::Iter => {
-                let (first, [steps], [tokens]) = stack.get_skip_mut(compute.tokens);
+                let (first, [steps], [tokens]) = compute.tokens.get_skip_mut(stack);
                 let first = mem::take(first);
                 inner_vars.push(first);
                 let steps = steps.to_real().into_isize();
@@ -838,7 +839,7 @@ impl Function {
                 *stack.last_mut().unwrap().num_mut() = inner_vars.pop().unwrap();
             }
             Self::If => {
-                let (condition, [], [ifthen, ifelse]) = stack.get_skip_mut(compute.tokens);
+                let (condition, [], [ifthen, ifelse]) = compute.tokens.get_skip_mut(stack);
                 let tokens = if condition.is_zero() { ifelse } else { ifthen };
                 *stack.last_mut().unwrap().num_mut() =
                     stacker::maybe_grow(2usize.pow(16), 2usize.pow(20), || {
@@ -851,7 +852,7 @@ impl Function {
                     });
             }
             Self::NumericalDerivative => {
-                let (point, [], [tokens]) = stack.get_skip_mut(compute.tokens);
+                let (point, [], [tokens]) = compute.tokens.get_skip_mut(stack);
                 let point = mem::take(point);
                 inner_vars.push(Number::default());
                 *stack.last_mut().unwrap().num_mut() = compute.tokens(tokens).numerical_derivative(
@@ -865,7 +866,7 @@ impl Function {
                 inner_vars.pop().unwrap();
             }
             Self::NumericalIntegral => {
-                let (start, [end], [tokens]) = stack.get_skip_mut(compute.tokens);
+                let (start, [end], [tokens]) = compute.tokens.get_skip_mut(stack);
                 let start = mem::take(start);
                 inner_vars.push(Number::default());
                 *stack.last_mut().unwrap().num_mut() = compute.tokens(tokens).numerical_integral(
@@ -880,7 +881,7 @@ impl Function {
                 inner_vars.pop().unwrap();
             }
             Self::NumericalDifferential => {
-                let (x_0, [t_0, t_1], [tokens]) = stack.get_skip_mut(compute.tokens);
+                let (x_0, [t_0, t_1], [tokens]) = compute.tokens.get_skip_mut(stack);
                 let x_0 = mem::take(x_0);
                 inner_vars.push(Number::default());
                 inner_vars.push(Number::default());
@@ -900,7 +901,7 @@ impl Function {
                 inner_vars.pop().unwrap();
             }
             Self::NumericalSolve => {
-                let (point, [], [tokens]) = stack.get_skip_mut(compute.tokens);
+                let (point, [], [tokens]) = compute.tokens.get_skip_mut(stack);
                 let point = mem::take(point);
                 inner_vars.push(Number::default());
                 *stack.last_mut().unwrap().num_mut() = compute.tokens(tokens).numerical_solve(
