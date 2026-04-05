@@ -353,7 +353,7 @@ impl Tokens {
         let mut open_inputs: usize = 0;
         for token in value.split(' ') {
             match token {
-                "" => {}
+                "" | "(" | ")" => {}
                 "let" => expect_let = true,
                 "=" if expect_let => {
                     expect_let = false;

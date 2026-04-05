@@ -28,7 +28,6 @@ fn main() {
     #[cfg(feature = "float_rand")]
     let mut rand = rng();
     for arg in args().skip(1) {
-        quit = true;
         run_line(
             arg.as_str(),
             &mut infix,
@@ -36,6 +35,7 @@ fn main() {
             &mut base_output,
             &mut vars,
             &mut funs,
+            &mut quit,
             #[cfg(feature = "float_rand")]
             &mut rand,
         )
@@ -50,6 +50,7 @@ fn main() {
                 &mut base_output,
                 &mut vars,
                 &mut funs,
+                &mut false,
                 #[cfg(feature = "float_rand")]
                 &mut rand,
             )
@@ -179,6 +180,7 @@ fn process_line(
         }
     })
 }
+#[allow(clippy::too_many_arguments)]
 fn run_line(
     line: &str,
     infix: &mut bool,
@@ -186,6 +188,7 @@ fn run_line(
     base_output: &mut u8,
     vars: &mut Variables,
     funs: &mut Functions,
+    quit: &mut bool,
     #[cfg(feature = "float_rand")] rand: &mut Rand,
 ) {
     if line == "--rpn" {
@@ -200,6 +203,7 @@ fn run_line(
         *base_output = s.parse().unwrap();
         return;
     }
+    *quit = true;
     match if *infix {
         Tokens::infix(
             line,

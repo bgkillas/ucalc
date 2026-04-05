@@ -1,5 +1,7 @@
 use crate::History;
-use crossterm::cursor::{MoveRight, MoveTo, MoveToColumn, MoveToNextLine, MoveToPreviousLine};
+use crossterm::cursor::{
+    MoveLeft, MoveRight, MoveTo, MoveToColumn, MoveToNextLine, MoveToPreviousLine,
+};
 use crossterm::event::{
     DisableBracketedPaste, EnableBracketedPaste, Event, KeyCode, KeyEvent, KeyModifiers,
 };
@@ -284,11 +286,17 @@ impl ReadChar {
         stdout.flush()?;
         Ok(())
     }
-    pub(crate) fn exit(&mut self, stdout: &mut impl Write) -> io::Result<()> {
+    pub(crate) fn exit(&mut self, stdout: &mut impl Write, string: &str) -> io::Result<()> {
         if self.cursor_row_max != self.cursor_row {
             stdout.queue(MoveToNextLine(self.cursor_row_max - self.cursor_row))?;
         }
-        for _ in 0..=self.new_lines {
+        for _ in 0..self.new_lines {
+            writeln!(stdout)?;
+        }
+        if string.is_empty() {
+            stdout.queue(MoveLeft(u16::MAX))?;
+            stdout.queue(Clear(ClearType::CurrentLine))?;
+        } else {
             writeln!(stdout)?;
         }
         stdout.queue(MoveToColumn(0))?;
@@ -645,7 +653,7 @@ impl ReadChar {
                 modifiers: KeyModifiers::CONTROL,
                 ..
             }) => {
-                self.exit(stdout)?;
+                self.exit(stdout, string)?;
                 return Ok(Return::Cancel);
             }
             Event::Key(KeyEvent {

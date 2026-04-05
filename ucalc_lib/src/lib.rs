@@ -31,7 +31,9 @@ pub type NBase = ucalc_numbers::Complex;
 #[cfg(not(feature = "units"))]
 pub type NumberBase = NBase;
 #[cfg(feature = "units")]
-const UNIT_COUNT: usize = 8;
+const UNIT_COUNT: usize = 9;
+#[cfg(feature = "units")]
+pub const UNITS: [&str; UNIT_COUNT] = ["s", "m", "g", "A", "K", "mol", "cd", "rad", "USD"];
 #[cfg(feature = "units")]
 type UnitType = f32;
 #[cfg(feature = "units")]
@@ -59,5 +61,3 @@ pub type Number = ucalc_numbers::Number<NumberBase, UnitType, UNIT_COUNT>;
     feature = "units"
 )))]
 pub type Number = NumberBase;
-#[cfg(feature = "units")]
-pub const UNITS: [&str; UNIT_COUNT] = ["s", "m", "g", "A", "K", "mol", "cd", "USD"];
