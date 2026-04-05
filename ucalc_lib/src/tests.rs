@@ -1332,6 +1332,24 @@ fn test_numerical_solve() {
 #[test]
 fn test_solve() {
     assert_correct!(
+        infix("1^2+y^2=2"),
+        rpn("y 1 2 ^ y 2 ^ + 2 - solve"),
+        vec![
+            Token::Skip(9),
+            num(1),
+            num(2),
+            Operator::Pow.into(),
+            Token::InnerVar(0),
+            num(2),
+            Operator::Pow.into(),
+            Operator::Add.into(),
+            num(2),
+            Operator::Sub.into(),
+            Function::Solve.into()
+        ],
+        res(1)
+    );
+    assert_correct!(
         infix("solve(x,2-3x)"),
         rpn("x 2 3 x * - solve"),
         vec![
