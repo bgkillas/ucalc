@@ -75,9 +75,27 @@ impl Tokens {
         #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Result<Option<Self>, ParseError<'a>> {
         if rpn {
-            Self::rpn(value, vars, funs, graph_vars, expect_let, base, rand)
+            Self::rpn(
+                value,
+                vars,
+                funs,
+                graph_vars,
+                expect_let,
+                base,
+                #[cfg(feature = "float_rand")]
+                rand,
+            )
         } else {
-            Self::infix(value, vars, funs, graph_vars, expect_let, base, rand)
+            Self::infix(
+                value,
+                vars,
+                funs,
+                graph_vars,
+                expect_let,
+                base,
+                #[cfg(feature = "float_rand")]
+                rand,
+            )
         }
     }
     pub fn rpn<'a>(
