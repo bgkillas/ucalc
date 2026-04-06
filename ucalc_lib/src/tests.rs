@@ -6,7 +6,7 @@ use crate::polynomial::Poly;
 #[cfg(feature = "float_rand")]
 use crate::rng;
 use crate::variable::{Functions, Variables};
-use crate::{FUNCTION_LIST, FunctionVar, Number, Variable, get_help};
+use crate::{FUNCTION_LIST, FunctionVar, Number, Variable, Volatility, get_help};
 use std::num::NonZeroU8;
 use ucalc_numbers::*;
 macro_rules! assert_approx_eq {
@@ -1729,11 +1729,11 @@ fn test_if() {
 }
 #[test]
 fn test_overwrite_var() {
-    let vars1 = Variables(vec![Variable::new("n", res(2), false)]);
+    let vars1 = Variables(vec![Variable::new("n", res(2), Volatility::GraphConstant)]);
     let funs1 = Functions(Vec::new());
-    let vars2 = Variables(vec![Variable::new("n", res(4), false)]);
+    let vars2 = Variables(vec![Variable::new("n", res(4), Volatility::GraphConstant)]);
     let funs2 = Functions(Vec::new());
-    let vars3 = Variables(vec![Variable::null(res(4), false)]);
+    let vars3 = Variables(vec![Variable::null(res(4), Volatility::GraphConstant)]);
     let funs3 = Functions(vec![FunctionVar::new(
         "n",
         NonZeroU8::new(1).unwrap(),
@@ -1742,9 +1742,9 @@ fn test_overwrite_var() {
             Token::InnerVar(0).into(),
             Operator::Mul.into(),
         ]),
-        false,
+        Volatility::GraphConstant,
     )]);
-    let vars4 = Variables(vec![Variable::null(res(4), false)]);
+    let vars4 = Variables(vec![Variable::null(res(4), Volatility::GraphConstant)]);
     let funs4 = Functions(vec![FunctionVar::new(
         "n",
         NonZeroU8::new(1).unwrap(),
@@ -1753,11 +1753,11 @@ fn test_overwrite_var() {
             num(2),
             Operator::Mul.into(),
         ]),
-        false,
+        Volatility::GraphConstant,
     )]);
     let vars5 = Variables(vec![
-        Variable::null(res(4), false),
-        Variable::new("n", res(8), false),
+        Variable::null(res(4), Volatility::GraphConstant),
+        Variable::new("n", res(8), Volatility::GraphConstant),
     ]);
     let funs5 = Functions(vec![FunctionVar::null(
         NonZeroU8::new(1).unwrap(),
@@ -1766,7 +1766,7 @@ fn test_overwrite_var() {
             num(2),
             Operator::Mul.into(),
         ]),
-        false,
+        Volatility::GraphConstant,
     )]);
     let mut v = Variables(Vec::new());
     let mut f = Functions(Vec::new());
@@ -1935,7 +1935,7 @@ fn test_overwrite_var() {
 }
 #[test]
 fn test_custom_var() {
-    let mut vars = Variables(vec![Variable::new("n", res(2), false)]);
+    let mut vars = Variables(vec![Variable::new("n", res(2), Volatility::GraphConstant)]);
     let mut v = Variables(Vec::new());
     assert!(
         Tokens::infix(
@@ -2062,7 +2062,7 @@ fn test_recursion() {
             num(1),
             Function::If.into(),
         ]),
-        false,
+        Volatility::GraphConstant,
     )]);
     assert_fun!(
         "fact(n)=if(n>0,n*fact(n-1),1)",
@@ -2111,7 +2111,7 @@ fn test_inner_functions() {
             Token::InnerVar(1),
             Operator::Sub.into(),
         ]),
-        false,
+        Volatility::GraphConstant,
     );
     let f2 = FunctionVar::new(
         "g",
@@ -2125,7 +2125,7 @@ fn test_inner_functions() {
             Token::CustomFun(0, Derivative::default()),
             Operator::Sub.into(),
         ]),
-        false,
+        Volatility::GraphConstant,
     );
     let mut funs = Functions(vec![f1.clone(), f2.clone()]);
     let mut f = Functions::default();
@@ -2246,7 +2246,7 @@ fn test_composed_functions() {
             Token::InnerVar(1),
             Operator::Sub.into(),
         ]),
-        false,
+        Volatility::GraphConstant,
     );
     let f2 = FunctionVar::new(
         "g",
@@ -2258,7 +2258,7 @@ fn test_composed_functions() {
             Token::InnerVar(1),
             Operator::Mul.into(),
         ]),
-        false,
+        Volatility::GraphConstant,
     );
     let mut funs = Functions(vec![f1.clone(), f2.clone()]);
     assert_fun!("f(n,k)=n-k", "n k f = n k -", Functions(vec![f1.clone()]));
@@ -2325,7 +2325,7 @@ fn test_custom_functions() {
             Token::InnerVar(1),
             Operator::Sub.into(),
         ]),
-        false,
+        Volatility::GraphConstant,
     )]);
     assert_fun!("f(n,k)=n-k", "n k f = n k -", funs);
     assert_correct_with!(

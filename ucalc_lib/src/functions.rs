@@ -1,8 +1,8 @@
-use crate::Number;
 use crate::compute::{Compute, StackToken};
 use crate::polynomial::PolyRef;
 #[cfg(feature = "float_rand")]
 use crate::rand::Rand;
+use crate::{Number, Volatility};
 use std::fmt::{Display, Formatter};
 use std::mem;
 use std::num::NonZeroU8;
@@ -298,14 +298,11 @@ impl Function {
                 | Self::While(ModifyInputs::Three)
         )
     }
-    pub fn is_volatile(self) -> bool {
-        #[cfg(feature = "float_rand")]
-        {
-            matches!(self, Self::RandUniform)
-        }
-        #[cfg(not(feature = "float_rand"))]
-        {
-            false
+    pub fn volatility(self) -> Volatility {
+        match self {
+            #[cfg(feature = "float_rand")]
+            Self::RandUniform => Volatility::Volatile,
+            _ => Volatility::Constant,
         }
     }
     pub fn inputs(self) -> NonZeroU8 {

@@ -8,6 +8,7 @@ use crate::variable::{Functions, Variables};
 use crate::{FunctionVar, Number, NumberBase, Variable};
 use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
+use std::marker::ConstParamTy;
 use std::num::NonZeroU8;
 use std::ops::{
     Deref, DerefMut, Index, IndexMut, Range, RangeFrom, RangeFull, RangeInclusive, RangeTo,
@@ -36,74 +37,47 @@ pub enum Token {
 #[derive(Debug, PartialEq, Clone, Copy, Default)]
 #[repr(transparent)]
 pub struct Derivative(u8);
+#[derive(Debug, PartialEq, Clone, Copy, Eq, ConstParamTy)]
+pub enum Volatility {
+    Constant,
+    GraphConstant,
+    Volatile,
+    All,
+}
+impl PartialOrd for Volatility {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(match (self, other) {
+            (Self::Constant, Self::Constant) => Ordering::Equal,
+            (Self::GraphConstant, Self::GraphConstant) => Ordering::Equal,
+            (Self::Volatile, Self::Volatile) => Ordering::Equal,
+            (Self::All, Self::All) => Ordering::Equal,
+            (Self::All, _) => Ordering::Greater,
+            (Self::Constant, _) => Ordering::Less,
+            (Self::GraphConstant, Self::Constant) => Ordering::Greater,
+            (Self::GraphConstant, Self::Volatile) => Ordering::Less,
+            (Self::GraphConstant, Self::All) => Ordering::Less,
+            (Self::Volatile, Self::Constant) => Ordering::Greater,
+            (Self::Volatile, Self::GraphConstant) => Ordering::Greater,
+            (Self::Volatile, Self::All) => Ordering::Less,
+        })
+    }
+}
 impl Tokens {
-    pub fn get_infix(
-        &self,
-        vars: &[Variable],
-        funs: &[FunctionVar],
-        graph_vars: &[&str],
-    ) -> impl Display {
-        self[..].get_infix(vars, funs, graph_vars)
-    }
-    pub fn get_rpn(
-        &self,
-        vars: &[Variable],
-        funs: &[FunctionVar],
-        graph_vars: &[&str],
-    ) -> impl Display {
-        self[..].get_rpn(vars, funs, graph_vars)
-    }
-    fn simplify_run(
-        &mut self,
-        _vars: &mut Variables,
-        _funs: &mut Functions,
-        #[cfg(feature = "float_rand")] _rand: &mut Rand,
-    ) -> bool {
-        false
-    }
-    fn end(
-        mut self,
-        inputs: Option<Option<&str>>,
+    #[allow(clippy::too_many_arguments)]
+    pub fn parse<'a>(
+        value: &'a str,
         vars: &mut Variables,
         funs: &mut Functions,
+        graph_vars: &[&str],
+        expect_let: bool,
+        base: u8,
+        rpn: bool,
         #[cfg(feature = "float_rand")] rand: &mut Rand,
-    ) -> Option<Self> {
-        if self.is_empty() {
-            self.push(Number::default().into());
-        }
-        while self.simplify_run(
-            vars,
-            funs,
-            #[cfg(feature = "float_rand")]
-            rand,
-        ) {}
-        if let Some(name) = inputs {
-            if let Some(name) = name {
-                let val = self.compute(
-                    &[],
-                    funs,
-                    vars,
-                    #[cfg(feature = "float_rand")]
-                    rand,
-                );
-                if let Some(v) = vars.position(name) {
-                    vars[v as usize].value = val;
-                } else {
-                    vars.push(Variable::new(name, val, false));
-                }
-                funs.iter_mut().for_each(|v| {
-                    if v.name.as_ref().is_some_and(|n| n.as_ref() == name) {
-                        v.name = None;
-                    }
-                });
-            } else if let Some(v) = funs.last_mut() {
-                v.tokens = self;
-            } else {
-                unreachable!()
-            }
-            None
+    ) -> Result<Option<Self>, ParseError<'a>> {
+        if rpn {
+            Self::rpn(value, vars, funs, graph_vars, expect_let, base, rand)
         } else {
-            Some(self)
+            Self::infix(value, vars, funs, graph_vars, expect_let, base, rand)
         }
     }
     pub fn rpn<'a>(
@@ -801,6 +775,95 @@ impl Tokens {
             inner_vars.pop().unwrap();
         }
     }
+    pub fn get_infix(
+        &self,
+        vars: &[Variable],
+        funs: &[FunctionVar],
+        graph_vars: &[&str],
+    ) -> impl Display {
+        self[..].get_infix(vars, funs, graph_vars)
+    }
+    pub fn get_rpn(
+        &self,
+        vars: &[Variable],
+        funs: &[FunctionVar],
+        graph_vars: &[&str],
+    ) -> impl Display {
+        self[..].get_rpn(vars, funs, graph_vars)
+    }
+    fn simplify_run<const V: Volatility>(
+        &mut self,
+        _vars: &mut Variables,
+        _funs: &mut Functions,
+        _inputs: u8,
+        #[cfg(feature = "float_rand")] _rand: &mut Rand,
+    ) {
+    }
+    fn end(
+        mut self,
+        inputs: Option<Option<&str>>,
+        vars: &mut Variables,
+        funs: &mut Functions,
+        #[cfg(feature = "float_rand")] rand: &mut Rand,
+    ) -> Option<Self> {
+        if self.is_empty() {
+            self.push(Number::default().into());
+        }
+        if let Some(name) = inputs {
+            if let Some(name) = name {
+                self.simplify_run::<{ Volatility::All }>(
+                    vars,
+                    funs,
+                    0,
+                    #[cfg(feature = "float_rand")]
+                    rand,
+                );
+                let val = self.compute(
+                    &[],
+                    funs,
+                    vars,
+                    #[cfg(feature = "float_rand")]
+                    rand,
+                );
+                if let Some(v) = vars.position(name) {
+                    vars[v as usize].value = val;
+                    vars[v as usize].volatile = Volatility::GraphConstant;
+                } else {
+                    vars.push(Variable::new(name, val, Volatility::GraphConstant));
+                }
+                funs.iter_mut().for_each(|v| {
+                    if v.name.as_ref().is_some_and(|n| n.as_ref() == name) {
+                        v.name = None;
+                    }
+                });
+            } else {
+                let inputs = funs.last().unwrap().inputs.get();
+                self.simplify_run::<{ Volatility::GraphConstant }>(
+                    vars,
+                    funs,
+                    inputs,
+                    #[cfg(feature = "float_rand")]
+                    rand,
+                );
+                let volatile = self[..].volatility(funs, vars, inputs);
+                let Some(v) = funs.last_mut() else {
+                    unreachable!()
+                };
+                v.volatile = volatile;
+                v.tokens = self;
+            }
+            None
+        } else {
+            self.simplify_run::<{ Volatility::Volatile }>(
+                vars,
+                funs,
+                0,
+                #[cfg(feature = "float_rand")]
+                rand,
+            );
+            Some(self)
+        }
+    }
 }
 pub(crate) fn get_var_position(
     inner_vars_count: &mut [u8],
@@ -847,6 +910,39 @@ pub(crate) fn get_var_position(
     }
 }
 impl TokensSlice {
+    pub fn volatility(&self, funs: &[FunctionVar], vars: &[Variable], inputs: u8) -> Volatility {
+        let mut volatility = Volatility::Constant;
+        for token in self.iter() {
+            match *token {
+                Token::Function(operator, _) if operator.volatility() > volatility => {
+                    if operator.volatility() == Volatility::Volatile {
+                        return Volatility::Volatile;
+                    }
+                    volatility = operator.volatility()
+                }
+                Token::CustomVar(index) if vars[index as usize].volatile > volatility => {
+                    if vars[index as usize].volatile == Volatility::Volatile {
+                        return Volatility::Volatile;
+                    }
+                    volatility = vars[index as usize].volatile;
+                }
+                Token::CustomFun(index, _) if funs[index as usize].volatile > volatility => {
+                    if funs[index as usize].volatile == Volatility::Volatile {
+                        return Volatility::Volatile;
+                    }
+                    volatility = funs[index as usize].volatile;
+                }
+                Token::InnerVar(index)
+                    if index < inputs as u16 && Volatility::GraphConstant > volatility =>
+                {
+                    volatility = Volatility::GraphConstant;
+                }
+                Token::GraphVar(_) => return Volatility::Volatile,
+                _ => {}
+            }
+        }
+        volatility
+    }
     pub fn get_last_with_end(&self, funs: &[FunctionVar], mut end: usize) -> usize {
         let mut inputs = 1;
         while inputs != 0 {

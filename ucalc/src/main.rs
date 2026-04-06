@@ -12,23 +12,28 @@ use readchar::{ReadChar, Return};
 use std::env::args;
 use std::fmt;
 use std::fmt::Write;
+use std::hint::black_box;
 use std::io::{BufRead, IsTerminal, stdin, stdout};
-use ucalc_lib::{Functions, Number, Tokens, Variable, Variables, get_help};
+use ucalc_lib::{Functions, Number, Tokens, Variable, Variables, Volatility, get_help};
 #[cfg(feature = "float_rand")]
 use ucalc_lib::{Rand, rng};
-use ucalc_numbers::FloatTrait;
+use ucalc_numbers::{FloatTrait, RealTrait};
 #[derive(Clone, Copy)]
 pub struct Options {
     rpn: bool,
+    perf: bool,
     base_input: u8,
     base_output: u8,
+    benchmark: usize,
 }
 impl Default for Options {
     fn default() -> Self {
         Self {
             rpn: false,
+            perf: false,
             base_input: 10,
             base_output: 10,
+            benchmark: 0,
         }
     }
 }
@@ -67,7 +72,7 @@ fn main() {
     } else if !quit {
         let mut readchar = ReadChar::default();
         let mut stdout = stdout().lock();
-        vars.push(Variable::new("@", Number::default(), false));
+        vars.push(Variable::new("@", Number::default(), Volatility::Constant));
         readchar.init(&mut stdout).unwrap();
         let mut string = String::with_capacity(64);
         let mut last = None;
@@ -141,29 +146,17 @@ fn process_line(
             None
         }
         _ => {
-            match if options.rpn {
-                Tokens::rpn(
-                    line,
-                    vars,
-                    funs,
-                    &[],
-                    false,
-                    options.base_input,
-                    #[cfg(feature = "float_rand")]
-                    rand,
-                )
-            } else {
-                Tokens::infix(
-                    line,
-                    vars,
-                    funs,
-                    &[],
-                    false,
-                    options.base_input,
-                    #[cfg(feature = "float_rand")]
-                    rand,
-                )
-            } {
+            match Tokens::parse(
+                line,
+                vars,
+                funs,
+                &[],
+                false,
+                options.base_input,
+                options.rpn,
+                #[cfg(feature = "float_rand")]
+                rand,
+            ) {
                 Ok(Some(tokens)) => {
                     let compute = tokens.compute(
                         &[],
@@ -198,66 +191,112 @@ fn run_line(
         options.rpn = true;
         return;
     }
+    if line == "--perf" {
+        options.perf = true;
+        return;
+    }
+    let mut get = |s: &str| -> isize {
+        let tokens = Tokens::parse(
+            s,
+            vars,
+            funs,
+            &[],
+            false,
+            options.base_input,
+            options.rpn,
+            #[cfg(feature = "float_rand")]
+            rand,
+        )
+        .unwrap()
+        .unwrap();
+        let num = tokens.compute(
+            &[],
+            funs,
+            vars,
+            #[cfg(feature = "float_rand")]
+            rand,
+        );
+        num.to_real().into_isize()
+    };
     if let Some(s) = line.strip_prefix("--base_input=") {
-        options.base_input = s.parse().unwrap();
+        options.base_input = get(s).try_into().unwrap();
         return;
     }
     if let Some(s) = line.strip_prefix("--base_output=") {
-        options.base_output = s.parse().unwrap();
+        options.base_output = get(s).try_into().unwrap();
+        return;
+    }
+    if let Some(s) = line.strip_prefix("--benchmark=") {
+        options.benchmark = get(s).try_into().unwrap();
         return;
     }
     *quit = true;
-    match if options.rpn {
-        Tokens::rpn(
-            line,
-            vars,
-            funs,
-            &[],
-            false,
-            options.base_input,
-            #[cfg(feature = "float_rand")]
-            rand,
-        )
-    } else {
-        Tokens::infix(
-            line,
-            vars,
-            funs,
-            &[],
-            false,
-            options.base_input,
-            #[cfg(feature = "float_rand")]
-            rand,
-        )
-    } {
+    match tmr(
+        || {
+            Tokens::parse(
+                line,
+                vars,
+                funs,
+                &[],
+                false,
+                options.base_input,
+                options.rpn,
+                #[cfg(feature = "float_rand")]
+                rand,
+            )
+        },
+        options.perf,
+    ) {
         Ok(Some(tokens)) => {
-            //println!("{tokens:?}");
-            //println!("{}", tokens.get_infix(vars, funs, &[]));
-            //println!("{}", tokens.get_rpn(vars, funs, &[]));
-            let compute = tmr(|| {
-                tokens.compute(
-                    &[],
-                    funs,
-                    vars,
-                    #[cfg(feature = "float_rand")]
-                    rand,
-                )
-            });
-            //let compute = tokens.compute(&[], funs, vars, #[cfg(feature="float_rand")]rand);
+            let compute = tmr(
+                || {
+                    tokens.compute(
+                        &[],
+                        funs,
+                        vars,
+                        #[cfg(feature = "float_rand")]
+                        rand,
+                    )
+                },
+                options.perf,
+            );
             print!("{}", compute.get_closest_fraction(options.base_output));
             println!("{}", compute.to_string_radix(options.base_output));
+            if options.benchmark > 0 {
+                let cap = tokens.len() + funs.iter().map(|c| c.tokens.len()).sum::<usize>();
+                let mut inner_vars = Vec::with_capacity(cap);
+                let mut stack = Vec::with_capacity(cap);
+                let tmr = std::time::Instant::now();
+                for _ in 0..options.benchmark {
+                    black_box(tokens.compute_buffer(
+                        &mut inner_vars,
+                        &[],
+                        funs,
+                        vars,
+                        &mut stack,
+                        #[cfg(feature = "float_rand")]
+                        rand,
+                    ));
+                }
+                let time = tmr.elapsed().as_nanos();
+                let mean = time as f64 / options.benchmark as f64;
+                println!("Total: {time}ns, Mean: {mean}ns")
+            }
         }
         Ok(None) => {}
         Err(e) => println!("{e:?}"),
     }
 }
-#[allow(dead_code)]
-fn tmr<T, W>(fun: T) -> W
+fn tmr<T, W>(fun: T, perf: bool) -> W
 where
     T: FnOnce() -> W,
 {
-    let tmr = std::time::Instant::now();
-    let ret = fun();
-    println!("{}", tmr.elapsed().as_nanos());
-    ret
+    if perf {
+        let tmr = std::time::Instant::now();
+        let ret = fun();
+        println!("{}", tmr.elapsed().as_nanos());
+        ret
+    } else {
+        fun()
+    }
 }

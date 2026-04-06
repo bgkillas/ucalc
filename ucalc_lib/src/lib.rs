@@ -1,5 +1,6 @@
 #![feature(iter_advance_by)]
 #![feature(vec_try_remove)]
+#![feature(adt_const_params)]
 mod compute;
 mod functions;
 mod functions_list;
@@ -18,7 +19,7 @@ mod variable;
 pub use functions::Function;
 pub use functions_list::{FUNCTION_LIST, get_help};
 pub use operators::Operator;
-pub use parse::{Derivative, Token, Tokens, TokensSlice};
+pub use parse::{Derivative, Token, Tokens, TokensSlice, Volatility};
 #[cfg(feature = "float_rand")]
 pub use rand::{Rand, rng};
 #[cfg(feature = "units")]

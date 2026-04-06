@@ -1,5 +1,5 @@
 use crate::Number;
-use crate::parse::Tokens;
+use crate::parse::{Tokens, Volatility};
 use std::num::NonZeroU8;
 use std::ops::{Deref, DerefMut};
 use ucalc_numbers::Constant;
@@ -7,21 +7,21 @@ use ucalc_numbers::Constant;
 pub struct Variable {
     pub name: Option<Box<str>>,
     pub value: Number,
-    pub volatile: bool,
+    pub volatile: Volatility,
 }
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionVar {
     pub name: Option<Box<str>>,
     pub tokens: Tokens,
     pub inputs: NonZeroU8,
-    pub volatile: bool,
+    pub volatile: Volatility,
 }
 impl FunctionVar {
     pub fn new(
         name: impl Into<Box<str>>,
         inputs: NonZeroU8,
         tokens: Tokens,
-        volatile: bool,
+        volatile: Volatility,
     ) -> Self {
         Self {
             name: Some(name.into()),
@@ -30,7 +30,7 @@ impl FunctionVar {
             volatile,
         }
     }
-    pub fn null(inputs: NonZeroU8, tokens: Tokens, volatile: bool) -> Self {
+    pub fn null(inputs: NonZeroU8, tokens: Tokens, volatile: Volatility) -> Self {
         Self {
             name: None,
             inputs,
@@ -40,14 +40,14 @@ impl FunctionVar {
     }
 }
 impl Variable {
-    pub fn new(name: impl Into<Box<str>>, value: Number, volatile: bool) -> Self {
+    pub fn new(name: impl Into<Box<str>>, value: Number, volatile: Volatility) -> Self {
         Self {
             name: Some(name.into()),
             value,
             volatile,
         }
     }
-    pub fn null(value: Number, volatile: bool) -> Self {
+    pub fn null(value: Number, volatile: Volatility) -> Self {
         Self {
             name: None,
             value,
@@ -88,22 +88,31 @@ impl Functions {
         if let Some(v) = self.position(name) {
             self[v as usize].inputs = inputs;
         } else {
-            self.push(FunctionVar::new(name, inputs, Tokens::default(), false));
+            self.push(FunctionVar::new(
+                name,
+                inputs,
+                Tokens::default(),
+                Volatility::Constant,
+            ));
         }
     }
 }
 impl Default for Variables {
     fn default() -> Self {
         Self(vec![
-            Variable::new("pi", Number::from(Constant::Pi), false),
-            Variable::new("tau", Number::from(Constant::Tau), false),
-            Variable::new("e", Number::from(Constant::E), false),
+            Variable::new("pi", Number::from(Constant::Pi), Volatility::Constant),
+            Variable::new("tau", Number::from(Constant::Tau), Volatility::Constant),
+            Variable::new("e", Number::from(Constant::E), Volatility::Constant),
+            Variable::new(
+                "inf",
+                Number::from(Constant::Infinity),
+                Volatility::Constant,
+            ),
+            Variable::new("nan", Number::from(Constant::Nan), Volatility::Constant),
+            Variable::new("true", Number::from(true), Volatility::Constant),
+            Variable::new("false", Number::from(false), Volatility::Constant),
             #[cfg(feature = "complex")]
-            Variable::new("i", Number::from((0, 1)), false),
-            Variable::new("inf", Number::from(Constant::Infinity), false),
-            Variable::new("nan", Number::from(Constant::Nan), false),
-            Variable::new("true", Number::from(true), false),
-            Variable::new("false", Number::from(false), false),
+            Variable::new("i", Number::from((0, 1)), Volatility::Constant),
         ])
     }
 }
