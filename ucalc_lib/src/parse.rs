@@ -138,6 +138,9 @@ impl Tokens {
                     tokens.push(Token::CustomVar(i))
                 }
                 _ if let Some(i) = graph_vars.iter().copied().position(|v| v == token) => {
+                    if matches!(inputs, Some(Some(_))) {
+                        return Err(ParseError::GraphVarError);
+                    }
                     open_inputs += 1;
                     tokens.push(Token::GraphVar(i as u8))
                 }
@@ -296,6 +299,9 @@ impl Tokens {
                             tokens.push(Token::CustomVar(i));
                             open_input = true;
                         } else if let Some(i) = graph_vars.iter().copied().position(|v| v == s) {
+                            if matches!(inputs, Some(Some(_))) {
+                                return Err(ParseError::GraphVarError);
+                            }
                             tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
                             tokens.push(Token::GraphVar(i as u8));
                             open_input = true;
@@ -793,11 +799,23 @@ impl Tokens {
     }
     fn simplify_run<const V: Volatility>(
         &mut self,
-        _vars: &mut Variables,
-        _funs: &mut Functions,
-        _inputs: u8,
+        vars: &mut Variables,
+        funs: &mut Functions,
+        inputs: u8,
         #[cfg(feature = "float_rand")] _rand: &mut Rand,
     ) {
+        //TODO
+        for token in self.iter() {
+            match *token {
+                Token::Function(operator, _) if operator.volatility() < V => {}
+                Token::CustomVar(index) if vars[index as usize].volatile < V => {}
+                Token::CustomFun(index, _) if funs[index as usize].volatile < V => {}
+                Token::InnerVar(index)
+                    if index < inputs as u16 && Volatility::GraphConstant < V => {}
+                Token::GraphVar(_) => {}
+                _ => {}
+            }
+        }
     }
     fn end(
         mut self,
@@ -1067,6 +1085,7 @@ pub enum ParseError<'a> {
     MixedError,
     TooManyDerivatives,
     RpnUnsupported,
+    GraphVarError,
     #[cfg(not(all(feature = "vector", feature = "matrix")))]
     VecMatNotEnabled,
 }
