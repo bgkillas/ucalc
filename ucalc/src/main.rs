@@ -146,24 +146,36 @@ fn process_line(
             None
         }
         _ => {
-            match Tokens::parse(
-                line,
-                vars,
-                funs,
-                &[],
-                false,
-                options.base_input,
-                options.rpn,
-                #[cfg(feature = "float_rand")]
-                rand,
-            ) {
-                Ok(Some(tokens)) => {
-                    let compute = tokens.compute(
-                        &[],
-                        funs,
+            match tmr_write(
+                || {
+                    Tokens::parse(
+                        line,
                         vars,
+                        funs,
+                        &[],
+                        false,
+                        options.base_input,
+                        options.rpn,
                         #[cfg(feature = "float_rand")]
                         rand,
+                    )
+                },
+                str,
+                options.perf,
+            ) {
+                Ok(Some(tokens)) => {
+                    let compute = tmr_write(
+                        || {
+                            tokens.compute(
+                                &[],
+                                funs,
+                                vars,
+                                #[cfg(feature = "float_rand")]
+                                rand,
+                            )
+                        },
+                        str,
+                        options.perf,
                     );
                     write!(str, "{}", compute.get_closest_fraction(options.base_output))?;
                     write!(str, "{}", compute.to_string_radix(options.base_output))?;
@@ -285,6 +297,19 @@ fn run_line(
         }
         Ok(None) => {}
         Err(e) => println!("{e:?}"),
+    }
+}
+fn tmr_write<T, W>(fun: T, str: &mut impl Write, perf: bool) -> W
+where
+    T: FnOnce() -> W,
+{
+    if perf {
+        let tmr = std::time::Instant::now();
+        let ret = fun();
+        writeln!(str, "{}", tmr.elapsed().as_nanos()).unwrap();
+        ret
+    } else {
+        fun()
     }
 }
 fn tmr<T, W>(fun: T, perf: bool) -> W

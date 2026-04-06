@@ -1,6 +1,6 @@
 use crate::History;
 use crossterm::cursor::{
-    MoveLeft, MoveRight, MoveTo, MoveToColumn, MoveToNextLine, MoveToPreviousLine,
+    MoveDown, MoveLeft, MoveRight, MoveTo, MoveToColumn, MoveToNextLine, MoveToPreviousLine,
 };
 use crossterm::event::{
     DisableBracketedPaste, EnableBracketedPaste, Event, KeyCode, KeyEvent, KeyModifiers,
@@ -729,6 +729,9 @@ impl ReadChar {
                 ..
             }) => {
                 stdout.queue(MoveRight(u16::MAX))?;
+                if self.cursor_row_max != self.cursor_row {
+                    stdout.queue(MoveDown(self.cursor_row_max - self.cursor_row))?;
+                }
                 self.print_result(string, stdout, run)?;
                 stdout.flush()?;
             }
