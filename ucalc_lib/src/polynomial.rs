@@ -407,13 +407,13 @@ impl Compute<'_> {
         let mut tokens = self.tokens.iter().enumerate();
         while let Some((i, token)) = tokens.next() {
             match token {
-                &Token::Function(operator, d) => {
+                &Token::Function(fun, d) => {
                     if d.get() != 0 {
                         todo!()
                     }
-                    let inputs = operator.inputs().get() as usize;
+                    let inputs = fun.inputs().get() as usize;
                     let len = stack.len();
-                    operator.compute_poly(
+                    fun.compute_poly(
                         &mut stack[len - inputs..],
                         &mut poly,
                         #[cfg(feature = "float_rand")]

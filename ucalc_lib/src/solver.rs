@@ -89,11 +89,11 @@ impl Compute<'_> {
                         rand,
                     );
                 }
-                Token::Function(operator, d) => {
+                Token::Function(fun, d) => {
                     if d.get() != 0 {
                         todo!()
                     }
-                    let inverse = Inverse::from(operator);
+                    let inverse = Inverse::from(fun);
                     if inverse.is_none() {
                         return None;
                     }

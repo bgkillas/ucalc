@@ -185,20 +185,20 @@ impl<'a> Compute<'a> {
         let mut tokens = self.tokens.iter().enumerate();
         while let Some((i, token)) = tokens.next() {
             match token {
-                &Token::Function(operator, d) => {
+                &Token::Function(fun, d) => {
                     if d.get() != 0 {
                         todo!()
                     }
-                    let inputs = operator.inputs();
-                    if operator.has_inner_fn() {
-                        operator.compute_var(
+                    let inputs = fun.inputs();
+                    if fun.has_inner_fn() {
+                        fun.compute_var(
                             self.tokens(&self.tokens[..=i]),
                             stack,
                             inner_vars,
                             #[cfg(feature = "float_rand")]
                             rand,
                         )
-                    } else if operator.is_chainable() {
+                    } else if fun.is_chainable() {
                         let chain = if self.tokens.get(i + 1).is_some_and(|o| {
                             if let Token::Function(o, _) = o {
                                 o.is_chainable()
@@ -210,9 +210,8 @@ impl<'a> Compute<'a> {
                         } else {
                             None
                         };
-                        operator.compute(
+                        fun.compute(
                             stack,
-                            inputs,
                             #[cfg(feature = "float_rand")]
                             rand,
                         );
@@ -226,9 +225,8 @@ impl<'a> Compute<'a> {
                             };
                         }
                     } else {
-                        operator.compute(
+                        fun.compute(
                             stack,
-                            inputs,
                             #[cfg(feature = "float_rand")]
                             rand,
                         );

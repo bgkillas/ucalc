@@ -154,6 +154,7 @@ fn process_line(
                         funs,
                         &[],
                         false,
+                        true,
                         options.base_input,
                         options.rpn,
                         #[cfg(feature = "float_rand")]
@@ -214,6 +215,7 @@ fn run_line(
             funs,
             &[],
             false,
+            true,
             options.base_input,
             options.rpn,
             #[cfg(feature = "float_rand")]
@@ -251,6 +253,7 @@ fn run_line(
                 funs,
                 &[],
                 false,
+                true,
                 options.base_input,
                 options.rpn,
                 #[cfg(feature = "float_rand")]

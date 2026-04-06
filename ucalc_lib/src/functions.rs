@@ -396,13 +396,63 @@ impl Function {
                 | Self::GreaterEqual
         )
     }
+    pub fn compute_drain(
+        self,
+        mut stack: impl Iterator<Item = Number>,
+        #[cfg(feature = "float_rand")] rand: &mut Rand,
+    ) -> Number {
+        match self.inputs().get() {
+            1 => {
+                let mut a = stack.next().unwrap();
+                self.compute_on_1(&mut a);
+                a
+            }
+            2 => {
+                let mut a = stack.next().unwrap();
+                let b = stack.next().unwrap();
+                self.compute_on_2(
+                    &mut a,
+                    b,
+                    #[cfg(feature = "float_rand")]
+                    rand,
+                );
+                a
+            }
+            3 => {
+                let mut a = stack.next().unwrap();
+                let b = stack.next().unwrap();
+                let c = stack.next().unwrap();
+                self.compute_on_3(&mut a, b, c);
+                a
+            }
+            #[cfg(feature = "complex")]
+            4 => {
+                let mut a = stack.next().unwrap();
+                let b = stack.next().unwrap();
+                let c = stack.next().unwrap();
+                let d = stack.next().unwrap();
+                self.compute_on_4(&mut a, b, c, d);
+                a
+            }
+            #[cfg(feature = "complex")]
+            5 => {
+                let mut a = stack.next().unwrap();
+                let b = stack.next().unwrap();
+                let c = stack.next().unwrap();
+                let d = stack.next().unwrap();
+                let e = stack.next().unwrap();
+                self.compute_on_5(&mut a, b, c, d, e);
+                a
+            }
+            _ => unreachable!(),
+        }
+    }
     pub fn compute(
         self,
         stack: &mut Vec<StackToken>,
-        inputs: NonZeroU8,
         #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) {
-        match inputs.get() {
+        match self.inputs().get() {
             1 => self.compute_on_1(stack.last_mut().unwrap().num_mut()),
             2 => {
                 let b = stack.pop().unwrap().num();
