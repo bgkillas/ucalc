@@ -278,29 +278,78 @@ fn run_line(
             print!("{}", compute.get_closest_fraction(options.base_output));
             println!("{}", compute.to_string_radix(options.base_output));
             if options.benchmark > 0 {
-                let cap = tokens.len() + funs.iter().map(|c| c.tokens.len()).sum::<usize>();
-                let mut inner_vars = Vec::with_capacity(cap);
-                let mut stack = Vec::with_capacity(cap);
-                let tmr = std::time::Instant::now();
-                for _ in 0..options.benchmark {
-                    black_box(tokens.compute_buffer(
-                        &mut inner_vars,
-                        &[],
-                        funs,
-                        vars,
-                        &mut stack,
-                        #[cfg(feature = "float_rand")]
-                        rand,
-                    ));
-                }
-                let time = tmr.elapsed().as_nanos();
-                let mean = time as f64 / options.benchmark as f64;
-                println!("Total: {time}ns, Mean: {mean}ns")
+                benchmark(
+                    tokens,
+                    options.benchmark,
+                    vars,
+                    funs,
+                    #[cfg(feature = "float_rand")]
+                    rand,
+                );
+                let tokens = Tokens::parse(
+                    line,
+                    vars,
+                    funs,
+                    &[],
+                    false,
+                    false,
+                    options.base_input,
+                    options.rpn,
+                    #[cfg(feature = "float_rand")]
+                    rand,
+                )
+                .unwrap()
+                .unwrap();
+                benchmark(
+                    tokens,
+                    options.benchmark,
+                    vars,
+                    funs,
+                    #[cfg(feature = "float_rand")]
+                    rand,
+                );
             }
         }
         Ok(None) => {}
         Err(e) => println!("{e:?}"),
     }
+}
+fn benchmark(
+    tokens: Tokens,
+    n: usize,
+    vars: &mut Variables,
+    funs: &mut Functions,
+    #[cfg(feature = "float_rand")] rand: &mut Rand,
+) {
+    let cap = tokens.len() + funs.iter().map(|c| c.tokens.len()).sum::<usize>();
+    let mut inner_vars = Vec::with_capacity(cap);
+    let mut stack = Vec::with_capacity(cap);
+    for _ in 0..n {
+        black_box(tokens.compute_buffer(
+            &mut inner_vars,
+            &[],
+            funs,
+            vars,
+            &mut stack,
+            #[cfg(feature = "float_rand")]
+            rand,
+        ));
+    }
+    let tmr = std::time::Instant::now();
+    for _ in 0..n {
+        black_box(tokens.compute_buffer(
+            &mut inner_vars,
+            &[],
+            funs,
+            vars,
+            &mut stack,
+            #[cfg(feature = "float_rand")]
+            rand,
+        ));
+    }
+    let time = tmr.elapsed().as_nanos();
+    let mean = time as f64 / n as f64;
+    println!("Total: {time}ns, Mean: {mean}ns")
 }
 fn tmr_write<T, W>(fun: T, str: &mut impl Write, perf: bool) -> W
 where
