@@ -16,18 +16,40 @@ pub(crate) struct Compute<'a> {
 impl Tokens {
     pub fn compute(
         &self,
-        vars: &[Number],
-        funs: &[FunctionVar],
+        graph_vars: &[Number],
+        custom_funs: &[FunctionVar],
         custom_vars: &[Variable],
         #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Number {
-        let cap = self.len() + funs.iter().map(|c| c.tokens.len()).sum::<usize>();
+        let cap = self.len() + custom_funs.iter().map(|c| c.tokens.len()).sum::<usize>();
         let mut inner_vars = Vec::with_capacity(cap);
         let mut stack = Vec::with_capacity(cap);
         self.compute_buffer(
             &mut inner_vars,
-            vars,
-            funs,
+            graph_vars,
+            custom_funs,
+            custom_vars,
+            &mut stack,
+            #[cfg(feature = "float_rand")]
+            rand,
+        )
+    }
+    pub fn compute_fun(
+        &self,
+        graph_vars: &[Number],
+        custom_funs: &[FunctionVar],
+        custom_vars: &[Variable],
+        drain: impl Iterator<Item = Number>,
+        #[cfg(feature = "float_rand")] rand: &mut Rand,
+    ) -> Number {
+        let cap = self.len() + custom_funs.iter().map(|c| c.tokens.len()).sum::<usize>();
+        let mut inner_vars = Vec::with_capacity(cap);
+        inner_vars.extend(drain);
+        let mut stack = Vec::with_capacity(cap);
+        self.compute_buffer(
+            &mut inner_vars,
+            graph_vars,
+            custom_funs,
             custom_vars,
             &mut stack,
             #[cfg(feature = "float_rand")]
@@ -37,16 +59,16 @@ impl Tokens {
     pub fn compute_buffer(
         &self,
         inner_vars: &mut Vec<Number>,
-        vars: &[Number],
-        funs: &[FunctionVar],
+        graph_vars: &[Number],
+        custom_funs: &[FunctionVar],
         custom_vars: &[Variable],
         stack: &mut Vec<StackToken>,
         #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Number {
         self.compute_buffer_with(
             inner_vars,
-            vars,
-            funs,
+            graph_vars,
+            custom_funs,
             custom_vars,
             stack,
             0,
@@ -58,14 +80,14 @@ impl Tokens {
     pub fn compute_buffer_with(
         &self,
         inner_vars: &mut Vec<Number>,
-        vars: &[Number],
-        funs: &[FunctionVar],
+        graph_vars: &[Number],
+        custom_funs: &[FunctionVar],
         custom_vars: &[Variable],
         stack: &mut Vec<StackToken>,
         offset: usize,
         #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Number {
-        Compute::new(&self[..], vars, funs, custom_vars, offset).compute_buffer_with(
+        Compute::new(&self[..], graph_vars, custom_funs, custom_vars, offset).compute_buffer_with(
             inner_vars,
             stack,
             #[cfg(feature = "float_rand")]
@@ -163,15 +185,15 @@ impl<'a> Compute<'a> {
     }
     pub fn new(
         tokens: &'a TokensSlice,
-        vars: &'a [Number],
-        funs: &'a [FunctionVar],
+        graph_vars: &'a [Number],
+        custom_funs: &'a [FunctionVar],
         custom_vars: &'a [Variable],
         offset: usize,
     ) -> Self {
         Self {
             tokens,
-            graph_vars: vars,
-            custom_funs: funs,
+            graph_vars,
+            custom_funs,
             custom_vars,
             offset,
         }

@@ -669,7 +669,7 @@ impl Tokens {
         operator: Operator,
         inner_vars: &mut Vec<&str>,
         operator_stack: &[Operator],
-        funs: &[FunctionVar],
+        custom_funs: &[FunctionVar],
     ) -> Result<(), ParseError<'static>> {
         if operator == Operator::Solve {
             let count = operator_stack.iter().map(|a| a.inner_vars() as usize).sum();
@@ -697,7 +697,7 @@ impl Tokens {
                 }
             }
             self.push(Function::Sub.into());
-            self.compact_args(Function::Solve, inner_vars, funs);
+            self.compact_args(Function::Solve, inner_vars, custom_funs);
             self.push(Function::Solve.into());
             Ok(())
         } else {
@@ -709,7 +709,7 @@ impl Tokens {
         &mut self,
         operator_stack: &mut Vec<Operator>,
         inner_vars: &mut Vec<&str>,
-        funs: &[FunctionVar],
+        custom_funs: &[FunctionVar],
         operator: Operator,
         negate: bool,
     ) -> Result<(), ParseError<'static>> {
@@ -719,7 +719,7 @@ impl Tokens {
                     || (top.precedence() == operator.precedence() && operator.left_associative()))
                 && !(negate && operator == Operator::Negate && *top == Operator::Pow)
         }) {
-            self.push_operator(top, inner_vars, operator_stack, funs)?;
+            self.push_operator(top, inner_vars, operator_stack, custom_funs)?;
         }
         operator_stack.push(operator);
         Ok(())
@@ -729,7 +729,7 @@ impl Tokens {
         operator_stack: &mut Vec<Operator>,
         inner_vars: &mut Vec<&str>,
         inner_vars_count: &mut Vec<u8>,
-        funs: &[FunctionVar],
+        custom_funs: &[FunctionVar],
         fn_inputs: &mut Vec<NonZeroU8>,
     ) -> Result<(), ParseError<'static>> {
         if let Some(top) = operator_stack
@@ -738,7 +738,7 @@ impl Tokens {
             match top {
                 Operator::Custom(i, mut d) => {
                     let inputs = fn_inputs.pop().unwrap();
-                    let normal = funs.get(i as usize).unwrap().inputs;
+                    let normal = custom_funs.get(i as usize).unwrap().inputs;
                     match normal.cmp(&inputs) {
                         Ordering::Greater => return Err(ParseError::MissingInput),
                         Ordering::Less if d.is_derivative() || inputs.get() != normal.get() * 2 => {
@@ -756,10 +756,10 @@ impl Tokens {
                     let mut inputs = fn_inputs.pop().unwrap();
                     fun.set_inputs(inputs);
                     if fun.inputs().get() + 1 < inputs.get() + fun.inner_vars() {
-                        let last = self[..].get_last(funs);
+                        let last = self[..].get_last(custom_funs);
                         let mut t = last;
                         for _ in fun.inputs().get()..inputs.get() {
-                            let last = self[..t].get_last(funs);
+                            let last = self[..t].get_last(custom_funs);
                             if t - 1 == last && matches!(self[last], Token::InnerVar(_)) {
                                 self.remove(last);
                             } else {
@@ -778,7 +778,7 @@ impl Tokens {
                         Ordering::Less => d.set_integral_twice_input(),
                         _ => {}
                     }
-                    self.compact_args(fun, inner_vars, funs);
+                    self.compact_args(fun, inner_vars, custom_funs);
                     self.push(Token::Function(fun, d));
                 }
                 _ => {}
@@ -790,11 +790,11 @@ impl Tokens {
         &mut self,
         fun: Function,
         inner_vars: &mut Vec<&str>,
-        funs: &[FunctionVar],
+        custom_funs: &[FunctionVar],
     ) {
         let mut t = self.len();
         for _ in 0..fun.compact() {
-            let last = self[..t].get_last(funs);
+            let last = self[..t].get_last(custom_funs);
             self.insert(last, Token::Skip(t - last));
             t = last;
         }
@@ -804,19 +804,19 @@ impl Tokens {
     }
     pub fn get_infix(
         &self,
-        vars: &[Variable],
-        funs: &[FunctionVar],
+        custom_vars: &[Variable],
+        custom_funs: &[FunctionVar],
         graph_vars: &[&str],
     ) -> impl Display {
-        self[..].get_infix(vars, funs, graph_vars)
+        self[..].get_infix(custom_vars, custom_funs, graph_vars)
     }
     pub fn get_rpn(
         &self,
-        vars: &[Variable],
-        funs: &[FunctionVar],
+        custom_vars: &[Variable],
+        custom_funs: &[FunctionVar],
         graph_vars: &[&str],
     ) -> impl Display {
-        self[..].get_rpn(vars, funs, graph_vars)
+        self[..].get_rpn(custom_vars, custom_funs, graph_vars)
     }
     fn simplify<const V: Volatility>(
         &mut self,
@@ -866,6 +866,7 @@ impl Tokens {
                     let fun = &funs[index as usize];
                     let inputs = fun.inputs.get();
                     if fun.volatile < V
+                        && !fun.tokens.is_empty()
                         && self[i - inputs as usize..i]
                             .iter()
                             .all(|n| matches!(n, Token::Number(_)))
@@ -873,8 +874,20 @@ impl Tokens {
                         if d.get() != 0 {
                             todo!()
                         }
-                        //TODO
-                        let _ = 0;
+                        let n = fun.tokens.compute_fun(
+                            &[],
+                            funs,
+                            vars,
+                            self.drain(i - inputs as usize..i).map(|t| t.num()),
+                            #[cfg(feature = "float_rand")]
+                            rand,
+                        );
+                        i -= inputs as usize;
+                        for i in skips.iter().copied() {
+                            *<Tokens as IndexMut<usize>>::index_mut(self, i).skip_mut() -=
+                                inputs as usize;
+                        }
+                        self[i] = n.into();
                     }
                 }
                 Token::CustomVar(index) if vars[index as usize].volatile < V => {
@@ -1011,7 +1024,12 @@ pub(crate) fn get_var_position(
     }
 }
 impl TokensSlice {
-    pub fn volatility(&self, funs: &[FunctionVar], vars: &[Variable], inputs: u8) -> Volatility {
+    pub fn volatility(
+        &self,
+        custom_funs: &[FunctionVar],
+        custom_vars: &[Variable],
+        inputs: u8,
+    ) -> Volatility {
         let mut volatility = Volatility::Constant;
         for token in self.iter() {
             match *token {
@@ -1021,17 +1039,17 @@ impl TokensSlice {
                     }
                     volatility = fun.volatility()
                 }
-                Token::CustomVar(index) if vars[index as usize].volatile > volatility => {
-                    if vars[index as usize].volatile == Volatility::Volatile {
+                Token::CustomVar(index) if custom_vars[index as usize].volatile > volatility => {
+                    if custom_vars[index as usize].volatile == Volatility::Volatile {
                         return Volatility::Volatile;
                     }
-                    volatility = vars[index as usize].volatile;
+                    volatility = custom_vars[index as usize].volatile;
                 }
-                Token::CustomFun(index, _) if funs[index as usize].volatile > volatility => {
-                    if funs[index as usize].volatile == Volatility::Volatile {
+                Token::CustomFun(index, _) if custom_funs[index as usize].volatile > volatility => {
+                    if custom_funs[index as usize].volatile == Volatility::Volatile {
                         return Volatility::Volatile;
                     }
-                    volatility = funs[index as usize].volatile;
+                    volatility = custom_funs[index as usize].volatile;
                 }
                 Token::InnerVar(index)
                     if index < inputs as u16 && Volatility::GraphConstant > volatility =>
@@ -1044,19 +1062,19 @@ impl TokensSlice {
         }
         volatility
     }
-    pub fn get_last_with_end(&self, funs: &[FunctionVar], mut end: usize) -> usize {
+    pub fn get_last_with_end(&self, custom_funs: &[FunctionVar], mut end: usize) -> usize {
         let mut inputs = 1;
         while inputs != 0 {
             inputs -= 1;
             end -= 1;
             match self[end] {
                 Token::CustomFun(j, d) if d.is_integral_twice_input() => {
-                    inputs += 2 * funs[j as usize].inputs.get()
+                    inputs += 2 * custom_funs[j as usize].inputs.get()
                 }
                 Token::Function(o, d) if d.is_integral_twice_input() => {
                     inputs += 2 * o.inputs().get()
                 }
-                Token::CustomFun(j, _) => inputs += funs[j as usize].inputs.get(),
+                Token::CustomFun(j, _) => inputs += custom_funs[j as usize].inputs.get(),
                 Token::Function(o, _) => inputs += o.inputs().get(),
                 Token::Skip(_) => inputs += 1,
                 _ => {}
@@ -1067,34 +1085,38 @@ impl TokensSlice {
         }
         end
     }
-    pub fn get_last(&self, funs: &[FunctionVar]) -> usize {
-        self.get_last_with_end(funs, self.len())
+    pub fn get_last(&self, custom_funs: &[FunctionVar]) -> usize {
+        self.get_last_with_end(custom_funs, self.len())
     }
-    pub fn get_from_last_with_end(&self, funs: &[FunctionVar], end: usize) -> (&Self, usize) {
-        let last = self.get_last_with_end(funs, end);
+    pub fn get_from_last_with_end(
+        &self,
+        custom_funs: &[FunctionVar],
+        end: usize,
+    ) -> (&Self, usize) {
+        let last = self.get_last_with_end(custom_funs, end);
         if matches!(self[end - 1], Token::Skip(_)) {
             (&self[last..end - 1], last)
         } else {
             (&self[last..end], last)
         }
     }
-    pub fn get_from_last(&self, funs: &[FunctionVar]) -> (&Self, usize) {
-        self.get_from_last_with_end(funs, self.len())
+    pub fn get_from_last(&self, custom_funs: &[FunctionVar]) -> (&Self, usize) {
+        self.get_from_last_with_end(custom_funs, self.len())
     }
-    pub fn get_lasts(&self, funs: &[FunctionVar]) -> Vec<&Self> {
+    pub fn get_lasts(&self, custom_funs: &[FunctionVar]) -> Vec<&Self> {
         let inputs = match *self.last().unwrap() {
             Token::CustomFun(j, d) if d.is_integral_twice_input() => {
-                2 * funs[j as usize].inputs.get()
+                2 * custom_funs[j as usize].inputs.get()
             }
             Token::Function(o, d) if d.is_integral_twice_input() => 2 * o.inputs().get(),
-            Token::CustomFun(j, _) => funs[j as usize].inputs.get(),
+            Token::CustomFun(j, _) => custom_funs[j as usize].inputs.get(),
             Token::Function(o, _) => o.inputs().get(),
             _ => unreachable!(),
         };
         let mut ret = vec![&self[0..0]; inputs as usize];
         let mut end = self.len() - 1;
         for j in (0..inputs).rev() {
-            (ret[j as usize], end) = self.get_from_last_with_end(funs, end);
+            (ret[j as usize], end) = self.get_from_last_with_end(custom_funs, end);
         }
         ret
     }
@@ -1214,8 +1236,8 @@ impl Token {
 impl TokensSlice {
     pub fn get_infix(
         &self,
-        vars: &[Variable],
-        funs: &[FunctionVar],
+        custom_vars: &[Variable],
+        custom_funs: &[FunctionVar],
         graph_vars: &[&str],
     ) -> impl Display {
         fmt::from_fn(move |fmt| match self.last().unwrap() {
@@ -1223,12 +1245,12 @@ impl TokensSlice {
             &Token::InnerVar(i) => write!(fmt, "{}", (b'n' + i as u8) as char),
             &Token::GraphVar(i) => write!(fmt, "{}", graph_vars[i as usize]),
             &Token::CustomFun(i, d) => {
-                let lasts = self.get_lasts(funs);
+                let lasts = self.get_lasts(custom_funs);
                 let mut first = true;
-                write!(fmt, "{}", funs[i as usize].name.as_ref().unwrap())?;
+                write!(fmt, "{}", custom_funs[i as usize].name.as_ref().unwrap())?;
                 write_commas(fmt, d)?;
                 for arg in lasts {
-                    let arg = arg.get_infix(vars, funs, graph_vars);
+                    let arg = arg.get_infix(custom_vars, custom_funs, graph_vars);
                     if first {
                         first = false;
                         write!(fmt, "{arg}")?;
@@ -1238,13 +1260,15 @@ impl TokensSlice {
                 }
                 write!(fmt, ")")
             }
-            &Token::CustomVar(i) => write!(fmt, "{}", vars[i as usize].name.as_ref().unwrap()),
+            &Token::CustomVar(i) => {
+                write!(fmt, "{}", custom_vars[i as usize].name.as_ref().unwrap())
+            }
             Token::Skip(_) => Ok(()),
             &Token::Function(f, d) => {
                 let l = self.len() - 1;
-                let last = self[..l].get_last(funs);
+                let last = self[..l].get_last(custom_funs);
                 if let Ok(o) = Operator::try_from(f) {
-                    let arg = self[last..l].get_infix(vars, funs, graph_vars);
+                    let arg = self[last..l].get_infix(custom_vars, custom_funs, graph_vars);
                     let arg = if self[l - 1].greater_precedence(o)
                         || (f.is_chainable()
                             && if let Token::Function(f, _) = self[l - 1] {
@@ -1257,7 +1281,7 @@ impl TokensSlice {
                         format_args!("({arg})")
                     };
                     if o.inputs().get() == 2 {
-                        let arg1 = self[..last].get_infix(vars, funs, graph_vars);
+                        let arg1 = self[..last].get_infix(custom_vars, custom_funs, graph_vars);
                         let arg1 = if self[last - 1].greater_precedence(o) {
                             format_args!("{arg1}")
                         } else {
@@ -1270,12 +1294,12 @@ impl TokensSlice {
                         write!(fmt, "{arg}{o}")
                     }
                 } else {
-                    let lasts = self.get_lasts(funs);
+                    let lasts = self.get_lasts(custom_funs);
                     let mut first = true;
                     write!(fmt, "{f}(")?;
                     write_commas(fmt, d)?;
                     for arg in lasts {
-                        let arg = arg.get_infix(vars, funs, graph_vars);
+                        let arg = arg.get_infix(custom_vars, custom_funs, graph_vars);
                         if first {
                             first = false;
                             write!(fmt, "{arg}")?;
@@ -1290,8 +1314,8 @@ impl TokensSlice {
     }
     pub fn get_rpn(
         &self,
-        vars: &[Variable],
-        funs: &[FunctionVar],
+        custom_vars: &[Variable],
+        custom_funs: &[FunctionVar],
         graph_vars: &[&str],
     ) -> impl Display {
         fmt::from_fn(move |fmt| {
@@ -1306,11 +1330,11 @@ impl TokensSlice {
                     &Token::InnerVar(i) => write!(fmt, "{}", (b'n' + i as u8) as char)?,
                     &Token::GraphVar(i) => write!(fmt, "{}", graph_vars[i as usize])?,
                     &Token::CustomFun(i, d) => {
-                        write!(fmt, "{}", funs[i as usize].name.as_ref().unwrap())?;
+                        write!(fmt, "{}", custom_funs[i as usize].name.as_ref().unwrap())?;
                         write_commas(fmt, d)?;
                     }
                     &Token::CustomVar(i) => {
-                        write!(fmt, "{}", vars[i as usize].name.as_ref().unwrap())?
+                        write!(fmt, "{}", custom_vars[i as usize].name.as_ref().unwrap())?
                     }
                     &Token::Function(fun, d) => {
                         if let Ok(o) = Operator::try_from(fun) {
