@@ -1,4 +1,6 @@
-use crate::{Functions, Rand, Token, Tokens, Variables, Volatility};
+#[cfg(feature = "float_rand")]
+use crate::Rand;
+use crate::{Functions, Token, Tokens, Variables, Volatility};
 use std::ops::IndexMut;
 impl Tokens {
     pub fn simplify<const V: Volatility>(
@@ -18,10 +20,8 @@ impl Tokens {
                         && self[i - inputs as usize..i]
                             .iter()
                             .all(|n| matches!(n, Token::Number(_)))
+                        && d.get() == 0
                     {
-                        if d.get() != 0 {
-                            todo!()
-                        }
                         if fun.has_inner_fn() {
                             //TODO
                             let _ = 0;
@@ -53,10 +53,8 @@ impl Tokens {
                         && self[i - inputs as usize..i]
                             .iter()
                             .all(|n| matches!(n, Token::Number(_)))
+                        && d.get() == 0
                     {
-                        if d.get() != 0 {
-                            todo!()
-                        }
                         let n = fun.tokens.compute_fun(
                             &[],
                             funs,
