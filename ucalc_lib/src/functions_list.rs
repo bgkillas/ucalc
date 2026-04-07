@@ -74,6 +74,8 @@ pub const FUNCTION_LIST: &[&str] = &[
     "solve((x,)f(x))",
     #[cfg(feature = "float_rand")]
     "rand_uniform(a,b)",
+    #[cfg(feature = "units")]
+    "convert(a,b)",
     "numerical_solve(start(,x),f(x))",
     "numerical_derivative(point(,x),f(x))",
     "numerical_integral(start,end(,x),f(x))",
@@ -86,6 +88,8 @@ pub fn get_help(str: &str) -> &str {
         "mul" => "mul(a,b)",
         "div" => "div(a,b)",
         "pow" => "pow(a,b)",
+        #[cfg(feature = "units")]
+        "convert" => "convert(a,b)",
         "tetration" => "tetration(a,b)",
         "root" => "root(a,b)",
         "rem" => "rem(a,b)",

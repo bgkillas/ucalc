@@ -87,6 +87,8 @@ pub enum Function {
     Floor,
     Round,
     Trunc,
+    #[cfg(feature = "units")]
+    Convert,
     Fract,
     #[cfg(feature = "complex")]
     Real,
@@ -168,6 +170,8 @@ impl TryFrom<&str> for Function {
             "mul" => Self::Mul,
             "div" => Self::Div,
             "pow" => Self::Pow,
+            #[cfg(feature = "units")]
+            "convert" => Self::Convert,
             "numerical_differential" => Self::NumericalDifferential,
             "numerical_derivative" => Self::NumericalDerivative,
             "numerical_integral" => Self::NumericalIntegral,
@@ -241,6 +245,8 @@ impl Display for Function {
                 Self::Round => "round",
                 Self::Trunc => "trunc",
                 Self::Fract => "fract",
+                #[cfg(feature = "units")]
+                Self::Convert => "convert",
                 Self::NumericalDifferential => "numerical_differential",
                 Self::NumericalDerivative => "numerical_derivative",
                 Self::NumericalIntegral => "numerical_integral",
@@ -368,6 +374,8 @@ impl Function {
             | Self::NumericalSolve => 2,
             #[cfg(feature = "float_rand")]
             Self::RandUniform => 2,
+            #[cfg(feature = "units")]
+            Self::Convert => 2,
             Self::Quadratic
             | Self::Sum
             | Self::Prod
@@ -550,6 +558,8 @@ impl Function {
             Self::Mul => *a *= b,
             Self::Div => *a /= b,
             Self::Rem => *a %= b,
+            #[cfg(feature = "units")]
+            Self::Convert => *a /= b,
             Self::Pow => a.pow_assign(b),
             Self::Root => a.pow_assign(b.recip()),
             Self::Tetration => a.tetration_mut(&b),

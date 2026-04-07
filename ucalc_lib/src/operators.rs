@@ -25,6 +25,8 @@ pub enum Operator {
     Or,
     Not,
     Solve,
+    #[cfg(feature = "units")]
+    Convert,
     Bracket(Bracket),
     Custom(u16, Derivative),
     Function(Function, Derivative),
@@ -35,30 +37,32 @@ impl Display for Operator {
             f,
             "{}",
             match self {
-                Operator::Add => "+",
-                Operator::Sub => "-",
-                Operator::Mul => "*",
-                Operator::Div => "/",
-                Operator::Pow => "^",
-                Operator::Tetration => "^^",
-                Operator::Root => "//",
-                Operator::Rem => "%",
-                Operator::Negate => "-",
-                Operator::Factorial => "!",
-                Operator::SubFactorial => "!",
-                Operator::Equal => "==",
-                Operator::NotEqual => "!=",
-                Operator::Greater => ">",
-                Operator::Less => "<",
-                Operator::GreaterEqual => ">=",
-                Operator::LessEqual => "<=",
-                Operator::And => "&",
-                Operator::Or => "?",
-                Operator::Not => ";",
-                Operator::Solve => "=",
-                Operator::Bracket(_) => unreachable!(),
-                Operator::Function(_, _) => unreachable!(),
-                Operator::Custom(_, _) => unreachable!(),
+                Self::Add => "+",
+                Self::Sub => "-",
+                Self::Mul => "*",
+                Self::Div => "/",
+                Self::Pow => "^",
+                Self::Tetration => "^^",
+                Self::Root => "//",
+                Self::Rem => "%",
+                Self::Negate => "-",
+                Self::Factorial => "!",
+                Self::SubFactorial => "!",
+                Self::Equal => "==",
+                Self::NotEqual => "!=",
+                Self::Greater => ">",
+                Self::Less => "<",
+                Self::GreaterEqual => ">=",
+                Self::LessEqual => "<=",
+                Self::And => "&",
+                Self::Or => "?",
+                Self::Not => ";",
+                Self::Solve => "=",
+                #[cfg(feature = "units")]
+                Self::Convert => "->",
+                Self::Bracket(_) => unreachable!(),
+                Self::Function(_, _) => unreachable!(),
+                Self::Custom(_, _) => unreachable!(),
             }
         )
     }
@@ -84,6 +88,8 @@ impl TryFrom<Function> for Operator {
             Function::Less => Self::Less,
             Function::GreaterEqual => Self::GreaterEqual,
             Function::LessEqual => Self::LessEqual,
+            #[cfg(feature = "units")]
+            Function::Convert => Self::Convert,
             Function::And => Self::And,
             Function::Or => Self::Or,
             Function::Not => Self::Not,
@@ -126,6 +132,8 @@ impl TryFrom<&str> for Operator {
             "?" => Self::Or,
             ";" => Self::Not,
             "=" => Self::Solve,
+            #[cfg(feature = "units")]
+            "->" => Self::Convert,
             "(" => Self::Bracket(Bracket::Parenthesis),
             "|" => Self::Bracket(Bracket::Absolute),
             _ => return Err(()),
@@ -153,6 +161,8 @@ impl Operator {
             | Self::Or
             | Self::Solve
             | Self::Tetration => 2,
+            #[cfg(feature = "units")]
+            Self::Convert => 2,
             Self::Function(fun, _) => return fun.inputs(),
             Self::Custom(_, _) => unreachable!(),
             Self::Bracket(_) => unreachable!(),
@@ -240,12 +250,14 @@ impl Operator {
             | Self::LessEqual
             | Self::GreaterEqual => 2,
             Self::Solve => 3,
-            Self::Add | Self::Sub => 4,
-            Self::Mul | Self::Div => 5,
-            Self::Negate | Self::Not => 6,
-            Self::Pow | Self::Root | Self::Tetration => 7,
-            Self::Rem => 8,
-            Self::Factorial | Self::SubFactorial => 9,
+            #[cfg(feature = "units")]
+            Self::Convert => 4,
+            Self::Add | Self::Sub => 5,
+            Self::Mul | Self::Div => 6,
+            Self::Negate | Self::Not => 7,
+            Self::Pow | Self::Root | Self::Tetration => 8,
+            Self::Rem => 9,
+            Self::Factorial | Self::SubFactorial => 10,
             Self::Bracket(_) | Self::Function(_, _) | Self::Custom(_, _) => unreachable!(),
         }
     }
@@ -254,6 +266,8 @@ impl Operator {
             Self::Add | Self::Sub | Self::Mul | Self::Div | Self::Rem | Self::And | Self::Or => {
                 true
             }
+            #[cfg(feature = "units")]
+            Self::Convert => true,
             Self::Pow
             | Self::Root
             | Self::Negate
@@ -299,6 +313,8 @@ impl From<Operator> for Function {
             Operator::And => Self::And,
             Operator::Or => Self::Or,
             Operator::Not => Self::Not,
+            #[cfg(feature = "units")]
+            Operator::Convert => Self::Convert,
             Operator::Function(function, _) => function,
             Operator::Custom(_, _) | Operator::Bracket(_) | Operator::Solve => unreachable!(),
         }
