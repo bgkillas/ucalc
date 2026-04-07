@@ -166,6 +166,43 @@ impl Operator {
             0
         }
     }
+    pub fn unary_right(self) -> bool {
+        matches!(self, Self::Factorial)
+    }
+    pub fn get_unary_left(self) -> Option<Self> {
+        Some(match self {
+            Self::Add => Self::Add,
+            Self::Sub => Self::Negate,
+            Self::Factorial => Self::SubFactorial,
+            Self::Mul
+            | Self::Negate
+            | Self::SubFactorial
+            | Self::Not
+            | Self::Div
+            | Self::Pow
+            | Self::Root
+            | Self::Rem
+            | Self::Equal
+            | Self::NotEqual
+            | Self::Greater
+            | Self::Less
+            | Self::LessEqual
+            | Self::GreaterEqual
+            | Self::And
+            | Self::Or
+            | Self::Solve
+            | Self::Tetration
+            | Self::Function(_, _)
+            | Self::Custom(_, _)
+            | Self::Bracket(_) => return None,
+        })
+    }
+    pub fn is_unary(self) -> bool {
+        matches!(
+            self,
+            Self::Negate | Self::Not | Self::SubFactorial | Self::Factorial
+        )
+    }
     pub fn unary_left(self) -> bool {
         match self {
             Self::Negate | Self::Not | Self::SubFactorial => true,

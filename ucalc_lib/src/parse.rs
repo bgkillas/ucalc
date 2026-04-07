@@ -257,8 +257,8 @@ impl Tokens {
         let mut inner_vars_count: Vec<u8> = Vec::with_capacity(value.len());
         let mut chars = value.char_indices();
         let mut inputs = None;
-        let mut negate = true;
-        let mut last_abs = false;
+        let mut no_input_left = true;
+        let mut last_open = false;
         let mut req_input = false;
         let mut open_input = false;
         let mut last_mul = false;
@@ -268,11 +268,11 @@ impl Tokens {
             match c {
                 ' ' => {}
                 '@' if let Some(i) = vars.position("@") => {
-                    tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
+                    tokens.last_mul(&mut operator_stack, no_input_left, &mut last_mul, true);
                     tokens.push(Token::CustomVar(i));
                     open_input = true;
-                    negate = false;
-                    last_abs = false;
+                    no_input_left = false;
+                    last_open = false;
                     req_input = false;
                     expect_expr = false;
                 }
@@ -306,23 +306,43 @@ impl Tokens {
                             inner_vars.push(s);
                             open_input = true;
                         } else if let Some(i) = funs.position(s) {
-                            tokens.last_mul(&mut operator_stack, negate, &mut last_mul, false);
+                            tokens.last_mul(
+                                &mut operator_stack,
+                                no_input_left,
+                                &mut last_mul,
+                                false,
+                            );
                             operator_stack.push(Operator::Custom(i, Derivative::default()));
                             open_input = false;
                             fn_inputs.push(NonZeroU8::new(1).unwrap());
                         } else if let Some(i) = inner_vars.iter().copied().position(|v| v == s) {
-                            tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
+                            tokens.last_mul(
+                                &mut operator_stack,
+                                no_input_left,
+                                &mut last_mul,
+                                true,
+                            );
                             tokens.push(Token::InnerVar(i as u16));
                             open_input = true;
                         } else if let Some(i) = vars.position(s) {
-                            tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
+                            tokens.last_mul(
+                                &mut operator_stack,
+                                no_input_left,
+                                &mut last_mul,
+                                true,
+                            );
                             tokens.push(Token::CustomVar(i));
                             open_input = true;
                         } else if let Some(i) = graph_vars.iter().copied().position(|v| v == s) {
                             if matches!(inputs, Some(Some(_))) {
                                 return Err(ParseError::GraphVarError);
                             }
-                            tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
+                            tokens.last_mul(
+                                &mut operator_stack,
+                                no_input_left,
+                                &mut last_mul,
+                                true,
+                            );
                             tokens.push(Token::GraphVar(i as u8));
                             open_input = true;
                         } else if let Ok(fun) = Function::try_from(s) {
@@ -332,7 +352,12 @@ impl Tokens {
                             if fun.has_var() {
                                 inner_vars_count.push(fun.inner_vars());
                             }
-                            tokens.last_mul(&mut operator_stack, negate, &mut last_mul, false);
+                            tokens.last_mul(
+                                &mut operator_stack,
+                                no_input_left,
+                                &mut last_mul,
+                                false,
+                            );
                             operator_stack.push(Operator::Function(fun, Derivative::default()));
                             open_input = false;
                             fn_inputs.push(NonZeroU8::new(1).unwrap());
@@ -346,7 +371,12 @@ impl Tokens {
                                 inner_vars.len(),
                             )
                         {
-                            tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
+                            tokens.last_mul(
+                                &mut operator_stack,
+                                no_input_left,
+                                &mut last_mul,
+                                true,
+                            );
                             tokens.push(Token::InnerVar(n as u16));
                             inner_vars[n] = s;
                             open_input = true;
@@ -363,7 +393,12 @@ impl Tokens {
                             #[cfg(feature = "units")]
                             tokens.push(Units::from(_i).into())
                         } else if let Some(f) = NumberBase::parse_radix(s, base) {
-                            tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
+                            tokens.last_mul(
+                                &mut operator_stack,
+                                no_input_left,
+                                &mut last_mul,
+                                true,
+                            );
                             tokens.push(f.into());
                             chars.advance_by(l - 1).unwrap();
                             open_input = true;
@@ -372,7 +407,12 @@ impl Tokens {
                             l -= value[i..i + l].chars().last().unwrap().len_utf8();
                             continue;
                         } else {
-                            tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
+                            tokens.last_mul(
+                                &mut operator_stack,
+                                no_input_left,
+                                &mut last_mul,
+                                true,
+                            );
                             tokens.push(Token::InnerVar(inner_vars.len() as u16));
                             inner_vars.push(&value[i..i + l]);
                             open_input = true;
@@ -380,8 +420,8 @@ impl Tokens {
                         break;
                     }
                     chars.advance_by(count - 1).unwrap();
-                    negate = false;
-                    last_abs = false;
+                    no_input_left = false;
+                    last_open = false;
                     req_input = false;
                     expect_expr = !open_input;
                 }
@@ -396,8 +436,8 @@ impl Tokens {
                     }
                     d.increment()?;
                     open_input = false;
-                    negate = false;
-                    last_abs = false;
+                    no_input_left = false;
+                    last_open = false;
                     req_input = false;
                     expect_expr = true;
                 }
@@ -416,8 +456,8 @@ impl Tokens {
                     }
                     d.increment()?;
                     open_input = false;
-                    negate = false;
-                    last_abs = false;
+                    no_input_left = false;
+                    last_open = false;
                     req_input = false;
                     expect_expr = true;
                 }
@@ -434,11 +474,11 @@ impl Tokens {
                     let Some(float) = NumberBase::parse_radix(s, base) else {
                         return Err(ParseError::UnknownToken(s));
                     };
-                    tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
+                    tokens.last_mul(&mut operator_stack, no_input_left, &mut last_mul, true);
                     tokens.push(float.into());
                     chars.advance_by(l - 1).unwrap();
-                    negate = false;
-                    last_abs = false;
+                    no_input_left = false;
+                    last_open = false;
                     req_input = false;
                     open_input = true;
                     expect_expr = false;
@@ -470,8 +510,8 @@ impl Tokens {
                     } else if !expect_let {
                         return Err(ParseError::CommaError);
                     }
-                    negate = true;
-                    last_abs = false;
+                    no_input_left = true;
+                    last_open = false;
                     last_mul = false;
                     open_input = false;
                     expect_expr = true;
@@ -501,27 +541,27 @@ impl Tokens {
                         &mut fn_inputs,
                     )?;
                     last_mul = true;
-                    negate = false;
-                    last_abs = false;
+                    no_input_left = false;
+                    last_open = false;
                     open_input = true;
                     expect_expr = false;
                 }
                 '(' => {
-                    tokens.last_mul(&mut operator_stack, negate, &mut last_mul, true);
+                    tokens.last_mul(&mut operator_stack, no_input_left, &mut last_mul, true);
                     operator_stack.push(Bracket::Parenthesis.into());
-                    negate = true;
-                    last_abs = false;
+                    no_input_left = true;
+                    last_open = true;
                     req_input = false;
                     last_mul = false;
                     open_input = false;
                     expect_expr = true;
                 }
                 '|' => {
-                    if abs == 0 || last_abs || req_input {
+                    if abs == 0 || last_open || req_input {
                         operator_stack.push(Bracket::Absolute.into());
                         abs += 1;
-                        negate = true;
-                        last_abs = true;
+                        no_input_left = true;
+                        last_open = true;
                         req_input = true;
                         last_mul = false;
                         open_input = false;
@@ -547,8 +587,8 @@ impl Tokens {
                         )?;
                         abs -= 1;
                         last_mul = true;
-                        negate = false;
-                        last_abs = false;
+                        no_input_left = false;
+                        last_open = false;
                         open_input = true;
                     }
                 }
@@ -583,34 +623,32 @@ impl Tokens {
                                 inputs = Some(Some(name));
                             }
                         } else {
-                            match operator {
-                                Operator::Sub if negate => operator = Operator::Negate,
-                                Operator::Add if negate => {
+                            if no_input_left && let Some(op) = operator.get_unary_left() {
+                                if op == Operator::Add {
                                     req_input = true;
-                                    negate = true;
-                                    last_abs = false;
+                                    last_open = false;
                                     continue;
+                                } else {
+                                    operator = op;
                                 }
-                                Operator::Factorial if negate => operator = Operator::SubFactorial,
-                                _ => {}
                             }
-                            if operator.inputs().get() == 2 {
+                            if !operator.is_unary() {
                                 req_input = true;
                                 if !open_input {
                                     return Err(ParseError::MissingInput);
                                 }
-                            } else if operator.unary_left() {
-                                req_input = true;
+                            } else {
+                                req_input = operator.unary_left();
                             }
                             tokens.pop_stack(
                                 &mut operator_stack,
                                 &mut inner_vars,
                                 funs,
                                 operator,
-                                negate,
+                                no_input_left,
                             )?;
-                            negate = operator != Operator::Factorial;
-                            last_abs = false;
+                            no_input_left = !operator.unary_right();
+                            last_open = false;
                         }
                     } else {
                         return Err(ParseError::UnknownToken(s));

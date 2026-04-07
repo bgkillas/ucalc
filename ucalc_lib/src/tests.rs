@@ -2993,7 +2993,7 @@ fn test_err() {
             #[cfg(feature = "float_rand")]
             &mut rng()
         ),
-        Err(ParseError::AbsoluteBracketFailed)
+        Err(ParseError::MissingInput)
     );
     assert_eq!(
         Tokens::infix(

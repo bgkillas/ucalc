@@ -106,35 +106,35 @@ pub fn color_brackets<'a, 'b: 'a>(line: &'a str, colors: &'b Colors) -> impl Dis
     fmt::from_fn(|f| {
         let mut bracket: isize = 0;
         let mut abs = 0;
-        let mut last_abs = false;
+        let mut last_open = false;
         let mut req_input = false;
         let mut chars = line.char_indices();
         while let Some((i, c)) = chars.next() {
             match c {
                 '|' => {
-                    if abs == 0 || last_abs || req_input {
+                    if abs == 0 || last_open || req_input {
                         write_bracket(f, colors, bracket, c)?;
                         bracket += 1;
                         abs += 1;
-                        last_abs = true;
+                        last_open = true;
                         req_input = false;
                     } else {
                         bracket -= 1;
                         write_bracket(f, colors, bracket, c)?;
                         abs -= 1;
-                        last_abs = false;
+                        last_open = false;
                     }
                 }
                 '(' | '[' | '{' => {
                     write_bracket(f, colors, bracket, c)?;
                     bracket += 1;
-                    last_abs = false;
+                    last_open = true;
                     req_input = false;
                 }
                 ')' | ']' | '}' => {
                     bracket -= 1;
                     write_bracket(f, colors, bracket, c)?;
-                    last_abs = false;
+                    last_open = false;
                 }
                 c => {
                     write!(f, "{c}")?;
@@ -154,7 +154,7 @@ pub fn color_brackets<'a, 'b: 'a>(line: &'a str, colors: &'b Colors) -> impl Dis
                     } else {
                         req_input = false;
                     }
-                    last_abs = false;
+                    last_open = false;
                 }
             }
         }
