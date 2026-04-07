@@ -12,6 +12,7 @@ mod polynomial;
 mod polynomial_impls;
 #[cfg(feature = "float_rand")]
 mod rand;
+mod simplify;
 mod solver;
 #[cfg(test)]
 mod tests;
