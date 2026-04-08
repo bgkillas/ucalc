@@ -358,7 +358,12 @@ impl Tokens {
                                 &mut last_mul,
                                 false,
                             );
-                            operator_stack.push(Operator::Function(fun, Derivative::default()));
+                            if fun.has_function_output() {
+                                operator_stack
+                                    .push(Operator::FunctionExtraInput(fun, Derivative::default()));
+                            } else {
+                                operator_stack.push(Operator::Function(fun, Derivative::default()));
+                            }
                             open_input = false;
                             fn_inputs.push(NonZeroU8::new(1).unwrap());
                         } else if count == 1
@@ -429,6 +434,7 @@ impl Tokens {
                     let d = match operator_stack.last_mut() {
                         Some(Operator::Custom(_, d)) => d,
                         Some(Operator::Function(_, d)) => d,
+                        Some(Operator::FunctionExtraInput(_, d)) => d,
                         _ => return Err(ParseError::DerivativeError),
                     };
                     if d.is_integral() {
@@ -445,6 +451,7 @@ impl Tokens {
                     let d = match operator_stack.last_mut() {
                         Some(Operator::Custom(_, d)) => d,
                         Some(Operator::Function(_, d)) => d,
+                        Some(Operator::FunctionExtraInput(_, d)) => d,
                         _ => return Err(ParseError::IntegralError),
                     };
                     if d.is_derivative() {
@@ -505,6 +512,12 @@ impl Tokens {
                                         .extend(iter::repeat_n("", fun.inner_vars() as usize));
                                 }
                             }
+                            Operator::FunctionExtraInput(fun, _) => {
+                                if fun.first_expected_var(*last) {
+                                    inner_vars
+                                        .extend(iter::repeat_n("", fun.inner_vars() as usize));
+                                }
+                            }
                             _ => return Err(ParseError::CommaError),
                         }
                     } else if !expect_let {
@@ -533,18 +546,24 @@ impl Tokens {
                     }
                     operator_stack
                         .pop_if(|top| matches!(top, Operator::Bracket(Bracket::Parenthesis)));
-                    tokens.close_off_bracket(
+                    if tokens.close_off_bracket(
                         &mut operator_stack,
                         &mut inner_vars,
                         &mut inner_vars_count,
                         funs,
                         &mut fn_inputs,
-                    )?;
-                    last_mul = true;
-                    no_input_left = false;
+                    )? {
+                        last_mul = false;
+                        open_input = false;
+                        req_input = false;
+                        expect_expr = true;
+                    } else {
+                        last_mul = true;
+                        open_input = true;
+                        expect_expr = false;
+                    }
                     last_open = false;
-                    open_input = true;
-                    expect_expr = false;
+                    no_input_left = false;
                 }
                 '(' => {
                     tokens.last_mul(&mut operator_stack, no_input_left, &mut last_mul, true);
@@ -565,6 +584,7 @@ impl Tokens {
                         req_input = true;
                         last_mul = false;
                         open_input = false;
+                        expect_expr = true;
                     } else {
                         while let Some(top) =
                             operator_stack.pop_if(|top| !matches!(top, Operator::Bracket(_)))
@@ -578,18 +598,25 @@ impl Tokens {
                             return Err(ParseError::AbsoluteBracketFailed);
                         }
                         tokens.push(Function::Abs.into());
-                        tokens.close_off_bracket(
+                        if tokens.close_off_bracket(
                             &mut operator_stack,
                             &mut inner_vars,
                             &mut inner_vars_count,
                             funs,
                             &mut fn_inputs,
-                        )?;
-                        abs -= 1;
-                        last_mul = true;
-                        no_input_left = false;
+                        )? {
+                            last_mul = false;
+                            open_input = false;
+                            req_input = false;
+                            expect_expr = true;
+                        } else {
+                            last_mul = true;
+                            open_input = true;
+                            expect_expr = false;
+                        }
                         last_open = false;
-                        open_input = true;
+                        no_input_left = false;
+                        abs -= 1;
                     }
                 }
                 _ => {
@@ -775,60 +802,115 @@ impl Tokens {
         inner_vars_count: &mut Vec<u8>,
         custom_funs: &[FunctionVar],
         fn_inputs: &mut Vec<NonZeroU8>,
-    ) -> Result<(), ParseError<'static>> {
-        if let Some(top) = operator_stack
-            .pop_if(|l| matches!(l, Operator::Function(_, _) | Operator::Custom(_, _)))
-        {
-            match top {
-                Operator::Custom(i, mut d) => {
-                    let inputs = fn_inputs.pop().unwrap();
-                    let normal = custom_funs.get(i as usize).unwrap().inputs;
-                    match normal.cmp(&inputs) {
-                        Ordering::Greater => return Err(ParseError::MissingInput),
-                        Ordering::Less if d.is_derivative() || inputs.get() != normal.get() * 2 => {
-                            return Err(ParseError::ExtraInput);
-                        }
-                        Ordering::Less => d.set_integral_twice_input(),
-                        _ => {}
-                    }
-                    self.push(Token::CustomFun(i, d));
-                }
-                Operator::Function(mut fun, mut d) => {
-                    if fun.has_var() {
-                        inner_vars_count.pop().unwrap();
-                    }
-                    let mut inputs = fn_inputs.pop().unwrap();
-                    fun.set_inputs(inputs);
-                    if fun.inputs().get() + 1 < inputs.get() + fun.inner_vars() {
-                        let last = self[..].get_last(custom_funs);
-                        let mut t = last;
-                        for _ in fun.inputs().get()..inputs.get() {
-                            let last = self[..t].get_last(custom_funs);
-                            if t - 1 == last && matches!(self[last], Token::InnerVar(_)) {
-                                self.remove(last);
-                            } else {
-                                return Err(ParseError::InnerVarError);
+    ) -> Result<bool, ParseError<'static>> {
+        Ok(
+            if let Some(top) = operator_stack.pop_if(|l| {
+                matches!(
+                    l,
+                    Operator::Function(_, _)
+                        | Operator::FunctionExtraInput(_, _)
+                        | Operator::Custom(_, _)
+                )
+            }) {
+                match top {
+                    Operator::Custom(i, mut d) => {
+                        let inputs = fn_inputs.pop().unwrap();
+                        let normal = custom_funs.get(i as usize).unwrap().inputs;
+                        match normal.cmp(&inputs) {
+                            Ordering::Greater => return Err(ParseError::MissingInput),
+                            Ordering::Less
+                                if d.is_derivative() || inputs.get() != normal.get() * 2 =>
+                            {
+                                return Err(ParseError::ExtraInput);
                             }
-                            t = last;
+                            Ordering::Less => d.set_integral_twice_input(),
+                            _ => {}
                         }
-                        inputs = fun.inputs();
+                        self.push(Token::CustomFun(i, d));
+                        false
                     }
-                    let normal = fun.inputs();
-                    match normal.cmp(&inputs) {
-                        Ordering::Greater => return Err(ParseError::MissingInput),
-                        Ordering::Less if d.is_derivative() || inputs.get() != normal.get() * 2 => {
-                            return Err(ParseError::ExtraInput);
+                    Operator::FunctionExtraInput(mut fun, mut d) => {
+                        if fun.has_var() {
+                            inner_vars_count.pop().unwrap();
                         }
-                        Ordering::Less => d.set_integral_twice_input(),
-                        _ => {}
+                        let mut inputs = fn_inputs.pop().unwrap();
+                        fun.set_inputs(inputs);
+                        if fun.inputs().get() + 1 < inputs.get() + fun.inner_vars() {
+                            let last = self[..].get_last(custom_funs);
+                            let mut t = last;
+                            for _ in fun.inputs().get()..inputs.get() {
+                                let last = self[..t].get_last(custom_funs);
+                                if t - 1 == last && matches!(self[last], Token::InnerVar(_)) {
+                                    self.remove(last);
+                                } else {
+                                    return Err(ParseError::InnerVarError);
+                                }
+                                t = last;
+                            }
+                            inputs = fun.inputs();
+                        }
+                        let normal = fun.inputs();
+                        match normal.cmp(&inputs) {
+                            Ordering::Greater => return Err(ParseError::MissingInput),
+                            Ordering::Less
+                                if d.is_derivative() || inputs.get() != normal.get() * 2 =>
+                            {
+                                return Err(ParseError::ExtraInput);
+                            }
+                            Ordering::Less => d.set_integral_twice_input(),
+                            _ => {}
+                        }
+                        self.compact_args(fun, inner_vars, custom_funs);
+                        operator_stack.push(Operator::Function(fun, d));
+                        true
                     }
-                    self.compact_args(fun, inner_vars, custom_funs);
-                    self.push(Token::Function(fun, d));
+                    Operator::Function(fun, d) if fun.has_function_output() => {
+                        self.push(Token::Function(fun, d));
+                        false
+                    }
+                    Operator::Function(mut fun, mut d) => {
+                        if fun.has_var() {
+                            inner_vars_count.pop().unwrap();
+                        }
+                        let mut inputs = fn_inputs.pop().unwrap();
+                        fun.set_inputs(inputs);
+                        if fun.inputs().get() + 1 < inputs.get() + fun.inner_vars() {
+                            let last = self[..].get_last(custom_funs);
+                            let mut t = last;
+                            for _ in fun.inputs().get()..inputs.get() {
+                                let last = self[..t].get_last(custom_funs);
+                                if t - 1 == last && matches!(self[last], Token::InnerVar(_)) {
+                                    self.remove(last);
+                                } else {
+                                    return Err(ParseError::InnerVarError);
+                                }
+                                t = last;
+                            }
+                            inputs = fun.inputs();
+                        }
+                        let normal = fun.inputs();
+                        match normal.cmp(&inputs) {
+                            Ordering::Greater => return Err(ParseError::MissingInput),
+                            Ordering::Less
+                                if d.is_derivative() || inputs.get() != normal.get() * 2 =>
+                            {
+                                return Err(ParseError::ExtraInput);
+                            }
+                            Ordering::Less => d.set_integral_twice_input(),
+                            _ => {}
+                        }
+                        self.compact_args(fun, inner_vars, custom_funs);
+                        self.push(Token::Function(fun, d));
+                        false
+                    }
+                    _ => {
+                        unreachable!()
+                    }
                 }
-                _ => {}
-            }
-        }
-        Ok(())
+            } else {
+                false
+            },
+        )
     }
     pub fn compact_args(
         &mut self,
@@ -949,6 +1031,7 @@ pub(crate) fn get_var_position(
         .rfind(|la| {
             let f = match la {
                 Operator::Function(f, _) => f,
+                Operator::FunctionExtraInput(f, _) => f,
                 Operator::Custom(_, _) => {
                     inputs.next_back();
                     return false;

@@ -172,6 +172,7 @@ impl From<Function> for Inverse {
             | Function::Fold
             | Function::Set
             | Function::Solve
+            | Function::Function
             | Function::Modify(_)
             | Function::While(_)
             | Function::Exprs(_)

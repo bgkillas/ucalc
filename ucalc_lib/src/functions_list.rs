@@ -72,6 +72,7 @@ pub const FUNCTION_LIST: &[&str] = &[
     "modify(x,new(x)(,f(x)))",
     "exprs(a,b,...)",
     "solve((x,)f(x))",
+    "function((x,)f(x))(a)",
     #[cfg(feature = "float_rand")]
     "rand_uniform(a,b)",
     #[cfg(feature = "units")]
@@ -147,6 +148,7 @@ pub fn get_help(str: &str) -> &str {
         "round" => "round(x)",
         "trunc" => "trunc(x)",
         "fract" => "fract(x)",
+        "function" => "function((x,)f(x))(a)",
         #[cfg(feature = "complex")]
         "real" => "real(x)",
         #[cfg(feature = "complex")]
