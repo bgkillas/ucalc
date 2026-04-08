@@ -30,7 +30,6 @@ pub enum Operator {
     Bracket(Bracket),
     Custom(u16, Derivative),
     Function(Function, Derivative),
-    FunctionExtraInput(Function, Derivative),
 }
 impl Display for Operator {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -63,7 +62,6 @@ impl Display for Operator {
                 Self::Convert => "->",
                 Self::Bracket(_) => unreachable!(),
                 Self::Function(_, _) => unreachable!(),
-                Self::FunctionExtraInput(_, _) => unreachable!(),
                 Self::Custom(_, _) => unreachable!(),
             }
         )
@@ -166,7 +164,6 @@ impl Operator {
             #[cfg(feature = "units")]
             Self::Convert => 2,
             Self::Function(fun, _) => return fun.inputs(),
-            Self::FunctionExtraInput(fun, _) => return fun.inputs(),
             Self::Custom(_, _) => unreachable!(),
             Self::Bracket(_) => unreachable!(),
         })
@@ -206,7 +203,6 @@ impl Operator {
             | Self::Solve
             | Self::Tetration
             | Self::Function(_, _)
-            | Self::FunctionExtraInput(_, _)
             | Self::Custom(_, _)
             | Self::Bracket(_) => return None,
         })
@@ -239,7 +235,6 @@ impl Operator {
             | Self::Solve
             | Self::Tetration
             | Self::Function(_, _)
-            | Self::FunctionExtraInput(_, _)
             | Self::Custom(_, _)
             | Self::Bracket(_) => unreachable!(),
         }
@@ -263,10 +258,7 @@ impl Operator {
             Self::Pow | Self::Root | Self::Tetration => 8,
             Self::Rem => 9,
             Self::Factorial | Self::SubFactorial => 10,
-            Self::Bracket(_)
-            | Self::Function(_, _)
-            | Self::FunctionExtraInput(_, _)
-            | Self::Custom(_, _) => unreachable!(),
+            Self::Bracket(_) | Self::Function(_, _) | Self::Custom(_, _) => unreachable!(),
         }
     }
     pub fn left_associative(self) -> bool {
@@ -291,7 +283,6 @@ impl Operator {
             Self::Bracket(_)
             | Self::Factorial
             | Self::Function(_, _)
-            | Self::FunctionExtraInput(_, _)
             | Self::Custom(_, _)
             | Self::SubFactorial => {
                 unreachable!()
@@ -325,7 +316,6 @@ impl From<Operator> for Function {
             #[cfg(feature = "units")]
             Operator::Convert => Self::Convert,
             Operator::Function(function, _) => function,
-            Operator::FunctionExtraInput(function, _) => function,
             Operator::Custom(_, _) | Operator::Bracket(_) | Operator::Solve => unreachable!(),
         }
     }

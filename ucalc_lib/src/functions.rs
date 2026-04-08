@@ -97,7 +97,6 @@ pub enum Function {
     If,
     Fold,
     Set,
-    Function,
     Modify(ModifyInputs),
     While(ModifyInputs),
     Exprs(NonZeroU8),
@@ -152,7 +151,6 @@ impl TryFrom<&str> for Function {
             "cb" => Self::Cb,
             "ceil" => Self::Ceil,
             "floor" => Self::Floor,
-            "function" => Self::Function,
             "round" => Self::Round,
             "trunc" => Self::Trunc,
             "fract" => Self::Fract,
@@ -215,7 +213,6 @@ impl Display for Function {
                 Self::Cos => "cos",
                 Self::Sinh => "sinh",
                 Self::Cosh => "cosh",
-                Self::Function => "function",
                 Self::Atan(_) => "atan",
                 Self::Sqrt => "sqrt",
                 Self::Sum => "sum",
@@ -348,7 +345,6 @@ impl Function {
             | Self::Round
             | Self::Trunc
             | Self::Fract
-            | Self::Function
             | Self::Solve => 1,
             #[cfg(feature = "complex")]
             Self::Arg | Self::Conj | Self::Real | Self::Imag => 1,
@@ -407,9 +403,6 @@ impl Function {
                 | Self::LessEqual
                 | Self::GreaterEqual
         )
-    }
-    pub fn has_function_output(self) -> bool {
-        matches!(self, Self::Function)
     }
     pub fn compute_drain(
         self,
@@ -628,7 +621,6 @@ impl Function {
             | Self::Fold
             | Self::Set
             | Self::Solve
-            | Self::Function
             | Self::NumericalSolve
             | Self::NumericalIntegral
             | Self::NumericalDerivative
@@ -647,7 +639,6 @@ impl Function {
             | Self::Iter
             | Self::Set
             | Self::Solve
-            | Self::Function
             | Self::NumericalDerivative
             | Self::NumericalSolve
             | Self::NumericalIntegral => 1,
@@ -657,7 +648,7 @@ impl Function {
     }
     pub fn expected_var(self, n: NonZeroU8) -> bool {
         match self {
-            Self::Solve | Self::Function => n.get() == 1,
+            Self::Solve => n.get() == 1,
             Self::Set | Self::NumericalDerivative | Self::NumericalSolve => n.get() == 2,
             Self::Sum | Self::Prod | Self::Iter | Self::NumericalIntegral => n.get() == 3,
             Self::Fold | Self::NumericalDifferential => matches!(n.get(), 4 | 5),
@@ -666,7 +657,7 @@ impl Function {
     }
     pub fn first_expected_var(self, n: NonZeroU8) -> bool {
         match self {
-            Self::Solve | Self::Function => n.get() == 1,
+            Self::Solve => n.get() == 1,
             Self::Set | Self::NumericalDerivative | Self::NumericalSolve => n.get() == 2,
             Self::Sum | Self::Prod | Self::Iter | Self::NumericalIntegral => n.get() == 3,
             Self::Fold | Self::NumericalDifferential => n.get() == 4,
@@ -682,7 +673,6 @@ impl Function {
                 | Self::Fold
                 | Self::Set
                 | Self::Solve
-                | Self::Function
                 | Self::NumericalIntegral
                 | Self::NumericalDerivative
                 | Self::NumericalDifferential
@@ -698,7 +688,6 @@ impl Function {
                 | Self::Fold
                 | Self::Set
                 | Self::Solve
-                | Self::Function
                 | Self::If
                 | Self::Modify(_)
                 | Self::While(_)
@@ -890,22 +879,6 @@ impl Function {
                     )
                     .unwrap_or(Number::from(Constant::Nan))
                     .into();
-            }
-            Self::Function => {
-                let input = stack.pop().unwrap().num();
-                let [tokens] =
-                    compute.tokens[..compute.tokens.len() - 1].get_skip_tokens_keep_one(stack);
-                inner_vars.push(input);
-                *stack.last_mut().unwrap() = compute
-                    .tokens(tokens)
-                    .compute_buffer_with(
-                        inner_vars,
-                        stack,
-                        #[cfg(feature = "float_rand")]
-                        rand,
-                    )
-                    .into();
-                inner_vars.pop();
             }
             Self::Iter => {
                 let (first, [steps], [tokens]) = compute.tokens.get_skip_mut(stack);
