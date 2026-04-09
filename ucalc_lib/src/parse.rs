@@ -17,9 +17,9 @@ use std::ops::{
 use std::{fmt, iter, mem};
 #[cfg(feature = "complex")]
 use ucalc_numbers::ComplexFunctionsMut;
-use ucalc_numbers::FloatTrait;
 #[cfg(feature = "units")]
 use ucalc_numbers::Units;
+use ucalc_numbers::{Float, FloatFunctions, FloatTrait};
 #[derive(Default, PartialEq, Debug, Clone)]
 #[repr(transparent)]
 pub struct Tokens(pub Vec<Token>);
@@ -485,6 +485,54 @@ impl Tokens {
                     open_input = true;
                     expect_expr = false;
                 }
+                '↉' | '⅐' | '⅑' | '⅒' | '⅓' | '⅔' | '⅕' | '⅖' | '⅗' | '⅘' | '⅙' | '⅚' | '⅛'
+                | '⅜' | '⅝' | '⅞' => {
+                    tokens.last_mul(&mut operator_stack, no_input_left, &mut last_mul, true);
+                    tokens.push(
+                        match c {
+                            '↉' => Number::default(),
+                            '⅐' => Number::from(7).recip(),
+                            '⅑' => Number::from(9).recip(),
+                            '⅒' => Number::from(10).recip(),
+                            '⅓' => Number::from(3).recip(),
+                            '⅔' => Number::from(2) / Float::from(3),
+                            '⅕' => Number::from(5).recip(),
+                            '⅖' => Number::from(2) / Float::from(5),
+                            '⅗' => Number::from(3) / Float::from(5),
+                            '⅘' => Number::from(4) / Float::from(5),
+                            '⅙' => Number::from(6).recip(),
+                            '⅚' => Number::from(5) / Float::from(6),
+                            '⅛' => Number::from(8).recip(),
+                            '⅜' => Number::from(3) / Float::from(8),
+                            '⅝' => Number::from(5) / Float::from(8),
+                            '⅞' => Number::from(7) / Float::from(8),
+                            _ => unreachable!(),
+                        }
+                        .into(),
+                    );
+                    no_input_left = false;
+                    last_open = false;
+                    req_input = false;
+                    open_input = true;
+                    expect_expr = false;
+                }
+                '⅟' => {
+                    tokens.last_mul(&mut operator_stack, no_input_left, &mut last_mul, true);
+                    tokens.push(Number::from(1).into());
+                    tokens.pop_stack(
+                        &mut operator_stack,
+                        &mut inner_vars,
+                        funs,
+                        Operator::Div,
+                        no_input_left,
+                    )?;
+                    req_input = false;
+                    open_input = true;
+                    expect_expr = false;
+                    no_input_left = true;
+                    last_open = false;
+                    last_mul = false;
+                }
                 '⁰' | '¹' | '²' | '³' | '⁴' | '⁵' | '⁶' | '⁷' | '⁸' | '⁹' | 'ⁱ' | '⁻'
                     if base <= 10 =>
                 {
@@ -556,6 +604,7 @@ impl Tokens {
                         no_input_left,
                     )?;
                     chars.advance_by(n - 1).unwrap();
+                    last_mul = true;
                     no_input_left = false;
                     last_open = false;
                     req_input = false;
