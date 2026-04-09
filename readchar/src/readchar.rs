@@ -637,6 +637,7 @@ impl ReadChar {
         run: impl FnOnce(&str, &mut String),
         color: impl ToColor<'a>,
         finish: impl FnOnce(&ReadChar, &mut T, &str) -> io::Result<Return>,
+        to_alt: impl FnOnce(char) -> Option<char>,
         complete: impl Complete<'a>,
         event: Event,
     ) -> io::Result<Return> {
@@ -737,14 +738,20 @@ impl ReadChar {
             }
             Event::Key(KeyEvent {
                 code: KeyCode::Char(c),
-                modifiers: KeyModifiers::NONE,
+                modifiers,
                 ..
-            })
-            | Event::Key(KeyEvent {
-                code: KeyCode::Char(c),
-                modifiers: KeyModifiers::SHIFT,
-                ..
-            }) => self.put_char(stdout, string, run, color, c)?,
+            }) if !modifiers.intersects(
+                KeyModifiers::all().difference(KeyModifiers::ALT | KeyModifiers::SHIFT),
+            ) =>
+            {
+                if modifiers.contains(KeyModifiers::ALT) {
+                    if let Some(c) = to_alt(c) {
+                        self.put_char(stdout, string, run, color, c)?
+                    }
+                } else {
+                    self.put_char(stdout, string, run, color, c)?
+                }
+            }
             _ => {}
         }
         Ok(Return::None)
@@ -757,6 +764,7 @@ impl ReadChar {
     ///   contents of the string buffer passed into it, expected to have no trailing newlines
     /// # Returns
     /// returns if the line has been completed or not by the enter key
+    #[allow(clippy::too_many_arguments)]
     pub fn read<'a, T: Write>(
         &mut self,
         stdout: &mut T,
@@ -764,8 +772,18 @@ impl ReadChar {
         run: impl FnOnce(&str, &mut String),
         color: impl ToColor<'a>,
         finish: impl FnOnce(&ReadChar, &mut T, &str) -> io::Result<Return>,
+        to_alt: impl FnOnce(char) -> Option<char>,
         complete: impl Complete<'a>,
     ) -> io::Result<Return> {
-        self.event(stdout, string, run, color, finish, complete, event::read()?)
+        self.event(
+            stdout,
+            string,
+            run,
+            color,
+            finish,
+            to_alt,
+            complete,
+            event::read()?,
+        )
     }
 }

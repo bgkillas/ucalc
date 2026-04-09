@@ -15,6 +15,8 @@ use std::ops::{
     RangeToInclusive,
 };
 use std::{fmt, iter, mem};
+#[cfg(feature = "complex")]
+use ucalc_numbers::ComplexFunctionsMut;
 use ucalc_numbers::FloatTrait;
 #[cfg(feature = "units")]
 use ucalc_numbers::Units;
@@ -477,6 +479,81 @@ impl Tokens {
                     tokens.last_mul(&mut operator_stack, no_input_left, &mut last_mul, true);
                     tokens.push(float.into());
                     chars.advance_by(l - 1).unwrap();
+                    no_input_left = false;
+                    last_open = false;
+                    req_input = false;
+                    open_input = true;
+                    expect_expr = false;
+                }
+                '⁰' | '¹' | '²' | '³' | '⁴' | '⁵' | '⁶' | '⁷' | '⁸' | '⁹' | 'ⁱ' | '⁻'
+                    if base <= 10 =>
+                {
+                    let mut str = String::with_capacity(value.len());
+                    let mut imag = false;
+                    if c == '⁻' {
+                        str.push('-');
+                    } else if c == 'i' {
+                        str.push('1');
+                    } else {
+                        str.push(match c {
+                            '⁰' => '0',
+                            '¹' => '1',
+                            '²' => '2',
+                            '³' => '3',
+                            '⁴' => '4',
+                            '⁵' => '5',
+                            '⁶' => '6',
+                            '⁷' => '7',
+                            '⁸' => '8',
+                            '⁹' => '9',
+                            _ => unreachable!(),
+                        })
+                    }
+                    let mut l = c.len_utf8();
+                    for t in value[i + l..].chars() {
+                        if matches!(
+                            t,
+                            '⁰' | '¹' | '²' | '³' | '⁴' | '⁵' | '⁶' | '⁷' | '⁸' | '⁹' | 'ⁱ'
+                        ) {
+                            l += t.len_utf8();
+                            if t == 'ⁱ' {
+                                imag = true;
+                                break;
+                            } else {
+                                str.push(match t {
+                                    '⁰' => '0',
+                                    '¹' => '1',
+                                    '²' => '2',
+                                    '³' => '3',
+                                    '⁴' => '4',
+                                    '⁵' => '5',
+                                    '⁶' => '6',
+                                    '⁷' => '7',
+                                    '⁸' => '8',
+                                    '⁹' => '9',
+                                    _ => unreachable!(),
+                                })
+                            }
+                        } else {
+                            break;
+                        }
+                    }
+                    let Some(mut float) = NumberBase::parse_radix(&str, base) else {
+                        return Err(ParseError::UnknownToken(&value[i..i + l]));
+                    };
+                    #[cfg(feature = "complex")]
+                    if imag {
+                        float.mul_i_mut(false);
+                    }
+                    tokens.push(float.into());
+                    tokens.pop_stack(
+                        &mut operator_stack,
+                        &mut inner_vars,
+                        funs,
+                        Operator::Pow,
+                        no_input_left,
+                    )?;
+                    chars.advance_by(l - c.len_utf8()).unwrap();
                     no_input_left = false;
                     last_open = false;
                     req_input = false;

@@ -24,6 +24,7 @@ fn main() {
             },
             NoColor,
             |_, _, _| Ok(Return::Finish),
+            |_| None,
             NoComplete,
         ) {
             Ok(Return::Finish) => {}
