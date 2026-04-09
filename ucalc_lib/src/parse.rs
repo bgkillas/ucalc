@@ -509,6 +509,7 @@ impl Tokens {
                             _ => unreachable!(),
                         })
                     }
+                    let mut n = 1;
                     let mut l = c.len_utf8();
                     for t in value[i + l..].chars() {
                         if matches!(
@@ -516,6 +517,7 @@ impl Tokens {
                             '⁰' | '¹' | '²' | '³' | '⁴' | '⁵' | '⁶' | '⁷' | '⁸' | '⁹' | 'ⁱ'
                         ) {
                             l += t.len_utf8();
+                            n += 1;
                             if t == 'ⁱ' {
                                 imag = true;
                                 break;
@@ -553,7 +555,7 @@ impl Tokens {
                         Operator::Pow,
                         no_input_left,
                     )?;
-                    chars.advance_by(l - c.len_utf8()).unwrap();
+                    chars.advance_by(n - 1).unwrap();
                     no_input_left = false;
                     last_open = false;
                     req_input = false;
