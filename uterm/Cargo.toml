@@ -1,0 +1,16 @@
+[package]
+name = "uterm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description.workspace = true
+
+[features]
+default=["wayland"]
+x11=["uterm_lib/x11"]
+wayland=["uterm_lib/wayland"]
+
+[dependencies]
+uterm_lib={workspace = true}
