@@ -1,13 +1,17 @@
 use crate::History;
+#[cfg(feature = "crossterm")]
 use crossterm::cursor::{
     MoveDown, MoveLeft, MoveRight, MoveTo, MoveToColumn, MoveToNextLine, MoveToPreviousLine,
 };
-use crossterm::event::{
-    DisableBracketedPaste, EnableBracketedPaste, Event, KeyCode, KeyEvent, KeyModifiers,
-};
+#[cfg(feature = "crossterm")]
+use crossterm::event::{DisableBracketedPaste, EnableBracketedPaste};
+#[cfg(feature = "crossterm")]
 use crossterm::style::{Color, ResetColor, SetForegroundColor};
+#[cfg(feature = "crossterm")]
 use crossterm::terminal::{Clear, ClearType};
+#[cfg(feature = "crossterm")]
 use crossterm::{ExecutableCommand, QueueableCommand, event, terminal};
+use enumset::{EnumSet, EnumSetType, enum_set};
 use std::fmt::Display;
 use std::io;
 use std::io::{Write, stdout};
@@ -646,89 +650,103 @@ impl ReadChar {
             Event::Resize(col, row) => self.resize(col, row, string),
             Event::Key(KeyEvent {
                 code: KeyCode::Enter,
-                modifiers: KeyModifiers::NONE,
+                modifiers,
                 ..
-            }) => return self.new_line(stdout, finish),
+            }) if modifiers.is_empty() => return self.new_line(stdout, finish),
             Event::Key(KeyEvent {
                 code: KeyCode::Char('c'),
-                modifiers: KeyModifiers::CONTROL,
+                modifiers,
                 ..
-            }) => {
+            }) if modifiers == enum_set! {KeyModifiers::Control} => {
                 self.exit(stdout, string)?;
                 return Ok(Return::Cancel);
             }
             Event::Key(KeyEvent {
                 code: KeyCode::Tab,
-                modifiers: KeyModifiers::NONE,
+                modifiers,
                 ..
-            }) => self.complete(stdout, complete)?,
+            }) if modifiers.is_empty() => self.complete(stdout, complete)?,
             Event::Key(KeyEvent {
                 code: KeyCode::Home,
-                modifiers: KeyModifiers::NONE,
+                modifiers,
                 ..
-            }) if self.cursor != 0 => self.home(stdout)?,
+            }) if modifiers.is_empty() && self.cursor != 0 => self.home(stdout)?,
             Event::Key(KeyEvent {
                 code: KeyCode::End,
-                modifiers: KeyModifiers::NONE,
+                modifiers,
                 ..
-            }) if self.cursor != self.line_len => self.end(stdout)?,
+            }) if modifiers.is_empty() && self.cursor != self.line_len => self.end(stdout)?,
             Event::Key(KeyEvent {
                 code: KeyCode::Left,
-                modifiers: KeyModifiers::NONE,
+                modifiers,
                 ..
-            }) if self.cursor != 0 => self.go_left(stdout)?,
+            }) if modifiers.is_empty() && self.cursor != 0 => self.go_left(stdout)?,
             Event::Key(KeyEvent {
                 code: KeyCode::Right,
-                modifiers: KeyModifiers::NONE,
+                modifiers,
                 ..
-            }) if self.cursor != self.line_len => self.go_right(stdout)?,
+            }) if modifiers.is_empty() && self.cursor != self.line_len => self.go_right(stdout)?,
             Event::Key(KeyEvent {
                 code: KeyCode::Up,
-                modifiers: KeyModifiers::NONE,
+                modifiers,
                 ..
-            }) if !self.history.at_start() => {
+            }) if modifiers.is_empty() && !self.history.at_start() => {
                 self.move_history(stdout, string, run, color, true)?
             }
             Event::Key(KeyEvent {
                 code: KeyCode::Down,
-                modifiers: KeyModifiers::NONE,
+                modifiers,
                 ..
-            }) if !self.history.at_end() => self.move_history(stdout, string, run, color, false)?,
+            }) if modifiers.is_empty() && !self.history.at_end() => {
+                self.move_history(stdout, string, run, color, false)?
+            }
             Event::Key(KeyEvent {
                 code: KeyCode::Up,
-                modifiers: KeyModifiers::CONTROL,
+                modifiers,
                 ..
-            }) if self.cursor != 0 => self.go_up(stdout)?,
+            }) if modifiers == enum_set![KeyModifiers::Control] && self.cursor != 0 => {
+                self.go_up(stdout)?
+            }
             Event::Key(KeyEvent {
                 code: KeyCode::Down,
-                modifiers: KeyModifiers::CONTROL,
+                modifiers,
                 ..
-            }) if self.cursor != self.line_len => self.go_down(stdout)?,
+            }) if modifiers == enum_set![KeyModifiers::Control] && self.cursor != self.line_len => {
+                self.go_down(stdout)?
+            }
             Event::Key(KeyEvent {
                 code: KeyCode::Left,
-                modifiers: KeyModifiers::CONTROL,
+                modifiers,
                 ..
-            }) if self.cursor != 0 => self.go_left_word(stdout)?,
+            }) if modifiers == enum_set![KeyModifiers::Control] && self.cursor != 0 => {
+                self.go_left_word(stdout)?
+            }
             Event::Key(KeyEvent {
                 code: KeyCode::Right,
-                modifiers: KeyModifiers::CONTROL,
+                modifiers,
                 ..
-            }) if self.cursor != self.line_len => self.go_right_word(stdout)?,
+            }) if modifiers == enum_set![KeyModifiers::Control] && self.cursor != self.line_len => {
+                self.go_right_word(stdout)?
+            }
             Event::Key(KeyEvent {
                 code: KeyCode::Backspace,
-                modifiers: KeyModifiers::NONE,
+                modifiers,
                 ..
-            }) if self.cursor != 0 => self.backspace(stdout, string, run, color, 1)?,
+            }) if modifiers.is_empty() && self.cursor != 0 => {
+                self.backspace(stdout, string, run, color, 1)?
+            }
             Event::Key(KeyEvent {
                 code: KeyCode::Delete,
-                modifiers: KeyModifiers::NONE,
+                modifiers,
                 ..
-            }) if self.cursor != self.line_len => self.delete(stdout, string, run, color, 1)?,
+            }) if modifiers.is_empty() && self.cursor != self.line_len => {
+                self.delete(stdout, string, run, color, 1)?
+            }
             Event::Key(KeyEvent {
                 code: KeyCode::Char('r'),
-                modifiers: KeyModifiers::CONTROL,
+                modifiers,
                 ..
-            }) => {
+            }) if modifiers == enum_set![KeyModifiers::Control] => {
                 stdout.queue(MoveRight(u16::MAX))?;
                 if self.cursor_row_max != self.cursor_row {
                     stdout.queue(MoveDown(self.cursor_row_max - self.cursor_row))?;
@@ -740,11 +758,10 @@ impl ReadChar {
                 code: KeyCode::Char(c),
                 modifiers,
                 ..
-            }) if !modifiers.intersects(
-                KeyModifiers::all().difference(KeyModifiers::ALT | KeyModifiers::SHIFT),
-            ) =>
+            }) if modifiers
+                .is_disjoint(EnumSet::all() - KeyModifiers::Shift - KeyModifiers::Alt) =>
             {
-                if modifiers.contains(KeyModifiers::ALT) {
+                if modifiers.contains(KeyModifiers::Alt) {
                     if let Some(c) = to_alt(c) {
                         self.put_char(stdout, string, run, color, c)?
                     }
@@ -765,6 +782,7 @@ impl ReadChar {
     /// # Returns
     /// returns if the line has been completed or not by the enter key
     #[allow(clippy::too_many_arguments)]
+    #[cfg(feature = "crossterm")]
     pub fn read<'a, T: Write>(
         &mut self,
         stdout: &mut T,
@@ -775,15 +793,89 @@ impl ReadChar {
         to_alt: impl FnOnce(char) -> Option<char>,
         complete: impl Complete<'a>,
     ) -> io::Result<Return> {
-        self.event(
-            stdout,
-            string,
-            run,
-            color,
-            finish,
-            to_alt,
-            complete,
-            event::read()?,
-        )
+        if let Ok(event) = event::read()?.try_into() {
+            self.event(stdout, string, run, color, finish, to_alt, complete, event)
+        } else {
+            Ok(Return::None)
+        }
+    }
+}
+pub enum Event {
+    Key(KeyEvent),
+    Paste(String),
+    Resize(u16, u16),
+}
+pub struct KeyEvent {
+    code: KeyCode,
+    modifiers: EnumSet<KeyModifiers>,
+}
+pub enum KeyCode {
+    Char(char),
+    Enter,
+    Tab,
+    Home,
+    End,
+    Left,
+    Right,
+    Up,
+    Down,
+    Backspace,
+    Delete,
+}
+#[derive(EnumSetType)]
+pub enum KeyModifiers {
+    Control,
+    Shift,
+    Alt,
+}
+#[cfg(feature = "crossterm")]
+impl TryFrom<event::Event> for Event {
+    type Error = ();
+    fn try_from(value: event::Event) -> Result<Self, Self::Error> {
+        Ok(match value {
+            event::Event::Key(key) => Event::Key(key.try_into()?),
+            event::Event::Paste(s) => Event::Paste(s),
+            event::Event::Resize(x, y) => Event::Resize(x, y),
+            _ => return Err(()),
+        })
+    }
+}
+#[cfg(feature = "crossterm")]
+impl TryFrom<event::KeyEvent> for KeyEvent {
+    type Error = ();
+    fn try_from(value: event::KeyEvent) -> Result<Self, Self::Error> {
+        let mut modifiers = EnumSet::new();
+        for modifier in value.modifiers.iter() {
+            modifiers.insert(match modifier {
+                event::KeyModifiers::ALT => KeyModifiers::Alt,
+                event::KeyModifiers::SHIFT => KeyModifiers::Shift,
+                event::KeyModifiers::CONTROL => KeyModifiers::Control,
+                _ => return Err(()),
+            });
+        }
+        Ok(Self {
+            code: value.code.try_into()?,
+            modifiers,
+        })
+    }
+}
+#[cfg(feature = "crossterm")]
+impl TryFrom<event::KeyCode> for KeyCode {
+    type Error = ();
+    fn try_from(value: event::KeyCode) -> Result<Self, Self::Error> {
+        Ok(match value {
+            event::KeyCode::Char(c) => Self::Char(c),
+            event::KeyCode::Enter => Self::Enter,
+            event::KeyCode::Tab => Self::Tab,
+            event::KeyCode::Home => Self::Home,
+            event::KeyCode::End => Self::End,
+            event::KeyCode::Left => Self::Left,
+            event::KeyCode::Right => Self::Right,
+            event::KeyCode::Up => Self::Up,
+            event::KeyCode::Down => Self::Down,
+            event::KeyCode::Backspace => Self::Backspace,
+            event::KeyCode::Delete => Self::Delete,
+            _ => return Err(()),
+        })
     }
 }

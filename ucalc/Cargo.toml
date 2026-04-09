@@ -26,5 +26,5 @@ float_rand=["ucalc_lib/float_rand"]
 [dependencies]
 ucalc_lib = {workspace = true}
 ucalc_numbers = {workspace = true}
-readchar = {workspace = true}
+readchar = {workspace = true, features = ["crossterm"]}
 mimalloc = {version="0.1.48", features = ["v3"], optional = true}

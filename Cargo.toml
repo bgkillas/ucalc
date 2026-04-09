@@ -19,12 +19,12 @@ opt-level = 3
 [workspace]
 resolver = "3"
 members = ["ucalc_lib", "ucalc", "ucalc_numbers", "readchar", "ucalc_numbers_macros", "float_base", "uterm_lib", "uterm"]
-default-members = ["ucalc", "ucalc_lib", "ucalc_numbers", "readchar"]
+default-members = ["ucalc", "ucalc_lib", "ucalc_numbers", "readchar", "float_base", "uterm_lib"]
 
 [workspace.dependencies]
 ucalc_numbers_macros = {path = "ucalc_numbers_macros", version="0.0.2", default-features=false}
 ucalc_numbers = {path = "ucalc_numbers", version="0.0.2", default-features=false}
 ucalc_lib = {path = "ucalc_lib", version="0.0.2", default-features=false}
-readchar = {path = "readchar", version = "0.1.2"}
+readchar = {path = "readchar", version = "0.1.2", default-features = false}
 float_base = {path = "float_base", version = "0.0.2", default-features = false}
 uterm_lib = {path = "uterm_lib", version = "0.0.2", default-features = false}

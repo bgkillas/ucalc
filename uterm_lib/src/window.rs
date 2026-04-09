@@ -2,7 +2,6 @@ use bdf2::Font;
 use softbuffer::{Buffer, Context, Surface};
 use std::mem;
 use std::num::NonZeroU32;
-use std::ops::{Deref, DerefMut};
 use winit::application::ApplicationHandler;
 use winit::event::{KeyEvent, StartCause, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop, OwnedDisplayHandle};
@@ -14,6 +13,7 @@ pub struct Term<K: Fn(KeyEvent, &mut String)> {
     cursor: Cursor,
     buffer: String,
     screen: Dimensions,
+    font_size: Dimensions,
     keyboard_input: K,
     font: Font,
 }
@@ -27,21 +27,25 @@ pub struct Cursor {
     x: u32,
     y: u32,
 }
-pub struct Lines(Vec<Line>);
+pub struct Lines {
+    vec: Vec<Line>,
+}
 impl Lines {
     pub fn write(&mut self, c: char, cursor: Cursor) {
-        for _ in self.len()..=cursor.y as usize {
-            self.push(Line::default())
+        for _ in self.vec.len()..=cursor.y as usize {
+            self.vec.push(Line::default())
         }
-        self[cursor.y as usize].write(c, cursor.x)
+        self.vec[cursor.y as usize].write(c, cursor.x)
     }
     pub fn get_lines(&self) -> impl Iterator<Item = &Line> {
-        self.0.iter()
+        self.vec.iter()
     }
 }
 impl Default for Lines {
     fn default() -> Self {
-        Self(Vec::with_capacity(1 << 12))
+        Self {
+            vec: Vec::with_capacity(1 << 12),
+        }
     }
 }
 pub struct Line {
@@ -76,14 +80,34 @@ enum WindowState {
     },
 }
 impl Cursor {
-    pub fn right(&mut self) {
+    pub fn right(&mut self, screen: Dimensions, font_size: Dimensions) {
         self.x += 1;
+        if self.x == screen.x / font_size.x {
+            self.x = 0;
+            self.y += 1;
+        }
+    }
+    pub fn left(&mut self, screen: Dimensions, font_size: Dimensions) {
+        if self.x == 0 {
+            self.y -= 1;
+            self.x = screen.x / font_size.x - 1;
+        } else {
+            self.x -= 1;
+        }
+    }
+    pub fn down(&mut self) {
+        self.y += 1;
+    }
+    pub fn up(&mut self) {
+        self.y -= 1;
     }
 }
 impl<K: Fn(KeyEvent, &mut String)> Term<K> {
     pub fn run(keyboard_input: K) {
         let event_loop = EventLoop::new().unwrap();
         let context = Context::new(event_loop.owned_display_handle()).unwrap();
+        let font = bdf2::read(&include_bytes!("../terminus.bdf")[..]).unwrap();
+        let char = font.glyphs().get(&'a').unwrap();
         let mut app = Self {
             context,
             state: WindowState::Initial,
@@ -92,7 +116,11 @@ impl<K: Fn(KeyEvent, &mut String)> Term<K> {
             buffer: String::with_capacity(1 << 10),
             screen: Dimensions::default(),
             keyboard_input,
-            font: bdf2::read(&include_bytes!("../terminus.bdf")[..]).unwrap(),
+            font_size: Dimensions {
+                x: char.width(),
+                y: char.height(),
+            },
+            font,
         };
         event_loop.run_app(&mut app).unwrap();
     }
@@ -156,8 +184,17 @@ impl<K: Fn(KeyEvent, &mut String)> ApplicationHandler for Term<K> {
                 (self.keyboard_input)(event, &mut self.buffer);
                 if !self.buffer.is_empty() {
                     for c in self.buffer.chars() {
-                        self.lines.write(c, self.cursor);
-                        self.cursor.right();
+                        match c {
+                            '\u{8}' => {
+                                self.cursor.left(self.screen, self.font_size);
+                                self.lines.write(' ', self.cursor);
+                            }
+                            '\n' => self.cursor.down(),
+                            c => {
+                                self.lines.write(c, self.cursor);
+                                self.cursor.right(self.screen, self.font_size);
+                            }
+                        }
                     }
                     surface.window().request_redraw();
                     self.buffer.clear();
@@ -224,16 +261,5 @@ pub fn write_char(
                     if glyph.get(x, y) { 0xffffff } else { 0x000000 };
             }
         }
-    }
-}
-impl Deref for Lines {
-    type Target = Vec<Line>;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-impl DerefMut for Lines {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
     }
 }
