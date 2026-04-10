@@ -587,11 +587,12 @@ impl Tokens {
                             break;
                         }
                     }
+                    #[allow(unused_mut)]
                     let Some(mut float) = NumberBase::parse_radix(&str, base) else {
                         return Err(ParseError::UnknownToken(&value[i..i + l]));
                     };
-                    #[cfg(feature = "complex")]
                     if imag {
+                        #[cfg(feature = "complex")]
                         float.mul_i_mut(false);
                     }
                     tokens.push(float.into());
