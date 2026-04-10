@@ -1,5 +1,6 @@
 use crate::Number;
 use crate::parse::{Tokens, Volatility};
+use std::mem;
 use std::num::NonZeroU8;
 use std::ops::{Deref, DerefMut};
 use ucalc_numbers::Constant;
@@ -79,22 +80,34 @@ impl Functions {
             .position(|v| v.name.as_ref().is_some_and(|n| n.as_ref() == name))
             .map(|i| i as u16)
     }
-    pub fn add(&mut self, vars: &mut Variables, name: &str, inputs: NonZeroU8) {
+    #[allow(clippy::type_complexity)]
+    pub fn add(
+        &mut self,
+        vars: &mut Variables,
+        name: &str,
+        inputs: NonZeroU8,
+    ) -> (bool, Option<(u16, Option<Box<str>>)>) {
         vars.iter_mut().for_each(|v| {
             if v.name.as_ref().is_some_and(|n| n.as_ref() == name) {
                 v.name = None;
             }
         });
+        let mut ret = None;
         if let Some(v) = self.position(name) {
-            self[v as usize].inputs = inputs;
-        } else {
-            self.push(FunctionVar::new(
-                name,
-                inputs,
-                Tokens::default(),
-                Volatility::Constant,
-            ));
+            if self[v as usize].inputs != inputs {
+                let old = mem::take(&mut self[v as usize].name);
+                ret = Some((v, old));
+            } else {
+                return (false, None);
+            }
         }
+        self.push(FunctionVar::new(
+            name,
+            inputs,
+            Tokens::default(),
+            Volatility::Constant,
+        ));
+        (true, ret)
     }
 }
 impl Default for Variables {

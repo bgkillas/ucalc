@@ -1,6 +1,7 @@
 #![feature(iter_advance_by)]
 #![feature(vec_try_remove)]
 #![feature(adt_const_params)]
+#![feature(try_blocks)]
 mod compute;
 mod functions;
 mod functions_list;
