@@ -183,13 +183,23 @@ impl<K: Fn(KeyEvent, &mut String)> ApplicationHandler for Term<K> {
             WindowEvent::KeyboardInput { event, .. } => {
                 (self.keyboard_input)(event, &mut self.buffer);
                 if !self.buffer.is_empty() {
-                    for c in self.buffer.chars() {
+                    let mut chars = self.buffer.chars();
+                    while let Some(c) = chars.next() {
                         match c {
                             '\u{8}' => {
                                 self.cursor.left(self.screen, self.font_size);
                                 self.lines.write(' ', self.cursor);
                             }
                             '\n' => self.cursor.down(),
+                            '\x1b' => {
+                                if chars.next() != Some('[') {
+                                    todo!()
+                                }
+                                match chars.next() {
+                                    Some('F') => self.cursor.up(),
+                                    _ => todo!(),
+                                }
+                            }
                             c => {
                                 self.lines.write(c, self.cursor);
                                 self.cursor.right(self.screen, self.font_size);

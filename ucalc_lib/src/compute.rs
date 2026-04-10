@@ -334,7 +334,7 @@ impl<'a> Compute<'a> {
                 }
                 &Token::Skip(to) => {
                     stack.push(StackToken::Skip(i + 1));
-                    tokens.nth(to - 1);
+                    tokens.advance_by(to).unwrap();
                 }
                 Token::Number(n) => stack.push(n.clone().into()),
             }
