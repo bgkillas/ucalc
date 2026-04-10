@@ -14,7 +14,7 @@ use std::fmt;
 use std::fmt::Write;
 use std::hint::black_box;
 use std::io::{BufRead, IsTerminal, stdin, stdout};
-use ucalc_lib::{Functions, Number, Tokens, Variable, Variables, Volatility, get_help};
+use ucalc_lib::{Compute, Functions, Number, Tokens, Variable, Variables, Volatility, get_help};
 #[cfg(feature = "float_rand")]
 use ucalc_lib::{Rand, rng};
 use ucalc_numbers::{FloatTrait, RealTrait};
@@ -325,12 +325,10 @@ fn benchmark(
     let cap = tokens.len() + funs.iter().map(|c| c.tokens.len()).sum::<usize>();
     let mut inner_vars = Vec::with_capacity(cap);
     let mut stack = Vec::with_capacity(cap);
+    let compute = Compute::new(&tokens[..], &[], funs, vars, 0);
     for _ in 0..n {
-        black_box(tokens.compute_buffer(
+        black_box(compute.compute(
             &mut inner_vars,
-            &[],
-            funs,
-            vars,
             &mut stack,
             #[cfg(feature = "float_rand")]
             rand,
@@ -338,11 +336,8 @@ fn benchmark(
     }
     let tmr = std::time::Instant::now();
     for _ in 0..n {
-        black_box(tokens.compute_buffer(
+        black_box(compute.compute(
             &mut inner_vars,
-            &[],
-            funs,
-            vars,
             &mut stack,
             #[cfg(feature = "float_rand")]
             rand,

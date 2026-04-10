@@ -17,6 +17,7 @@ mod solver;
 #[cfg(test)]
 mod tests;
 mod variable;
+pub use compute::Compute;
 pub use functions::Function;
 pub use functions_list::{FUNCTION_LIST, get_help};
 pub use operators::Operator;

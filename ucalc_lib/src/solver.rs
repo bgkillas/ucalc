@@ -59,7 +59,7 @@ impl Compute<'_> {
                         if arg.contains(&Token::InnerVar(inner_vars.len() as u16)) {
                             inner_vars.push(Number::default())
                         } else {
-                            let n = self.tokens(arg).compute_buffer_with(
+                            let n = self.tokens(arg).compute(
                                 inner_vars,
                                 stack,
                                 #[cfg(feature = "float_rand")]
@@ -148,7 +148,7 @@ impl Compute<'_> {
                                 let roots = poly.roots();
                                 return Some(roots);
                             } else {
-                                let num = self.tokens(left_tokens).compute_buffer_with(
+                                let num = self.tokens(left_tokens).compute(
                                     inner_vars,
                                     stack,
                                     #[cfg(feature = "float_rand")]
@@ -159,7 +159,7 @@ impl Compute<'_> {
                                 inverse.right_inverse(ret, num);
                             }
                         } else {
-                            let num = self.tokens(right_tokens).compute_buffer_with(
+                            let num = self.tokens(right_tokens).compute(
                                 inner_vars,
                                 stack,
                                 #[cfg(feature = "float_rand")]

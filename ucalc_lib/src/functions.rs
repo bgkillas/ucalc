@@ -715,7 +715,7 @@ impl Function {
                 let compute = compute.tokens(tokens);
                 *stack.last_mut().unwrap().num_mut() = (start..=end)
                     .map(|_| {
-                        let ret = compute.compute_buffer_with(
+                        let ret = compute.compute(
                             inner_vars,
                             stack,
                             #[cfg(feature = "float_rand")]
@@ -736,7 +736,7 @@ impl Function {
                 let compute = compute.tokens(tokens);
                 *stack.last_mut().unwrap().num_mut() = (start..=end)
                     .map(|_| {
-                        let ret = compute.compute_buffer_with(
+                        let ret = compute.compute(
                             inner_vars,
                             stack,
                             #[cfg(feature = "float_rand")]
@@ -758,7 +758,7 @@ impl Function {
                 let nl = inner_vars.len();
                 let compute = compute.tokens(tokens);
                 (start..=end).for_each(|_| {
-                    inner_vars[nl - 2] = compute.compute_buffer_with(
+                    inner_vars[nl - 2] = compute.compute(
                         inner_vars,
                         stack,
                         #[cfg(feature = "float_rand")]
@@ -773,7 +773,7 @@ impl Function {
                 let (value, [], [tokens]) = compute.tokens.get_skip_mut(stack);
                 let value = mem::take(value);
                 inner_vars.push(value);
-                *stack.last_mut().unwrap().num_mut() = compute.tokens(tokens).compute_buffer_with(
+                *stack.last_mut().unwrap().num_mut() = compute.tokens(tokens).compute(
                     inner_vars,
                     stack,
                     #[cfg(feature = "float_rand")]
@@ -790,7 +790,7 @@ impl Function {
                 let (value, [], [var, tokens]) = compute.tokens.get_skip_mut(stack);
                 let value = mem::take(value);
                 inner_vars[var[0].inner_var_ref() as usize] = value;
-                *stack.last_mut().unwrap().num_mut() = compute.tokens(tokens).compute_buffer_with(
+                *stack.last_mut().unwrap().num_mut() = compute.tokens(tokens).compute(
                     inner_vars,
                     stack,
                     #[cfg(feature = "float_rand")]
@@ -803,7 +803,7 @@ impl Function {
                 let cond = compute.tokens(cond);
                 let expr = compute.tokens(expr);
                 while !cond
-                    .compute_buffer_with(
+                    .compute(
                         inner_vars,
                         stack,
                         #[cfg(feature = "float_rand")]
@@ -811,7 +811,7 @@ impl Function {
                     )
                     .is_zero()
                 {
-                    last = expr.compute_buffer_with(
+                    last = expr.compute(
                         inner_vars,
                         stack,
                         #[cfg(feature = "float_rand")]
@@ -825,7 +825,7 @@ impl Function {
                 let cond = compute.tokens(cond);
                 let expr = compute.tokens(expr);
                 while !cond
-                    .compute_buffer_with(
+                    .compute(
                         inner_vars,
                         stack,
                         #[cfg(feature = "float_rand")]
@@ -833,7 +833,7 @@ impl Function {
                     )
                     .is_zero()
                 {
-                    expr.compute_buffer_with(
+                    expr.compute(
                         inner_vars,
                         stack,
                         #[cfg(feature = "float_rand")]
@@ -842,7 +842,7 @@ impl Function {
                 }
                 *stack.last_mut().unwrap() = compute
                     .tokens(ret)
-                    .compute_buffer_with(
+                    .compute(
                         inner_vars,
                         stack,
                         #[cfg(feature = "float_rand")]
@@ -857,14 +857,14 @@ impl Function {
                     .get_skip_tokens_keep_one_vec(stack, n as usize)
                     .into_iter();
                 for _ in 1..n {
-                    compute.tokens(tokens.next().unwrap()).compute_buffer_with(
+                    compute.tokens(tokens.next().unwrap()).compute(
                         inner_vars,
                         stack,
                         #[cfg(feature = "float_rand")]
                         rand,
                     );
                 }
-                let last = compute.tokens(tokens.next().unwrap()).compute_buffer_with(
+                let last = compute.tokens(tokens.next().unwrap()).compute(
                     inner_vars,
                     stack,
                     #[cfg(feature = "float_rand")]
@@ -892,7 +892,7 @@ impl Function {
                 let steps = steps.to_real().into_isize();
                 let compute = compute.tokens(tokens);
                 (0..steps).for_each(|_| {
-                    *inner_vars.last_mut().unwrap() = compute.compute_buffer_with(
+                    *inner_vars.last_mut().unwrap() = compute.compute(
                         inner_vars,
                         stack,
                         #[cfg(feature = "float_rand")]
@@ -906,7 +906,7 @@ impl Function {
                 let tokens = if condition.is_zero() { ifelse } else { ifthen };
                 *stack.last_mut().unwrap().num_mut() =
                     stacker::maybe_grow(2usize.pow(16), 2usize.pow(20), || {
-                        compute.tokens(tokens).compute_buffer_with(
+                        compute.tokens(tokens).compute(
                             inner_vars,
                             stack,
                             #[cfg(feature = "float_rand")]

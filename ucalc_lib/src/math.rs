@@ -14,7 +14,7 @@ impl Compute<'_> {
     ) -> Number {
         inner_vars[var] = point;
         for _ in 0..64 {
-            let y = self.compute_buffer_with(
+            let y = self.compute(
                 inner_vars,
                 stack,
                 #[cfg(feature = "float_rand")]
@@ -45,14 +45,14 @@ impl Compute<'_> {
     ) -> Number {
         let epsilon = Float::from(2.0f64.powi(-32));
         inner_vars[var] = point.clone() - &epsilon;
-        let start = self.compute_buffer_with(
+        let start = self.compute(
             inner_vars,
             stack,
             #[cfg(feature = "float_rand")]
             rand,
         );
         inner_vars[var] = point + &epsilon;
-        let end = self.compute_buffer_with(
+        let end = self.compute(
             inner_vars,
             stack,
             #[cfg(feature = "float_rand")]
@@ -81,14 +81,14 @@ impl Compute<'_> {
                     .0,
             );
             if (n - k).is_multiple_of(2) {
-                sum += self.compute_buffer_with(
+                sum += self.compute(
                     inner_vars,
                     stack,
                     #[cfg(feature = "float_rand")]
                     rand,
                 ) * r;
             } else {
-                sum -= self.compute_buffer_with(
+                sum -= self.compute(
                     inner_vars,
                     stack,
                     #[cfg(feature = "float_rand")]
@@ -115,7 +115,7 @@ impl Compute<'_> {
         let epsilon = (end - &start) / Float::from(k);
         let mut total = Number::from(0);
         inner_vars[var] = start;
-        let mut last = self.compute_buffer_with(
+        let mut last = self.compute(
             inner_vars,
             stack,
             #[cfg(feature = "float_rand")]
@@ -124,7 +124,7 @@ impl Compute<'_> {
         let mid = epsilon.clone() / Float::from(2);
         for _ in 1..=k {
             inner_vars[var] += &epsilon;
-            let cur = self.compute_buffer_with(
+            let cur = self.compute(
                 inner_vars,
                 stack,
                 #[cfg(feature = "float_rand")]
@@ -148,14 +148,14 @@ impl Compute<'_> {
     ) -> Number {
         if n == 0 {
             inner_vars[var] = end;
-            let end = self.compute_buffer_with(
+            let end = self.compute(
                 inner_vars,
                 stack,
                 #[cfg(feature = "float_rand")]
                 rand,
             );
             inner_vars[var] = start;
-            let start = self.compute_buffer_with(
+            let start = self.compute(
                 inner_vars,
                 stack,
                 #[cfg(feature = "float_rand")]
@@ -169,7 +169,7 @@ impl Compute<'_> {
         let epsilon = (end - &start) / &kf;
         let mut total = Number::from(0);
         inner_vars[var] = start;
-        let mut last = self.compute_buffer_with(
+        let mut last = self.compute(
             inner_vars,
             stack,
             #[cfg(feature = "float_rand")]
@@ -183,7 +183,7 @@ impl Compute<'_> {
         let mid = epsilon.clone() / Float::from(2);
         for i in 1..=k {
             inner_vars[var] += &epsilon;
-            let mut cur = self.compute_buffer_with(
+            let mut cur = self.compute(
                 inner_vars,
                 stack,
                 #[cfg(feature = "float_rand")]
@@ -217,7 +217,7 @@ impl Compute<'_> {
         inner_vars[x_var] = x_0;
         inner_vars[t_var] = t_0;
         for _ in 1..=n {
-            let delta = self.compute_buffer_with(
+            let delta = self.compute(
                 inner_vars,
                 stack,
                 #[cfg(feature = "float_rand")]
