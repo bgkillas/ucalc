@@ -164,10 +164,10 @@ impl Tokens {
                     tokens.push(Token::GraphVar(i as u8))
                 }
                 _ if let Ok(fun) = Function::try_from(token) => {
-                    tokens.compact_args(fun, &mut inner_vars, funs);
                     open_inputs = open_inputs
                         .checked_sub(fun.inputs().get() as usize - 1)
-                        .ok_or(ParseError::ExtraInput)?;
+                        .ok_or(ParseError::MissingInput)?;
+                    tokens.compact_args(fun, &mut inner_vars, funs);
                     tokens.push(fun.into());
                 }
                 _ if let Some(k) = token
@@ -179,14 +179,14 @@ impl Tokens {
                     && ((k > 0 && j == 0) || (j > 0 && k == 0) || (k == 0 && j == 0))
                     && let Ok(fun) = Function::try_from(&token[..token.len() - (j + k)]) =>
                 {
+                    open_inputs = open_inputs
+                        .checked_sub(fun.inputs().get() as usize - 1)
+                        .ok_or(ParseError::MissingInput)?;
                     let mut d = Derivative::from((j + k) as u8)?;
                     tokens.compact_args(fun, &mut inner_vars, funs);
                     if j > 0 {
                         d.set_integral()
                     }
-                    open_inputs = open_inputs
-                        .checked_sub(fun.inputs().get() as usize - 1)
-                        .ok_or(ParseError::ExtraInput)?;
                     tokens.push(Token::Function(fun, d));
                 }
                 _ if let Some(k) = token
@@ -201,8 +201,11 @@ impl Tokens {
                     && let Ok(mut fun) = Function::try_from(&token[..=i]) =>
                 {
                     let inputs = token[i + 1..token.len() - (j + k)].parse().unwrap();
-                    let mut d = Derivative::from((j + k) as u8)?;
                     fun.set_inputs(inputs);
+                    open_inputs = open_inputs
+                        .checked_sub(fun.inputs().get() as usize - 1)
+                        .ok_or(ParseError::MissingInput)?;
+                    let mut d = Derivative::from((j + k) as u8)?;
                     tokens.compact_args(fun, &mut inner_vars, funs);
                     if j > 0 {
                         if inputs.get() == 2 * fun.inputs().get() {
@@ -211,9 +214,6 @@ impl Tokens {
                             d.set_integral()
                         }
                     }
-                    open_inputs = open_inputs
-                        .checked_sub(fun.inputs().get() as usize - 1)
-                        .ok_or(ParseError::ExtraInput)?;
                     tokens.push(Token::Function(fun, d));
                 }
                 _ if token.chars().all(|c| c.is_alphabetic()) => inner_vars.push(token),
@@ -266,7 +266,12 @@ impl Tokens {
         let mut last_mul = false;
         let mut expect_expr = false;
         let mut abs = 0;
+        let mut needs_bracket = false;
         while let Some((i, c)) = chars.next() {
+            if needs_bracket && c != '(' {
+                return Err(ParseError::NeedsBracket);
+            }
+            needs_bracket = false;
             match c {
                 ' ' => {}
                 '@' if let Some(i) = vars.position("@") => {
@@ -308,6 +313,9 @@ impl Tokens {
                             inner_vars.push(s);
                             open_input = true;
                         } else if let Some(i) = funs.position(s) {
+                            if funs[i as usize].inputs.get() > 1 {
+                                needs_bracket = true;
+                            }
                             tokens.last_mul(
                                 &mut operator_stack,
                                 no_input_left,
@@ -348,6 +356,9 @@ impl Tokens {
                             tokens.push(Token::GraphVar(i as u8));
                             open_input = true;
                         } else if let Ok(fun) = Function::try_from(s) {
+                            if fun.inputs().get() > 1 {
+                                needs_bracket = true;
+                            }
                             if fun.first_expected_var(NonZeroU8::new(1).unwrap()) {
                                 inner_vars.extend(iter::repeat_n("", fun.inner_vars() as usize));
                             }
@@ -1291,6 +1302,7 @@ pub enum ParseError<'a> {
     AbsoluteBracketFailed,
     MissingInput,
     ExtraInput,
+    NeedsBracket,
     InnerVarError,
     VarExpectedName,
     CommaError,

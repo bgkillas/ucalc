@@ -25,6 +25,7 @@ pub struct Options {
     base_input: u8,
     base_output: u8,
     benchmark: usize,
+    benchmark_simplify: bool,
 }
 impl Default for Options {
     fn default() -> Self {
@@ -34,6 +35,7 @@ impl Default for Options {
             base_input: 10,
             base_output: 10,
             benchmark: 0,
+            benchmark_simplify: false,
         }
     }
 }
@@ -209,6 +211,10 @@ fn run_line(
         options.perf = true;
         return;
     }
+    if line == "--benchmark_simplify" {
+        options.benchmark_simplify = true;
+        return;
+    }
     let mut get = |s: &str| -> isize {
         let tokens = Tokens::parse(
             s,
@@ -279,14 +285,16 @@ fn run_line(
             print!("{}", compute.get_closest_fraction(options.base_output));
             println!("{}", compute.to_string_radix(options.base_output));
             if options.benchmark > 0 {
-                benchmark(
-                    tokens,
-                    options.benchmark,
-                    vars,
-                    funs,
-                    #[cfg(feature = "float_rand")]
-                    rand,
-                );
+                if options.benchmark_simplify {
+                    benchmark(
+                        tokens,
+                        options.benchmark,
+                        vars,
+                        funs,
+                        #[cfg(feature = "float_rand")]
+                        rand,
+                    );
+                }
                 let tokens = Tokens::parse(
                     line,
                     vars,
