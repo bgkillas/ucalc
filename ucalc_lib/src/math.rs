@@ -5,7 +5,7 @@ use crate::rand::Rand;
 use ucalc_numbers::{Float, FloatFunctions, FloatTrait, UInteger};
 impl Compute<'_> {
     pub fn numerical_solve(
-        self,
+        &self,
         inner_vars: &mut Vec<Number>,
         stack: &mut Vec<StackToken>,
         point: Number,
@@ -36,7 +36,7 @@ impl Compute<'_> {
         inner_vars[var].clone()
     }
     pub fn numerical_derivative(
-        self,
+        &self,
         inner_vars: &mut Vec<Number>,
         stack: &mut Vec<StackToken>,
         point: Number,
@@ -61,7 +61,7 @@ impl Compute<'_> {
         (end - start) / (Float::from(2) * epsilon)
     }
     pub fn numerical_nth_derivative(
-        self,
+        &self,
         inner_vars: &mut Vec<Number>,
         stack: &mut Vec<StackToken>,
         n: u8,
@@ -103,7 +103,7 @@ impl Compute<'_> {
         sum / epsilon
     }
     pub fn numerical_integral(
-        self,
+        &self,
         inner_vars: &mut Vec<Number>,
         stack: &mut Vec<StackToken>,
         start: Number,

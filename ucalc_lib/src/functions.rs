@@ -712,9 +712,10 @@ impl Function {
                 let start = start.to_real().into_isize();
                 let end = end.to_real().into_isize();
                 inner_vars.push(Number::from(start));
+                let compute = compute.tokens(tokens);
                 *stack.last_mut().unwrap().num_mut() = (start..=end)
                     .map(|_| {
-                        let ret = compute.tokens(tokens).compute_buffer_with(
+                        let ret = compute.compute_buffer_with(
                             inner_vars,
                             stack,
                             #[cfg(feature = "float_rand")]
@@ -732,9 +733,10 @@ impl Function {
                 let start = start.to_real().into_isize();
                 let end = end.to_real().into_isize();
                 inner_vars.push(Number::from(start));
+                let compute = compute.tokens(tokens);
                 *stack.last_mut().unwrap().num_mut() = (start..=end)
                     .map(|_| {
-                        let ret = compute.tokens(tokens).compute_buffer_with(
+                        let ret = compute.compute_buffer_with(
                             inner_vars,
                             stack,
                             #[cfg(feature = "float_rand")]
@@ -754,8 +756,9 @@ impl Function {
                 inner_vars.push(value);
                 inner_vars.push(Number::from(start));
                 let nl = inner_vars.len();
+                let compute = compute.tokens(tokens);
                 (start..=end).for_each(|_| {
-                    inner_vars[nl - 2] = compute.tokens(tokens).compute_buffer_with(
+                    inner_vars[nl - 2] = compute.compute_buffer_with(
                         inner_vars,
                         stack,
                         #[cfg(feature = "float_rand")]
@@ -797,8 +800,9 @@ impl Function {
             Self::While(ModifyInputs::Two) => {
                 let [cond, expr] = compute.tokens.get_skip_tokens_keep_one(stack);
                 let mut last = Number::default();
-                while !compute
-                    .tokens(cond)
+                let cond = compute.tokens(cond);
+                let expr = compute.tokens(expr);
+                while !cond
                     .compute_buffer_with(
                         inner_vars,
                         stack,
@@ -807,7 +811,7 @@ impl Function {
                     )
                     .is_zero()
                 {
-                    last = compute.tokens(expr).compute_buffer_with(
+                    last = expr.compute_buffer_with(
                         inner_vars,
                         stack,
                         #[cfg(feature = "float_rand")]
@@ -818,8 +822,9 @@ impl Function {
             }
             Self::While(ModifyInputs::Three) => {
                 let [cond, expr, ret] = compute.tokens.get_skip_tokens_keep_one(stack);
-                while !compute
-                    .tokens(cond)
+                let cond = compute.tokens(cond);
+                let expr = compute.tokens(expr);
+                while !cond
                     .compute_buffer_with(
                         inner_vars,
                         stack,
@@ -828,7 +833,7 @@ impl Function {
                     )
                     .is_zero()
                 {
-                    compute.tokens(expr).compute_buffer_with(
+                    expr.compute_buffer_with(
                         inner_vars,
                         stack,
                         #[cfg(feature = "float_rand")]
@@ -885,8 +890,9 @@ impl Function {
                 let first = mem::take(first);
                 inner_vars.push(first);
                 let steps = steps.to_real().into_isize();
+                let compute = compute.tokens(tokens);
                 (0..steps).for_each(|_| {
-                    *inner_vars.last_mut().unwrap() = compute.tokens(tokens).compute_buffer_with(
+                    *inner_vars.last_mut().unwrap() = compute.compute_buffer_with(
                         inner_vars,
                         stack,
                         #[cfg(feature = "float_rand")]

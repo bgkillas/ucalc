@@ -5,7 +5,7 @@ use crate::rand::Rand;
 use crate::{FunctionVar, Number, Variable};
 use std::array;
 use ucalc_numbers::{Constant, FloatTrait};
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct Compute<'a> {
     pub(crate) tokens: &'a TokensSlice,
     pub(crate) graph_vars: &'a [Number],
@@ -165,7 +165,7 @@ impl TokensSlice {
     }
 }
 impl<'a> Compute<'a> {
-    pub fn offset(self, offset: usize) -> Self {
+    pub fn offset(&self, offset: usize) -> Self {
         Self {
             tokens: self.tokens,
             graph_vars: self.graph_vars,
@@ -174,7 +174,7 @@ impl<'a> Compute<'a> {
             offset,
         }
     }
-    pub fn tokens<'b: 'a>(self, tokens: &'b TokensSlice) -> Self {
+    pub fn tokens<'b: 'a>(&self, tokens: &'b TokensSlice) -> Self {
         Self {
             tokens,
             graph_vars: self.graph_vars,
@@ -199,7 +199,7 @@ impl<'a> Compute<'a> {
         }
     }
     pub fn compute_buffer_with(
-        self,
+        &self,
         inner_vars: &mut Vec<Number>,
         stack: &mut Vec<StackToken>,
         #[cfg(feature = "float_rand")] rand: &mut Rand,
