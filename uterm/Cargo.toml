@@ -14,3 +14,4 @@ wayland=["uterm_lib/wayland"]
 
 [dependencies]
 uterm_lib={workspace = true}
+readchar = {workspace = true}

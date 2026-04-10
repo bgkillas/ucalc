@@ -1,18 +1,10 @@
 use crate::History;
 #[cfg(feature = "crossterm")]
-use crossterm::cursor::{
-    MoveDown, MoveLeft, MoveRight, MoveTo, MoveToColumn, MoveToNextLine, MoveToPreviousLine,
-};
-#[cfg(feature = "crossterm")]
 use crossterm::event::{DisableBracketedPaste, EnableBracketedPaste};
-#[cfg(feature = "crossterm")]
-use crossterm::style::{Color, ResetColor, SetForegroundColor};
-#[cfg(feature = "crossterm")]
-use crossterm::terminal::{Clear, ClearType};
 #[cfg(feature = "crossterm")]
 use crossterm::{ExecutableCommand, QueueableCommand, event, terminal};
 use enumset::{EnumSet, EnumSetType, enum_set};
-use std::fmt::Display;
+use std::fmt::{Display, Formatter};
 use std::io;
 use std::io::{Write, stdout};
 /// the ReadChar struct, see `read` for usage
@@ -69,11 +61,13 @@ impl Complete<'static> for NoComplete {
         Vec::new()
     }
 }
+#[cfg(feature = "crossterm")]
 impl Default for ReadChar {
     fn default() -> Self {
         Self::new(History::new(None).unwrap())
     }
 }
+#[cfg(feature = "crossterm")]
 impl Drop for ReadChar {
     fn drop(&mut self) {
         terminal::disable_raw_mode().unwrap();
@@ -97,6 +91,7 @@ fn str_len(s: impl AsRef<str>) -> u16 {
 impl ReadChar {
     /// creates a new `ReadChar` struct with `History` and
     /// enables terminal raw mode and panic hook
+    #[cfg(feature = "crossterm")]
     pub fn new(history: History) -> Self {
         terminal::enable_raw_mode().unwrap();
         #[cfg(debug_assertions)]
@@ -109,6 +104,24 @@ impl ReadChar {
             hook(info);
         }));
         let (col, row) = terminal::size().unwrap();
+        Self {
+            line: String::with_capacity(64),
+            line_len: 0,
+            row,
+            col,
+            insert: 0,
+            cursor: 0,
+            cursor_row: 0,
+            cursor_row_max: 0,
+            cursor_col: 0,
+            new_lines: 0,
+            history,
+            carrot: "> ",
+            carrot_color: Some(Color::DarkBlue),
+        }
+    }
+    #[cfg(not(feature = "crossterm"))]
+    pub fn new(history: History, col: u16, row: u16) -> Self {
         Self {
             line: String::with_capacity(64),
             line_len: 0,
@@ -139,17 +152,19 @@ impl ReadChar {
     ) -> io::Result<()> {
         run(&self.line, string);
         self.new_lines = self.out_lines(string);
-        stdout.queue(Clear(ClearType::FromCursorDown))?;
+        write!(stdout, "{}", Clear(ClearType::FromCursorDown))?;
         for l in string.lines() {
-            stdout.queue(MoveToColumn(0))?;
+            write!(stdout, "{}", MoveToColumn(0))?;
             write!(stdout, "\n{l}")?;
         }
         if self.new_lines + self.cursor_row_max != self.cursor_row {
-            stdout.queue(MoveToPreviousLine(
-                self.new_lines + self.cursor_row_max - self.cursor_row,
-            ))?;
+            write!(
+                stdout,
+                "{}",
+                MoveToPreviousLine(self.new_lines + self.cursor_row_max - self.cursor_row,)
+            )?;
         }
-        stdout.queue(MoveToColumn(self.col()))?;
+        write!(stdout, "{}", MoveToColumn(self.col()))?;
         Ok(())
     }
     pub(crate) fn col(&self) -> u16 {
@@ -167,11 +182,11 @@ impl ReadChar {
             if self.cursor_row == 0 {
                 self.cursor_col -= self.carrot.len() as u16;
             }
-            stdout.queue(MoveToPreviousLine(1))?;
+            write!(stdout, "{}", MoveToPreviousLine(1))?;
         } else {
             if self.cursor_row != 0 {
                 self.cursor_row = 0;
-                stdout.queue(MoveToPreviousLine(1))?;
+                write!(stdout, "{}", MoveToPreviousLine(1))?;
                 self.cursor_col = self.carrot.len() as u16;
             }
             self.cursor = 0;
@@ -186,11 +201,11 @@ impl ReadChar {
                 self.cursor_col += self.carrot.len() as u16;
             }
             self.cursor_row += 1;
-            stdout.queue(MoveToNextLine(1))?;
+            write!(stdout, "{}", MoveToNextLine(1))?;
         } else {
             if self.cursor_row_max > self.cursor_row {
                 self.cursor_row = self.cursor_row_max;
-                stdout.queue(MoveToNextLine(1))?;
+                write!(stdout, "{}", MoveToNextLine(1))?;
             }
             self.cursor = self.line_len;
             self.cursor_col = if self.cursor_row == 0 {
@@ -233,6 +248,7 @@ impl ReadChar {
     }
     /// prints the prompt and enables brackted paste
     pub fn init(&mut self, stdout: &mut impl Write) -> io::Result<()> {
+        #[cfg(feature = "crossterm")]
         stdout.queue(EnableBracketedPaste)?;
         self.carrot(stdout)?;
         stdout.flush()?;
@@ -267,9 +283,9 @@ impl ReadChar {
         up: bool,
     ) -> io::Result<()> {
         if self.cursor_row != 0 {
-            stdout.queue(MoveToPreviousLine(self.cursor_row))?;
+            write!(stdout, "{}", MoveToPreviousLine(self.cursor_row))?;
         }
-        stdout.queue(MoveToColumn(self.carrot.len() as u16))?;
+        write!(stdout, "{}", MoveToColumn(self.carrot.len() as u16))?;
         let s = self.history.mv(&self.line, up);
         self.line.clear();
         self.line.push_str(s);
@@ -283,7 +299,7 @@ impl ReadChar {
             self.cursor + self.carrot.len() as u16
         } % self.col;
         self.cursor_row_max = (self.line_len + self.carrot.len() as u16) / self.col;
-        stdout.queue(Clear(ClearType::FromCursorDown))?;
+        write!(stdout, "{}", Clear(ClearType::FromCursorDown))?;
         self.print_line(stdout, color)?;
         stdout.flush()?;
         self.print_result(string, stdout, run)?;
@@ -292,30 +308,35 @@ impl ReadChar {
     }
     pub(crate) fn exit(&mut self, stdout: &mut impl Write, string: &str) -> io::Result<()> {
         if self.cursor_row_max != self.cursor_row {
-            stdout.queue(MoveToNextLine(self.cursor_row_max - self.cursor_row))?;
+            write!(
+                stdout,
+                "{}",
+                MoveToNextLine(self.cursor_row_max - self.cursor_row)
+            )?;
         }
         for _ in 0..self.new_lines {
             writeln!(stdout)?;
         }
         if string.is_empty() {
-            stdout.queue(MoveLeft(u16::MAX))?;
-            stdout.queue(Clear(ClearType::CurrentLine))?;
+            write!(stdout, "{}", MoveToColumn(0))?;
+            write!(stdout, "{}", Clear(ClearType::CurrentLine))?;
         } else {
             writeln!(stdout)?;
         }
-        stdout.queue(MoveToColumn(0))?;
+        write!(stdout, "{}", MoveToColumn(0))?;
         stdout.flush()?;
         Ok(())
     }
+    #[cfg(feature = "crossterm")]
     pub fn close(&self, stdout: &mut impl Write) -> io::Result<()> {
-        stdout.queue(DisableBracketedPaste)?;
+        stdout.execute(DisableBracketedPaste)?;
         terminal::disable_raw_mode()?;
         Ok(())
     }
     pub fn clear(&self, stdout: &mut impl Write) -> io::Result<()> {
-        stdout.queue(Clear(ClearType::Purge))?;
-        stdout.queue(Clear(ClearType::All))?;
-        stdout.queue(MoveTo(0, 0))?;
+        write!(stdout, "{}", Clear(ClearType::Purge))?;
+        write!(stdout, "{}", Clear(ClearType::All))?;
+        write!(stdout, "{}", MoveTo(0, 0))?;
         Ok(())
     }
     pub(crate) fn new_line<T: Write>(
@@ -327,12 +348,16 @@ impl ReadChar {
             self.history.push(&self.line)?;
         }
         if self.cursor_row_max != self.cursor_row {
-            stdout.queue(MoveToNextLine(self.cursor_row_max - self.cursor_row))?;
+            write!(
+                stdout,
+                "{}",
+                MoveToNextLine(self.cursor_row_max - self.cursor_row)
+            )?;
         }
         for _ in 0..=self.new_lines {
             writeln!(stdout)?;
         }
-        stdout.queue(MoveToColumn(0))?;
+        write!(stdout, "{}", MoveToColumn(0))?;
         self.cursor = 0;
         self.cursor_col = 0;
         self.cursor_row = 0;
@@ -361,13 +386,13 @@ impl ReadChar {
         let count = s.chars().count() as u16;
         self.line_len += count;
         if self.cursor_row != 0 {
-            stdout.queue(MoveToPreviousLine(self.cursor_row))?;
+            write!(stdout, "{}", MoveToPreviousLine(self.cursor_row))?;
         }
-        stdout.queue(MoveToColumn(self.carrot.len() as u16))?;
+        write!(stdout, "{}", MoveToColumn(self.carrot.len() as u16))?;
         let rows = self.right(count)?;
         if rows != 0 {
             self.cursor_row_max += rows;
-            stdout.queue(Clear(ClearType::FromCursorDown))?;
+            write!(stdout, "{}", Clear(ClearType::FromCursorDown))?;
             self.print_line(stdout, color)?;
             let rem = (self.line_len + self.carrot.len() as u16) % self.col;
             if rem == 0 {
@@ -406,9 +431,9 @@ impl ReadChar {
         }
         let rows = self.left(n)?;
         if rows != 0 {
-            stdout.queue(MoveToPreviousLine(rows))?;
+            write!(stdout, "{}", MoveToPreviousLine(rows))?;
         }
-        stdout.queue(MoveToColumn(self.col()))?;
+        write!(stdout, "{}", MoveToColumn(self.col()))?;
         stdout.flush()?;
         Ok(())
     }
@@ -426,9 +451,9 @@ impl ReadChar {
         }
         let rows = self.right(n)?;
         if rows != 0 {
-            stdout.queue(MoveToNextLine(rows))?;
+            write!(stdout, "{}", MoveToNextLine(rows))?;
         }
-        stdout.queue(MoveToColumn(self.col()))?;
+        write!(stdout, "{}", MoveToColumn(self.col()))?;
         stdout.flush()?;
         Ok(())
     }
@@ -436,11 +461,11 @@ impl ReadChar {
         self.insert = 0;
         self.cursor = 0;
         if self.cursor_row != 0 {
-            stdout.queue(MoveToPreviousLine(self.cursor_row))?;
+            write!(stdout, "{}", MoveToPreviousLine(self.cursor_row))?;
         }
         self.cursor_row = 0;
         self.cursor_col = 0;
-        stdout.queue(MoveToColumn(self.col()))?;
+        write!(stdout, "{}", MoveToColumn(self.col()))?;
         stdout.flush()?;
         Ok(())
     }
@@ -448,7 +473,11 @@ impl ReadChar {
         self.insert = self.line.len() as u16;
         self.cursor = self.line_len;
         if self.cursor_row != self.cursor_row_max {
-            stdout.queue(MoveToNextLine(self.cursor_row_max - self.cursor_row))?;
+            write!(
+                stdout,
+                "{}",
+                MoveToNextLine(self.cursor_row_max - self.cursor_row)
+            )?;
         }
         self.cursor_row = self.cursor_row_max;
         self.cursor_col = if self.cursor_row == 0 {
@@ -456,7 +485,7 @@ impl ReadChar {
         } else {
             self.cursor + self.carrot.len() as u16
         } % self.col;
-        stdout.queue(MoveToColumn(self.col()))?;
+        write!(stdout, "{}", MoveToColumn(self.col()))?;
         stdout.flush()?;
         Ok(())
     }
@@ -468,9 +497,9 @@ impl ReadChar {
             .unwrap()
             .len_utf8() as u16;
         if self.left(1)? != 0 {
-            stdout.queue(MoveToPreviousLine(1))?;
+            write!(stdout, "{}", MoveToPreviousLine(1))?;
         }
-        stdout.queue(MoveToColumn(self.col()))?;
+        write!(stdout, "{}", MoveToColumn(self.col()))?;
         stdout.flush()?;
         Ok(())
     }
@@ -482,9 +511,9 @@ impl ReadChar {
             .unwrap()
             .len_utf8() as u16;
         if self.right(1)? != 0 {
-            stdout.queue(MoveToNextLine(1))?;
+            write!(stdout, "{}", MoveToNextLine(1))?;
         }
-        stdout.queue(MoveToColumn(self.col()))?;
+        write!(stdout, "{}", MoveToColumn(self.col()))?;
         stdout.flush()?;
         Ok(())
     }
@@ -496,7 +525,7 @@ impl ReadChar {
             .nth(self.cursor as usize)
             .map(|(i, _)| i)
             .unwrap() as u16;
-        stdout.queue(MoveToColumn(self.col()))?;
+        write!(stdout, "{}", MoveToColumn(self.col()))?;
         stdout.flush()?;
         Ok(())
     }
@@ -508,7 +537,7 @@ impl ReadChar {
             .nth(self.cursor as usize)
             .map(|(i, _)| i as u16)
             .unwrap_or(self.line_len);
-        stdout.queue(MoveToColumn(self.col()))?;
+        write!(stdout, "{}", MoveToColumn(self.col()))?;
         stdout.flush()?;
         Ok(())
     }
@@ -528,12 +557,12 @@ impl ReadChar {
         }
         self.line_len -= n;
         if self.cursor_row != 0 {
-            stdout.queue(MoveToPreviousLine(self.cursor_row))?;
+            write!(stdout, "{}", MoveToPreviousLine(self.cursor_row))?;
         }
-        stdout.queue(MoveToColumn(self.carrot.len() as u16))?;
+        write!(stdout, "{}", MoveToColumn(self.carrot.len() as u16))?;
         self.left(n)?;
         self.cursor_row_max = (self.line_len + self.carrot.len() as u16) / self.col;
-        stdout.queue(Clear(ClearType::FromCursorDown))?;
+        write!(stdout, "{}", Clear(ClearType::FromCursorDown))?;
         self.print_line(stdout, color)?;
         if (self.line_len + self.carrot.len() as u16).is_multiple_of(self.col) {
             writeln!(stdout)?;
@@ -556,11 +585,11 @@ impl ReadChar {
         }
         self.line_len -= n;
         if self.cursor_row != 0 {
-            stdout.queue(MoveToPreviousLine(self.cursor_row))?;
+            write!(stdout, "{}", MoveToPreviousLine(self.cursor_row))?;
         }
-        stdout.queue(MoveToColumn(self.carrot.len() as u16))?;
+        write!(stdout, "{}", MoveToColumn(self.carrot.len() as u16))?;
         self.cursor_row_max = (self.line_len + self.carrot.len() as u16) / self.col;
-        stdout.queue(Clear(ClearType::FromCursorDown))?;
+        write!(stdout, "{}", Clear(ClearType::FromCursorDown))?;
         self.print_line(stdout, color)?;
         if (self.line_len + self.carrot.len() as u16).is_multiple_of(self.col) {
             writeln!(stdout)?;
@@ -582,13 +611,13 @@ impl ReadChar {
         self.insert += c.len_utf8() as u16;
         self.line_len += 1;
         if self.cursor_row != 0 {
-            stdout.queue(MoveToPreviousLine(self.cursor_row))?;
+            write!(stdout, "{}", MoveToPreviousLine(self.cursor_row))?;
         }
-        stdout.queue(MoveToColumn(self.carrot.len() as u16))?;
+        write!(stdout, "{}", MoveToColumn(self.carrot.len() as u16))?;
         self.right(1)?;
         if (self.line_len + self.carrot.len() as u16).is_multiple_of(self.col) {
             self.cursor_row_max += 1;
-            stdout.queue(Clear(ClearType::FromCursorDown))?;
+            write!(stdout, "{}", Clear(ClearType::FromCursorDown))?;
             writeln!(stdout, "{}", self.line)?;
         } else {
             self.print_line(stdout, color)?;
@@ -606,11 +635,15 @@ impl ReadChar {
         let list = complete.run(&self.line[..self.cursor as usize]);
         if !list.is_empty() {
             if self.cursor_row_max != self.cursor_row {
-                stdout.queue(MoveToNextLine(self.cursor_row_max - self.cursor_row))?;
+                write!(
+                    stdout,
+                    "{}",
+                    MoveToNextLine(self.cursor_row_max - self.cursor_row)
+                )?;
             }
             writeln!(stdout)?;
-            stdout.queue(MoveToColumn(0))?;
-            stdout.queue(Clear(ClearType::FromCursorDown))?;
+            write!(stdout, "{}", MoveToColumn(0))?;
+            write!(stdout, "{}", Clear(ClearType::FromCursorDown))?;
             let longest = list.iter().map(|s| s.1).max().unwrap() + 4;
             self.new_lines = 1;
             let words = self.col / longest as u16;
@@ -622,13 +655,15 @@ impl ReadChar {
                 if i + 1 != list.len() && (i + 1) % words as usize == 0 {
                     self.new_lines += 1;
                     writeln!(stdout)?;
-                    stdout.queue(MoveToColumn(0))?;
+                    write!(stdout, "{}", MoveToColumn(0))?;
                 }
             }
-            stdout.queue(MoveToPreviousLine(
-                self.cursor_row_max - self.cursor_row + self.new_lines,
-            ))?;
-            stdout.queue(MoveToColumn(self.col()))?;
+            write!(
+                stdout,
+                "{}",
+                MoveToPreviousLine(self.cursor_row_max - self.cursor_row + self.new_lines,)
+            )?;
+            write!(stdout, "{}", MoveToColumn(self.col()))?;
             stdout.flush()?;
         }
         Ok(())
@@ -747,9 +782,13 @@ impl ReadChar {
                 modifiers,
                 ..
             }) if modifiers == enum_set![KeyModifiers::Control] => {
-                stdout.queue(MoveRight(u16::MAX))?;
+                write!(stdout, "{}", MoveRight(u16::MAX))?;
                 if self.cursor_row_max != self.cursor_row {
-                    stdout.queue(MoveDown(self.cursor_row_max - self.cursor_row))?;
+                    write!(
+                        stdout,
+                        "{}",
+                        MoveDown(self.cursor_row_max - self.cursor_row)
+                    )?;
                 }
                 self.print_result(string, stdout, run)?;
                 stdout.flush()?;
@@ -877,5 +916,112 @@ impl TryFrom<event::KeyCode> for KeyCode {
             event::KeyCode::Delete => Self::Delete,
             _ => return Err(()),
         })
+    }
+}
+#[derive(Debug, Clone, Copy)]
+pub enum Color {
+    Black,
+    DarkGrey,
+    Red,
+    DarkRed,
+    Green,
+    DarkGreen,
+    Yellow,
+    DarkYellow,
+    Blue,
+    DarkBlue,
+    Magenta,
+    DarkMagenta,
+    Cyan,
+    DarkCyan,
+    White,
+    Grey,
+    Rgb { r: u8, g: u8, b: u8 },
+}
+pub struct ResetColor;
+pub struct SetForegroundColor(Color);
+pub struct MoveDown(u16);
+pub struct MoveRight(u16);
+pub struct MoveTo(u16, u16);
+pub struct MoveToColumn(u16);
+pub struct MoveToNextLine(u16);
+pub struct MoveToPreviousLine(u16);
+pub struct Clear(ClearType);
+pub enum ClearType {
+    All,
+    Purge,
+    FromCursorDown,
+    CurrentLine,
+}
+impl Display for SetForegroundColor {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "\x1b[{}m",
+            match self.0 {
+                Color::Black => "30",
+                Color::DarkGrey => "90",
+                Color::Red => "31",
+                Color::DarkRed => "91",
+                Color::Green => "32",
+                Color::DarkGreen => "92",
+                Color::Yellow => "33",
+                Color::DarkYellow => "93",
+                Color::Blue => "34",
+                Color::DarkBlue => "94",
+                Color::Magenta => "35",
+                Color::DarkMagenta => "95",
+                Color::Cyan => "36",
+                Color::DarkCyan => "96",
+                Color::White => "37",
+                Color::Grey => "97",
+                Color::Rgb { r, g, b } => return write!(f, "\x1b[38;2;{r};{g};{b}m"),
+            }
+        )
+    }
+}
+impl Display for MoveDown {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "\x1b[{}B", self.0)
+    }
+}
+impl Display for ResetColor {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "\x1b[39;49m")
+    }
+}
+impl Display for MoveRight {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "\x1b[{}C", self.0)
+    }
+}
+impl Display for MoveTo {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "\x1b[{};{}H", self.0 + 1, self.1 + 1)
+    }
+}
+impl Display for MoveToColumn {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "\x1b[{}G", self.0 + 1)
+    }
+}
+impl Display for MoveToNextLine {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "\x1b[{}E", self.0)
+    }
+}
+impl Display for MoveToPreviousLine {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "\x1b[{}F", self.0)
+    }
+}
+impl Display for Clear {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self.0 {
+            ClearType::All => write!(f, "\x1b[2J"),
+            ClearType::Purge => write!(f, "\x1b[3J"),
+            ClearType::FromCursorDown => write!(f, "\x1b[J"),
+            ClearType::CurrentLine => write!(f, "\x1b[2K"),
+        }
     }
 }
