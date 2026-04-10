@@ -402,7 +402,6 @@ impl Tokens {
                                 true,
                             );
                             tokens.push(f.into());
-                            chars.advance_by(l - 1).unwrap();
                             open_input = true;
                         } else if count != 1 {
                             count -= 1;
