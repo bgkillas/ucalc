@@ -13,27 +13,6 @@ use ucalc_lib::{Compute, Functions, Number, Tokens, Variable, Variables, Volatil
 #[cfg(feature = "float_rand")]
 use ucalc_lib::{Rand, rng};
 use ucalc_numbers::{FloatTrait, RealTrait};
-#[derive(Clone, Copy)]
-pub struct Options {
-    rpn: bool,
-    perf: bool,
-    base_input: u8,
-    base_output: u8,
-    benchmark: usize,
-    benchmark_simplify: bool,
-}
-impl Default for Options {
-    fn default() -> Self {
-        Self {
-            rpn: false,
-            perf: false,
-            base_input: 10,
-            base_output: 10,
-            benchmark: 0,
-            benchmark_simplify: false,
-        }
-    }
-}
 pub fn cli() {
     let colors = Colors::default();
     let mut vars = Variables::default();
@@ -98,9 +77,9 @@ pub fn cli() {
                             Return::Cancel
                         }
                         "clear" => {
-                            stdout.queue(Clear(ClearType::Purge))?;
-                            stdout.queue(Clear(ClearType::All))?;
-                            stdout.queue(MoveTo(0, 0))?;
+                            write!(Clear(ClearType::Purge))?;
+                            write!(Clear(ClearType::All))?;
+                            write!(MoveTo(0, 0))?;
                             Return::Finish
                         }
                         _ => Return::Finish,
@@ -124,70 +103,6 @@ pub fn cli() {
             }
         }
     }
-}
-#[allow(clippy::too_many_arguments)]
-fn process_line(
-    line: &str,
-    vars: &mut Variables,
-    funs: &mut Functions,
-    options: Options,
-    str: &mut String,
-    colors: &Colors,
-    #[cfg(feature = "float_rand")] rand: &mut Rand,
-) -> Result<Option<Number>, fmt::Error> {
-    str.clear();
-    Ok(match line {
-        "" | "exit" | "clear" => None,
-        _ if line.starts_with("help") => {
-            let arg = line.split_once(' ').map(|(_, a)| a).unwrap_or("");
-            write!(str, "{}", color_brackets(get_help(arg), colors))?;
-            None
-        }
-        _ => {
-            match tmr_write(
-                || {
-                    Tokens::parse(
-                        line,
-                        vars,
-                        funs,
-                        &[],
-                        false,
-                        true,
-                        options.base_input,
-                        options.rpn,
-                        #[cfg(feature = "float_rand")]
-                        rand,
-                    )
-                },
-                str,
-                options.perf,
-            ) {
-                Ok(Some(tokens)) => {
-                    let compute = tmr_write(
-                        || {
-                            tokens.compute(
-                                &[],
-                                funs,
-                                vars,
-                                #[cfg(feature = "float_rand")]
-                                rand,
-                            )
-                        },
-                        str,
-                        options.perf,
-                    );
-                    write!(str, "{}", compute.get_closest_fraction(options.base_output))?;
-                    write!(str, "{}", compute.to_string_radix(options.base_output))?;
-                    Some(compute)
-                }
-                Ok(None) => None,
-                Err(e) => {
-                    write!(str, "{e:?}")?;
-                    None
-                }
-            }
-        }
-    })
 }
 #[allow(clippy::too_many_arguments)]
 fn run_line(
@@ -350,19 +265,6 @@ fn benchmark(
     let mean = time as f64 / n as f64;
     println!("Total: {time}ns, Mean: {mean}ns")
 }
-fn tmr_write<T, W>(fun: T, str: &mut impl Write, perf: bool) -> W
-where
-    T: FnOnce() -> W,
-{
-    if perf {
-        let tmr = std::time::Instant::now();
-        let ret = fun();
-        writeln!(str, "{}", tmr.elapsed().as_nanos()).unwrap();
-        ret
-    } else {
-        fun()
-    }
-}
 fn tmr<T, W>(fun: T, perf: bool) -> W
 where
     T: FnOnce() -> W,
@@ -375,83 +277,4 @@ where
     } else {
         fun()
     }
-}
-fn to_alt(c: char) -> Option<char> {
-    Some(match c {
-        'a' => 'α',
-        'A' => 'Α',
-        'b' => 'β',
-        'B' => 'Β',
-        'c' => 'ξ',
-        'C' => 'Ξ',
-        'd' => 'Δ',
-        'D' => 'δ',
-        'e' => 'ε',
-        'E' => 'Ε',
-        'f' => 'φ',
-        'F' => 'Φ',
-        'g' => 'γ',
-        'G' => 'Γ',
-        'h' => 'η',
-        'H' => 'Η',
-        'i' => 'ι',
-        'I' => 'Ι',
-        'k' => 'κ',
-        'K' => 'Κ',
-        'l' => 'λ',
-        'L' => 'Λ',
-        'm' => 'μ',
-        'M' => 'Μ',
-        'n' => 'ν',
-        'N' => 'Ν',
-        'o' => 'ο',
-        'O' => 'Ο',
-        'p' => 'π',
-        'P' => 'Π',
-        'q' => 'θ',
-        'Q' => 'Θ',
-        'r' => 'ρ',
-        'R' => 'Ρ',
-        's' => 'σ',
-        'S' => 'Σ',
-        't' => 'τ',
-        'T' => 'Τ',
-        'u' => 'υ',
-        'U' => 'Υ',
-        'w' => 'ω',
-        'W' => 'Ω',
-        'y' => 'ψ',
-        'Y' => 'Ψ',
-        'x' => 'χ',
-        'X' => 'Χ',
-        'z' => 'ζ',
-        'Z' => 'Ζ',
-        '9' => '⁹',
-        '8' => '⁸',
-        '7' => '⁷',
-        '6' => '⁶',
-        '5' => '⁵',
-        '4' => '⁴',
-        '3' => '³',
-        '2' => '²',
-        '1' => '¹',
-        '0' => '⁰',
-        ')' => '₀',
-        '!' => '₁',
-        '@' => '₂',
-        '#' => '₃',
-        '$' => '₄',
-        '%' => '₅',
-        '^' => '₆',
-        '&' => '₇',
-        '*' => '₈',
-        '(' => '₉',
-        ';' => '°',
-        '-' => '⁻',
-        '+' => '⁺',
-        '`' => 'ⁱ',
-        '=' => '±',
-        '_' => '∞',
-        _ => return None,
-    })
 }

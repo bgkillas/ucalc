@@ -6,6 +6,7 @@ use crate::uterm::uterm;
 mod cli;
 mod colors;
 mod complete;
+mod shared;
 #[cfg(feature = "uterm")]
 mod uterm;
 #[cfg(feature = "mimalloc")]

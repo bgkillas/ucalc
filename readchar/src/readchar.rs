@@ -251,7 +251,7 @@ impl ReadChar {
     /// prints the prompt and enables brackted paste
     pub fn init(&mut self, stdout: &mut impl Write) -> io::Result<()> {
         #[cfg(feature = "crossterm")]
-        stdout.queue(EnableBracketedPaste)?;
+        write!(stdout, "{}", EnableBracketedPaste)?;
         self.carrot(stdout)?;
         stdout.flush()?;
         Ok(())
@@ -941,14 +941,14 @@ pub enum Color {
     Rgb { r: u8, g: u8, b: u8 },
 }
 pub struct ResetColor;
-pub struct SetForegroundColor(Color);
-pub struct MoveDown(u16);
-pub struct MoveRight(u16);
-pub struct MoveTo(u16, u16);
-pub struct MoveToColumn(u16);
-pub struct MoveToNextLine(u16);
-pub struct MoveToPreviousLine(u16);
-pub struct Clear(ClearType);
+pub struct SetForegroundColor(pub Color);
+pub struct MoveDown(pub u16);
+pub struct MoveRight(pub u16);
+pub struct MoveTo(pub u16, pub u16);
+pub struct MoveToColumn(pub u16);
+pub struct MoveToNextLine(pub u16);
+pub struct MoveToPreviousLine(pub u16);
+pub struct Clear(pub ClearType);
 pub enum ClearType {
     All,
     Purge,

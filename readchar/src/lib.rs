@@ -1,8 +1,8 @@
 mod history;
 pub use history::History;
 pub use readchar::{
-    Color, Complete, Event, KeyCode, KeyEvent, KeyModifiers, NoColor, NoComplete, ReadChar, Return,
-    ToColor,
+    Clear, ClearType, Color, Complete, Event, KeyCode, KeyEvent, KeyModifiers, MoveTo, NoColor,
+    NoComplete, ReadChar, Return, ToColor,
 };
 mod readchar;
 #[cfg(test)]
