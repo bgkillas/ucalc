@@ -1891,6 +1891,7 @@ dependencies = [
  "readchar",
  "ucalc_lib",
  "ucalc_numbers",
+ "uterm_lib",
 ]
 
 [[package]]
@@ -1937,16 +1938,6 @@ name = "unicode-xid"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
-
-[[package]]
-name = "uterm"
-version = "0.0.2"
-dependencies = [
- "mimalloc",
- "readchar",
- "ucalc_lib",
- "uterm_lib",
-]
 
 [[package]]
 name = "uterm_lib"

@@ -8,7 +8,10 @@ homepage.workspace = true
 description.workspace = true
 
 [features]
-default = ["f64", "complex", "float_rand", "mimalloc"]
+default = ["f64", "complex", "float_rand", "mimalloc", "wayland"]
+x11=["uterm_lib/x11", "uterm"]
+wayland=["uterm_lib/wayland", "uterm"]
+uterm=[]
 f16 = ["ucalc_lib/f16"]
 f32 = ["ucalc_lib/f32"]
 f64 = ["ucalc_lib/f64"]
@@ -22,9 +25,11 @@ list = ["ucalc_lib/list"]
 complex = ["ucalc_lib/complex"]
 mimalloc = ["dep:mimalloc"]
 float_rand=["ucalc_lib/float_rand"]
+cli=["readchar/crossterm"]
 
 [dependencies]
 ucalc_lib = {workspace = true}
 ucalc_numbers = {workspace = true}
-readchar = {workspace = true, features = ["crossterm"]}
+readchar = {workspace = true}
 mimalloc = {version="0.1.48", features = ["v3"], optional = true}
+uterm_lib = {workspace = true}

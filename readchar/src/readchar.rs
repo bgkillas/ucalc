@@ -6,7 +6,9 @@ use crossterm::{ExecutableCommand, QueueableCommand, event, terminal};
 use enumset::{EnumSet, EnumSetType, enum_set};
 use std::fmt::{Display, Formatter};
 use std::io;
-use std::io::{Write, stdout};
+use std::io::Write;
+#[cfg(feature = "crossterm")]
+use std::io::stdout;
 /// the ReadChar struct, see `read` for usage
 ///
 /// on drop disables bracketed paste and terminal raw mode

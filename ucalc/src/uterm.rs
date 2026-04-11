@@ -2,7 +2,7 @@ use readchar::{History, ReadChar};
 use ucalc_lib::{Functions, Variables};
 use uterm_lib::winit::event::KeyEvent;
 use uterm_lib::{Dimensions, LineBuffer, Term};
-fn main() {
+pub fn uterm() {
     Term::run(Program::default());
 }
 pub struct Program {

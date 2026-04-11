@@ -1,8 +1,13 @@
-use readchar::{NoColor, NoComplete, ReadChar, Return};
-use std::env::args;
-use std::io::stdout;
-use std::process::Command;
 fn main() {
+    #[cfg(feature = "crossterm")]
+    m();
+}
+#[cfg(feature = "crossterm")]
+fn m() {
+    use readchar::{NoColor, NoComplete, ReadChar, Return};
+    use std::env::args;
+    use std::io::stdout;
+    use std::process::Command;
     let mut args = args();
     let cmd = args.nth(1).unwrap();
     let args: Vec<String> = args.collect();
