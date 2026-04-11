@@ -847,8 +847,8 @@ pub enum Event {
     Resize(u16, u16),
 }
 pub struct KeyEvent {
-    code: KeyCode,
-    modifiers: EnumSet<KeyModifiers>,
+    pub code: KeyCode,
+    pub modifiers: EnumSet<KeyModifiers>,
 }
 pub enum KeyCode {
     Char(char),

@@ -9,3 +9,4 @@ mod readchar;
 mod tests;
 #[cfg(feature = "crossterm")]
 pub use crossterm;
+pub use enumset;

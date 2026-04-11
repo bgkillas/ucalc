@@ -5,7 +5,7 @@ use std::mem;
 use std::num::NonZeroU32;
 use std::ops::{Deref, DerefMut};
 use winit::application::ApplicationHandler;
-use winit::event::{KeyEvent, StartCause, WindowEvent};
+use winit::event::{KeyEvent, Modifiers, StartCause, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop, OwnedDisplayHandle};
 use winit::window::{Window, WindowId};
 pub struct Term<T: Program> {
@@ -20,9 +20,11 @@ pub struct Term<T: Program> {
     font: Font,
     foreground: Color,
     background: Color,
+    modifiers: Modifiers,
     program: T,
 }
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct LineBuffer(String);
 impl Write for LineBuffer {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
@@ -36,7 +38,7 @@ impl Write for LineBuffer {
 pub trait Program {
     fn resize(&mut self, cells: Dimensions);
     fn init(&mut self, buffer: &mut LineBuffer);
-    fn event(&mut self, event: KeyEvent, buffer: &mut LineBuffer);
+    fn key_event(&mut self, key_event: KeyEvent, modifiers: Modifiers, buffer: &mut LineBuffer);
 }
 #[repr(transparent)]
 #[derive(Default, Clone, Copy)]
@@ -71,7 +73,7 @@ impl Lines {
     }
     pub fn clear_down(&mut self, cursor: Cursor) {
         self.vec[cursor.y as usize].clear_down(cursor.x);
-        if self.vec.len() as u32 >= cursor.y {
+        if (self.vec.len() as u32) > cursor.y {
             for line in &mut self.vec[cursor.y as usize + 1..] {
                 line.clear()
             }
@@ -106,7 +108,9 @@ impl Line {
         self.vec.clear();
     }
     pub fn clear_down(&mut self, cursor: u32) {
-        self.vec.drain(cursor as usize + 1..);
+        if (self.vec.len() as u32) > cursor {
+            self.vec.drain(cursor as usize + 1..);
+        }
     }
 }
 impl Default for Line {
@@ -179,6 +183,7 @@ impl<T: Program> Term<T> {
                 y: char.height(),
             },
             font,
+            modifiers: Modifiers::default(),
             foreground: Color(0xffffff),
             background: Color(0x000000),
             program,
@@ -214,7 +219,10 @@ impl<T: Program> Term<T> {
                                 } else {
                                     let end = loop {
                                         let (i, c) = chars.next().unwrap();
-                                        if !c.is_ascii_digit() {
+                                        if c == ';' {
+                                            break i;
+                                        } else if !c.is_ascii_digit() {
+                                            is_done = true;
                                             break i;
                                         }
                                     };
@@ -253,6 +261,12 @@ impl<T: Program> Term<T> {
                             };
                             self.cursor.up(n);
                             self.cursor.move_col(0);
+                        }
+                        'G' => {
+                            let [Some(n)] = get_numbers(&self.buffer, &mut chars) else {
+                                unreachable!()
+                            };
+                            self.cursor.move_col(n - 1);
                         }
                         'H' => {
                             let [Some(x), Some(y)] = get_numbers(&self.buffer, &mut chars) else {
@@ -371,13 +385,14 @@ impl<T: Program> ApplicationHandler for Term<T> {
             WindowEvent::HoveredFileCancelled => {}
             WindowEvent::Focused(_) => {}
             WindowEvent::KeyboardInput { event, .. } => {
-                self.program.event(event, &mut self.buffer);
+                self.program
+                    .key_event(event, self.modifiers, &mut self.buffer);
                 if !self.buffer.is_empty() {
                     surface.window().request_redraw();
                     self.clear_buffer();
                 }
             }
-            WindowEvent::ModifiersChanged(_) => {}
+            WindowEvent::ModifiersChanged(modifiers) => self.modifiers = modifiers,
             WindowEvent::Ime(_) => {}
             WindowEvent::CursorMoved { .. } => {}
             WindowEvent::CursorEntered { .. } => {}
