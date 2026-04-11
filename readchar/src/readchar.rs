@@ -406,7 +406,7 @@ impl ReadChar {
         stdout.flush()?;
         Ok(())
     }
-    pub(crate) fn resize(&mut self, col: u16, row: u16, string: &str) {
+    pub fn resize(&mut self, col: u16, row: u16, string: &str) {
         self.cursor_row = (self.cursor + self.carrot.len() as u16) / col;
         self.cursor_col = if self.cursor_row == 0 {
             self.cursor
@@ -669,7 +669,7 @@ impl ReadChar {
         Ok(())
     }
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn event<'a, T: Write>(
+    pub fn event<'a, T: Write>(
         &mut self,
         stdout: &mut T,
         string: &mut String,

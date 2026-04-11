@@ -8,7 +8,7 @@ use crate::complete::Complete;
 use readchar::crossterm::QueueableCommand;
 use readchar::crossterm::cursor::MoveTo;
 use readchar::crossterm::terminal::{Clear, ClearType};
-use readchar::{ReadChar, Return};
+use readchar::{History, ReadChar, Return};
 use std::env::args;
 use std::fmt;
 use std::fmt::Write;
@@ -72,7 +72,7 @@ fn main() {
             )
         });
     } else if !quit {
-        let mut readchar = ReadChar::default();
+        let mut readchar = ReadChar::new(History::new(None).unwrap());
         let mut stdout = stdout().lock();
         vars.push(Variable::new("@", Number::default(), Volatility::Constant));
         readchar.init(&mut stdout).unwrap();
