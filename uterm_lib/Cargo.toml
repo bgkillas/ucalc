@@ -11,8 +11,9 @@ description.workspace = true
 default=["wayland"]
 x11=["softbuffer/x11","winit/x11"]
 wayland=["softbuffer/wayland","winit/wayland"]
+wasm=[]
 
 [dependencies]
 softbuffer = {version="0.4.8", default-features = false}
-winit={version="0.30.12", default-features=false, features = ["rwh_06"],optional=true}
+winit={version="0.30.13", default-features=false, features = ["rwh_06"]}
 bdf2 = "0.7.1"

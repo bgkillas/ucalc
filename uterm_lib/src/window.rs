@@ -143,14 +143,13 @@ impl Default for Line {
         }
     }
 }
+#[derive(Default)]
 enum WindowState {
+    #[default]
     Initial,
-    Suspended {
-        window: &'static Window,
-    },
-    Running {
-        surface: Surface<OwnedDisplayHandle, &'static Window>,
-    },
+    Suspended(&'static Window),
+    NeedsSize(Surface<OwnedDisplayHandle, &'static Window>),
+    Running(Surface<OwnedDisplayHandle, &'static Window>),
 }
 impl Cursor {
     pub fn right(&mut self, screen_cells: Dimensions, n: u32) {
@@ -195,7 +194,7 @@ impl<T: Program> Term<T> {
         let char = font.glyphs().get(&'a').unwrap();
         let mut app = Self {
             context,
-            state: WindowState::Initial,
+            state: WindowState::default(),
             cursor: Cursor::default(),
             lines: Lines::default(),
             buffer: LineBuffer(String::with_capacity(1 << 10)),
@@ -324,7 +323,7 @@ impl<T: Program> ApplicationHandler for Term<T> {
             let window_attrs = Window::default_attributes();
             let window = Box::new(event_loop.create_window(window_attrs).unwrap());
             let window = Box::leak(window);
-            self.state = WindowState::Suspended { window };
+            self.state = WindowState::Suspended(window);
             self.program.init(&mut self.buffer);
             if !self.buffer.is_empty() {
                 self.clear_buffer();
@@ -333,7 +332,7 @@ impl<T: Program> ApplicationHandler for Term<T> {
         }
     }
     fn resumed(&mut self, _: &ActiveEventLoop) {
-        let WindowState::Suspended { window } = mem::replace(&mut self.state, WindowState::Initial)
+        let WindowState::Suspended(window) = mem::replace(&mut self.state, WindowState::Initial)
         else {
             unreachable!();
         };
@@ -348,8 +347,11 @@ impl<T: Program> ApplicationHandler for Term<T> {
             self.screen_cells.y = self.screen.y / self.font_size.y;
             self.program.resize(self.screen_cells);
             surface.resize(width, height).unwrap();
+        } else {
+            self.state = WindowState::NeedsSize(surface);
+            return;
         }
-        self.state = WindowState::Running { surface };
+        self.state = WindowState::Running(surface);
     }
     fn window_event(
         &mut self,
@@ -357,8 +359,23 @@ impl<T: Program> ApplicationHandler for Term<T> {
         window_id: WindowId,
         event: WindowEvent,
     ) {
-        let WindowState::Running { surface } = &mut self.state else {
-            unreachable!();
+        let WindowState::Running(surface) = &mut self.state else {
+            if let WindowEvent::Resized(size) = event
+                && let (Some(width), Some(height)) =
+                    (NonZeroU32::new(size.width), NonZeroU32::new(size.height))
+                && let WindowState::NeedsSize(mut surface) = mem::take(&mut self.state)
+            {
+                self.screen.x = width.get();
+                self.screen.y = height.get();
+                self.screen_cells.x = self.screen.x / self.font_size.x;
+                self.screen_cells.y = self.screen.y / self.font_size.y;
+                self.program.resize(self.screen_cells);
+                surface.resize(width, height).unwrap();
+                self.state = WindowState::Running(surface);
+                return;
+            } else {
+                return;
+            }
         };
         if surface.window().id() != window_id {
             return;
@@ -375,6 +392,11 @@ impl<T: Program> ApplicationHandler for Term<T> {
                     self.screen_cells.y = self.screen.y / self.font_size.y;
                     self.program.resize(self.screen_cells);
                     surface.resize(width, height).unwrap();
+                } else {
+                    let WindowState::Running(surface) = mem::take(&mut self.state) else {
+                        unreachable!()
+                    };
+                    self.state = WindowState::NeedsSize(surface)
                 }
             }
             WindowEvent::Moved(_) => {}
@@ -443,12 +465,12 @@ impl<T: Program> ApplicationHandler for Term<T> {
         }
     }
     fn suspended(&mut self, _: &ActiveEventLoop) {
-        let WindowState::Running { surface } = mem::replace(&mut self.state, WindowState::Initial)
+        let WindowState::Running(surface) = mem::replace(&mut self.state, WindowState::Initial)
         else {
             unreachable!();
         };
         let window = surface.window();
-        self.state = WindowState::Suspended { window };
+        self.state = WindowState::Suspended(window);
     }
 }
 pub fn write_cursor(

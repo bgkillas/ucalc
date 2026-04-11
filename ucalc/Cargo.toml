@@ -7,10 +7,14 @@ repository.workspace = true
 homepage.workspace = true
 description.workspace = true
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
 [features]
 default = ["f64", "complex", "float_rand", "mimalloc", "cli"]
 x11=["uterm_lib/x11", "uterm"]
 wayland=["uterm_lib/wayland", "uterm"]
+wasm=["dep:wasm-bindgen", "ucalc_lib/wasm", "uterm_lib/wasm", "dep:console_error_panic_hook", "uterm"]
 uterm=[]
 f16 = ["ucalc_lib/f16"]
 f32 = ["ucalc_lib/f32"]
@@ -33,3 +37,5 @@ ucalc_numbers = {workspace = true}
 readchar = {workspace = true}
 mimalloc = {version="0.1.48", features = ["v3"], optional = true}
 uterm_lib = {workspace = true}
+wasm-bindgen = {version="0.2.118", optional = true}
+console_error_panic_hook = {version="0.1.7",optional = true}

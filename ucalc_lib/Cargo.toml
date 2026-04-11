@@ -20,6 +20,7 @@ vector = ["ucalc_numbers/vector"]
 matrix = ["ucalc_numbers/matrix"]
 list = ["ucalc_numbers/list"]
 float_rand = ["ucalc_numbers/float_rand"]
+wasm=["ucalc_numbers/wasm"]
 complex = []
 
 [dependencies]

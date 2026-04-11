@@ -14,18 +14,19 @@ f32 = ["float", "float_base/f32"]
 f64 = ["float", "float_base/f64"]
 f128 = ["float", "float_base/f128"]
 float = []
-float_rand = ["dep:rand"]
+float_rand = ["dep:rand", "dep:getrandom"]
 rug = ["dep:rug"]
 fastnum = ["dep:fastnum", "float"]
 units = ["ucalc_numbers_macros/units"]
 vector = ["ucalc_numbers_macros/vector"]
 matrix = ["ucalc_numbers_macros/matrix"]
 list = ["ucalc_numbers_macros/list"]
-
+wasm=["getrandom?/wasm_js"]
 
 [dependencies]
 rug = {version="1.29.0",optional=true, default-features=false, features=["complex","float","integer","rand","std"]}
 fastnum = {version = "0.7.4",optional=true}
 ucalc_numbers_macros={workspace = true}
 float_base = {workspace = true}
-rand = {version = "0.10.0", optional = true}
+rand = {version = "0.10.1", optional = true}
+getrandom = {version = "0.4.2", optional = true}

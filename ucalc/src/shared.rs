@@ -1,7 +1,9 @@
 use crate::colors::{Colors, color_brackets};
 use std::fmt;
 use std::fmt::Write;
-use ucalc_lib::{Functions, Number, Rand, Tokens, Variables, get_help};
+#[cfg(feature = "float_rand")]
+use ucalc_lib::Rand;
+use ucalc_lib::{Functions, Number, Tokens, Variables, get_help};
 use ucalc_numbers::FloatTrait;
 #[derive(Clone, Copy)]
 pub struct Options {
