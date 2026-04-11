@@ -43,12 +43,35 @@ pub trait Program {
 #[repr(transparent)]
 #[derive(Default, Clone, Copy)]
 pub struct Color(u32);
+impl From<u32> for Color {
+    fn from(value: u32) -> Self {
+        Self(match value {
+            30 => 0x000000,
+            31 => 0xaa0000,
+            32 => 0x00aa00,
+            33 => 0xaaaa00,
+            34 => 0x3333ff,
+            35 => 0xaa00aa,
+            36 => 0x00aaaa,
+            37 => 0xaaaaaa,
+            90 => 0x555555,
+            91 => 0xff5555,
+            92 => 0x55ff55,
+            93 => 0xffff55,
+            94 => 0x5555ff,
+            95 => 0xff55ff,
+            96 => 0x55ffff,
+            97 => 0xffffff,
+            _ => unreachable!(),
+        })
+    }
+}
 #[derive(Default, Clone, Copy)]
 pub struct Dimensions {
     pub x: u32,
     pub y: u32,
 }
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, PartialEq)]
 pub struct Cursor {
     x: u32,
     y: u32,
@@ -57,11 +80,11 @@ pub struct Lines {
     vec: Vec<Line>,
 }
 impl Lines {
-    pub fn write(&mut self, c: char, cursor: Cursor) {
+    pub fn write(&mut self, c: char, cursor: Cursor, foreground: Color, background: Color) {
         for _ in self.vec.len()..=cursor.y as usize {
             self.vec.push(Line::default())
         }
-        self.vec[cursor.y as usize].write(c, cursor.x)
+        self.vec[cursor.y as usize].write(c, cursor.x, foreground, background)
     }
     pub fn clear_line(&mut self, cursor: Cursor) {
         self.vec[cursor.y as usize].clear();
@@ -91,17 +114,17 @@ impl Default for Lines {
     }
 }
 pub struct Line {
-    vec: Vec<char>,
+    vec: Vec<(char, Color, Color)>,
 }
 impl Line {
-    pub fn write(&mut self, c: char, cursor: u32) {
+    pub fn write(&mut self, c: char, cursor: u32, foreground: Color, background: Color) {
         for _ in self.vec.len()..cursor as usize {
-            self.vec.push(' ');
+            self.vec.push((' ', foreground, background));
         }
         if let Some(cur) = self.vec.get_mut(cursor as usize) {
-            *cur = c;
+            *cur = (c, foreground, background);
         } else {
-            self.vec.push(c);
+            self.vec.push((c, foreground, background));
         }
     }
     pub fn clear(&mut self) {
@@ -109,7 +132,7 @@ impl Line {
     }
     pub fn clear_down(&mut self, cursor: u32) {
         if (self.vec.len() as u32) > cursor {
-            self.vec.drain(cursor as usize + 1..);
+            self.vec.drain(cursor as usize..);
         }
     }
 }
@@ -196,40 +219,13 @@ impl<T: Program> Term<T> {
             match c {
                 '\u{8}' => {
                     self.cursor.left(self.screen_cells, 1);
-                    self.lines.write(' ', self.cursor);
+                    self.lines
+                        .write(' ', self.cursor, self.foreground, self.background);
                 }
                 '\n' => self.cursor.down(1),
                 '\x1b' => {
                     if !matches!(chars.next(), Some((_, '['))) {
                         unreachable!()
-                    }
-                    fn get_numbers<const N: usize>(
-                        str: &str,
-                        chars: &mut impl Iterator<Item = (usize, char)>,
-                    ) -> [Option<u32>; N] {
-                        let mut is_done = false;
-                        std::array::from_fn(|_| {
-                            if is_done {
-                                None
-                            } else {
-                                let (start, c) = chars.next().unwrap();
-                                if !c.is_ascii_digit() {
-                                    is_done = true;
-                                    None
-                                } else {
-                                    let end = loop {
-                                        let (i, c) = chars.next().unwrap();
-                                        if c == ';' {
-                                            break i;
-                                        } else if !c.is_ascii_digit() {
-                                            is_done = true;
-                                            break i;
-                                        }
-                                    };
-                                    Some(str[start..end].parse().unwrap())
-                                }
-                            }
-                        })
                     }
                     match self.buffer[i..]
                         .chars()
@@ -294,7 +290,10 @@ impl<T: Program> Term<T> {
                             else {
                                 unreachable!()
                             };
-                            if n == 38 {
+                            if n == 39 {
+                                self.background = Color(0x000000);
+                                self.foreground = Color(0xffffff);
+                            } else if n == 38 {
                                 let (Some(r), Some(g), Some(b)) = (r, g, b) else {
                                     unreachable!()
                                 };
@@ -303,14 +302,15 @@ impl<T: Program> Term<T> {
                                 _ = b;
                                 todo!()
                             } else {
-                                _ = n;
+                                self.foreground = Color::from(n);
                             }
                         }
                         _ => unreachable!(),
                     }
                 }
                 c => {
-                    self.lines.write(c, self.cursor);
+                    self.lines
+                        .write(c, self.cursor, self.foreground, self.background);
                     self.cursor.right(self.screen_cells, 1);
                 }
             }
@@ -415,21 +415,28 @@ impl<T: Program> ApplicationHandler for Term<T> {
                     buffer[index as usize] = self.background.0;
                 }
                 let mut cursor = Cursor::default();
+                let mut exists = false;
                 for line in self.lines.get_lines() {
-                    for c in line.vec.iter().copied() {
-                        write_char(
-                            &mut buffer,
-                            c,
-                            cursor,
-                            self.screen,
-                            &self.font,
-                            self.foreground,
-                            self.background,
-                        );
+                    let chars = line.vec.iter().copied();
+                    for (c, fg, bg) in chars {
+                        write_char(&mut buffer, c, cursor, self.screen, &self.font, fg, bg);
+                        if cursor == self.cursor {
+                            exists = true;
+                            write_cursor(&mut buffer, cursor, self.screen, self.font_size, fg);
+                        }
                         cursor.x += 1;
                     }
                     cursor.x = 0;
                     cursor.y += 1;
+                }
+                if !exists {
+                    write_cursor(
+                        &mut buffer,
+                        self.cursor,
+                        self.screen,
+                        self.font_size,
+                        self.foreground,
+                    );
                 }
                 buffer.present().unwrap();
             }
@@ -442,6 +449,19 @@ impl<T: Program> ApplicationHandler for Term<T> {
         };
         let window = surface.window();
         self.state = WindowState::Suspended { window };
+    }
+}
+pub fn write_cursor(
+    buffer: &mut Buffer<OwnedDisplayHandle, &'static Window>,
+    cursor: Cursor,
+    screen: Dimensions,
+    font_size: Dimensions,
+    foreground: Color,
+) {
+    let y = font_size.y - 1;
+    for x in 0..font_size.x {
+        buffer[(x + screen.x * y + cursor.x * font_size.x + screen.x * cursor.y * font_size.y)
+            as usize] = foreground.0
     }
 }
 pub fn write_char(
@@ -478,4 +498,32 @@ impl DerefMut for LineBuffer {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
+}
+fn get_numbers<const N: usize>(
+    str: &str,
+    chars: &mut impl Iterator<Item = (usize, char)>,
+) -> [Option<u32>; N] {
+    let mut is_done = false;
+    std::array::from_fn(|_| {
+        if is_done {
+            None
+        } else {
+            let (start, c) = chars.next().unwrap();
+            if !c.is_ascii_digit() {
+                is_done = true;
+                None
+            } else {
+                let end = loop {
+                    let (i, c) = chars.next().unwrap();
+                    if c == ';' {
+                        break i;
+                    } else if !c.is_ascii_digit() {
+                        is_done = true;
+                        break i;
+                    }
+                };
+                Some(str[start..end].parse().unwrap())
+            }
+        }
+    })
 }
