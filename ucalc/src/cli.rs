@@ -1,15 +1,14 @@
-use crate::colors::{Colors, ToColor, color_brackets};
+use crate::colors::{Colors, ToColor};
 use crate::complete::Complete;
-use readchar::crossterm::QueueableCommand;
+use crate::shared::{Options, process_line, to_alt};
 use readchar::crossterm::cursor::MoveTo;
 use readchar::crossterm::terminal::{Clear, ClearType};
 use readchar::{History, ReadChar, Return};
 use std::env::args;
-use std::fmt;
-use std::fmt::Write;
 use std::hint::black_box;
+use std::io::Write;
 use std::io::{BufRead, IsTerminal, stdin, stdout};
-use ucalc_lib::{Compute, Functions, Number, Tokens, Variable, Variables, Volatility, get_help};
+use ucalc_lib::{Compute, Functions, Number, Tokens, Variable, Variables, Volatility};
 #[cfg(feature = "float_rand")]
 use ucalc_lib::{Rand, rng};
 use ucalc_numbers::{FloatTrait, RealTrait};
@@ -77,9 +76,9 @@ pub fn cli() {
                             Return::Cancel
                         }
                         "clear" => {
-                            write!(Clear(ClearType::Purge))?;
-                            write!(Clear(ClearType::All))?;
-                            write!(MoveTo(0, 0))?;
+                            write!(stdout, "{}", Clear(ClearType::Purge))?;
+                            write!(stdout, "{}", Clear(ClearType::All))?;
+                            write!(stdout, "{}", MoveTo(0, 0))?;
                             Return::Finish
                         }
                         _ => Return::Finish,

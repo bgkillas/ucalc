@@ -26,9 +26,9 @@ jobs:
     - name: Run tests
       run: cargo test --verbose
     - name: Clippy
-      run: cargo clippy --verbose --no-default-features --features "f64,wayland"
+      run: cargo clippy --verbose --no-default-features --features "f64,cli"
     - name: Run tests
-      run: cargo test --verbose --no-default-features --features "f64,wayland"
+      run: cargo test --verbose --no-default-features --features "f64,cli"
   build-linux:
     runs-on: ubuntu-latest
     steps:

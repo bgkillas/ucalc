@@ -5,14 +5,14 @@ use ucalc_lib::{Functions, Number, Rand, Tokens, Variables, get_help};
 use ucalc_numbers::FloatTrait;
 #[derive(Clone, Copy)]
 pub struct Options {
-    rpn: bool,
-    perf: bool,
-    base_input: u8,
-    base_output: u8,
+    pub rpn: bool,
+    pub perf: bool,
+    pub base_input: u8,
+    pub base_output: u8,
     #[cfg(feature = "cli")]
-    benchmark: usize,
+    pub benchmark: usize,
     #[cfg(feature = "cli")]
-    benchmark_simplify: bool,
+    pub benchmark_simplify: bool,
 }
 impl Default for Options {
     fn default() -> Self {

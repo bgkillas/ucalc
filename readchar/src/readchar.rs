@@ -251,7 +251,7 @@ impl ReadChar {
     /// prints the prompt and enables brackted paste
     pub fn init(&mut self, stdout: &mut impl Write) -> io::Result<()> {
         #[cfg(feature = "crossterm")]
-        write!(stdout, "{}", EnableBracketedPaste)?;
+        stdout.queue(EnableBracketedPaste)?;
         self.carrot(stdout)?;
         stdout.flush()?;
         Ok(())

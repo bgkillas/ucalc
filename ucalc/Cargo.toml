@@ -8,7 +8,7 @@ homepage.workspace = true
 description.workspace = true
 
 [features]
-default = ["f64", "complex", "float_rand", "mimalloc", "wayland"]
+default = ["f64", "complex", "float_rand", "mimalloc", "cli"]
 x11=["uterm_lib/x11", "uterm"]
 wayland=["uterm_lib/wayland", "uterm"]
 uterm=[]
