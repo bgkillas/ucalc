@@ -1960,6 +1960,8 @@ version = "0.0.2"
 dependencies = [
  "bdf2",
  "softbuffer",
+ "wasm-bindgen",
+ "web-sys",
  "winit",
 ]
 

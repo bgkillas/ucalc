@@ -7,6 +7,8 @@ use std::ops::{Deref, DerefMut};
 use winit::application::ApplicationHandler;
 use winit::event::{KeyEvent, Modifiers, StartCause, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop, OwnedDisplayHandle};
+#[cfg(feature = "wasm")]
+use winit::platform::web::WindowAttributesExtWebSys;
 use winit::window::{Window, WindowId};
 pub struct Term<T: Program> {
     context: Context<OwnedDisplayHandle>,
@@ -321,6 +323,12 @@ impl<T: Program> ApplicationHandler for Term<T> {
     fn new_events(&mut self, event_loop: &ActiveEventLoop, cause: StartCause) {
         if let StartCause::Init = cause {
             let window_attrs = Window::default_attributes();
+            #[cfg(feature = "wasm")]
+            let document = web_sys::window().unwrap().document().unwrap();
+            #[cfg(feature = "wasm")]
+            let canvas = wasm_bindgen::JsValue::from(document.get_element_by_id("canvas").unwrap());
+            #[cfg(feature = "wasm")]
+            let window_attrs = window_attrs.with_canvas(Some(canvas.into()));
             let window = Box::new(event_loop.create_window(window_attrs).unwrap());
             let window = Box::leak(window);
             self.state = WindowState::Suspended(window);
