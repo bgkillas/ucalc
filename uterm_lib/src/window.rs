@@ -10,6 +10,7 @@ use winit::event_loop::{ActiveEventLoop, EventLoop, OwnedDisplayHandle};
 #[cfg(feature = "wasm")]
 use winit::platform::web::WindowAttributesExtWebSys;
 use winit::window::{Window, WindowId};
+#[derive(Debug)]
 pub struct Term<T: Program> {
     context: Context<OwnedDisplayHandle>,
     state: WindowState,
@@ -23,6 +24,7 @@ pub struct Term<T: Program> {
     foreground: Color,
     background: Color,
     modifiers: Modifiers,
+    first_sized: bool,
     program: T,
 }
 #[repr(transparent)]
@@ -43,7 +45,7 @@ pub trait Program {
     fn key_event(&mut self, key_event: KeyEvent, modifiers: Modifiers, buffer: &mut LineBuffer);
 }
 #[repr(transparent)]
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy)]
 pub struct Color(u32);
 impl From<u32> for Color {
     fn from(value: u32) -> Self {
@@ -68,16 +70,17 @@ impl From<u32> for Color {
         })
     }
 }
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy)]
 pub struct Dimensions {
     pub x: u32,
     pub y: u32,
 }
-#[derive(Default, Clone, Copy, PartialEq)]
+#[derive(Default, Debug, Clone, Copy, PartialEq)]
 pub struct Cursor {
     x: u32,
     y: u32,
 }
+#[derive(Debug)]
 pub struct Lines {
     vec: Vec<Line>,
 }
@@ -115,6 +118,7 @@ impl Default for Lines {
         }
     }
 }
+#[derive(Debug)]
 pub struct Line {
     vec: Vec<(char, Color, Color)>,
 }
@@ -145,7 +149,7 @@ impl Default for Line {
         }
     }
 }
-#[derive(Default)]
+#[derive(Default, Debug)]
 enum WindowState {
     #[default]
     Initial,
@@ -155,24 +159,15 @@ enum WindowState {
 }
 impl Cursor {
     pub fn right(&mut self, screen_cells: Dimensions, n: u32) {
-        //TODO
-        for _ in 0..n {
-            self.x += 1;
-            if self.x == screen_cells.x {
-                self.x = 0;
-                self.y += 1;
-            }
-        }
+        self.x += n;
+        (self.y, self.x) = (self.y + self.x / screen_cells.x, self.x % screen_cells.x);
     }
     pub fn left(&mut self, screen_cells: Dimensions, n: u32) {
-        for _ in 0..n {
-            if self.x == 0 {
-                self.y -= 1;
-                self.x = screen_cells.x - 1;
-            } else {
-                self.x -= 1;
-            }
-        }
+        let n = self.x as i32 - n as i32;
+        (self.y, self.x) = (
+            (self.y as i32 + n / screen_cells.x as i32) as u32,
+            n.rem_euclid(screen_cells.x as i32) as u32,
+        );
     }
     pub fn down(&mut self, n: u32) {
         self.y += n;
@@ -210,6 +205,7 @@ impl<T: Program> Term<T> {
             modifiers: Modifiers::default(),
             foreground: Color(0xffffff),
             background: Color(0x000000),
+            first_sized: false,
             program,
         };
         event_loop.run_app(&mut app).unwrap();
@@ -298,10 +294,7 @@ impl<T: Program> Term<T> {
                                 let (Some(r), Some(g), Some(b)) = (r, g, b) else {
                                     unreachable!()
                                 };
-                                _ = r;
-                                _ = g;
-                                _ = b;
-                                todo!()
+                                self.foreground = Color((r << 16) + (g << 8) + b);
                             } else {
                                 self.foreground = Color::from(n);
                             }
@@ -332,11 +325,6 @@ impl<T: Program> ApplicationHandler for Term<T> {
             let window = Box::new(event_loop.create_window(window_attrs).unwrap());
             let window = Box::leak(window);
             self.state = WindowState::Suspended(window);
-            self.program.init(&mut self.buffer);
-            if !self.buffer.is_empty() {
-                self.clear_buffer();
-                window.request_redraw();
-            }
         }
     }
     fn resumed(&mut self, _: &ActiveEventLoop) {
@@ -353,8 +341,17 @@ impl<T: Program> ApplicationHandler for Term<T> {
             self.screen.y = height.get();
             self.screen_cells.x = self.screen.x / self.font_size.x;
             self.screen_cells.y = self.screen.y / self.font_size.y;
-            self.program.resize(self.screen_cells);
             surface.resize(width, height).unwrap();
+            if !self.first_sized {
+                self.program.init(&mut self.buffer);
+                if !self.buffer.is_empty() {
+                    self.clear_buffer();
+                    window.request_redraw();
+                }
+                self.first_sized = true;
+            } else {
+                self.program.resize(self.screen_cells);
+            }
         } else {
             self.state = WindowState::NeedsSize(surface);
             return;
@@ -377,8 +374,17 @@ impl<T: Program> ApplicationHandler for Term<T> {
                 self.screen.y = height.get();
                 self.screen_cells.x = self.screen.x / self.font_size.x;
                 self.screen_cells.y = self.screen.y / self.font_size.y;
-                self.program.resize(self.screen_cells);
                 surface.resize(width, height).unwrap();
+                if !self.first_sized {
+                    self.program.init(&mut self.buffer);
+                    if !self.buffer.is_empty() {
+                        self.clear_buffer();
+                        surface.window().request_redraw();
+                    }
+                    self.first_sized = true;
+                } else {
+                    self.program.resize(self.screen_cells);
+                }
                 self.state = WindowState::Running(surface);
                 return;
             } else {
