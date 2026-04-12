@@ -99,6 +99,7 @@ fn into_event(key_event: KeyEvent, modifiers: Modifiers) -> Option<Event> {
 fn into_key_code(key_event: KeyEvent) -> Option<KeyCode> {
     Some(match key_event.logical_key {
         Key::Named(c) => match c {
+            NamedKey::Space => KeyCode::Char(' '),
             NamedKey::Enter => KeyCode::Enter,
             NamedKey::Tab => KeyCode::Tab,
             NamedKey::Home => KeyCode::Home,
