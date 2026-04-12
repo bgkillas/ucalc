@@ -232,6 +232,24 @@ impl Tokens {
                         open_inputs += 1;
                         tokens.push(Units::from(i).into())
                     }
+                    _ if token.starts_with("0b")
+                        && let Some(n) = NumberBase::parse_radix(&token[2..], 2) =>
+                    {
+                        open_inputs += 1;
+                        tokens.push(n.into())
+                    }
+                    _ if token.starts_with("0o")
+                        && let Some(n) = NumberBase::parse_radix(&token[2..], 8) =>
+                    {
+                        open_inputs += 1;
+                        tokens.push(n.into())
+                    }
+                    _ if token.starts_with("0x")
+                        && let Some(n) = NumberBase::parse_radix(&token[2..], 16) =>
+                    {
+                        open_inputs += 1;
+                        tokens.push(n.into())
+                    }
                     _ if let Some(n) = NumberBase::parse_radix(token, base) => {
                         open_inputs += 1;
                         tokens.push(n.into())
@@ -304,6 +322,59 @@ impl Tokens {
                         no_input_left = false;
                         last_open = false;
                         req_input = false;
+                        expect_expr = false;
+                    }
+                    '0' if base <= 10
+                        && let Some(c) = value[i + 1..].chars().next()
+                        && matches!(c, 'b' | 'o' | 'x') =>
+                    {
+                        let s;
+                        let mut l = 0;
+                        let Some(float) = (match c {
+                            'b' => {
+                                for t in value[i + 2..].chars() {
+                                    if matches!(t, '0'..='1') {
+                                        l += 1;
+                                    } else {
+                                        break;
+                                    }
+                                }
+                                s = &value[i + 2..i + 2 + l];
+                                NumberBase::parse_radix(s, 2)
+                            }
+                            'o' => {
+                                for t in value[i + 2..].chars() {
+                                    if matches!(t, '0'..='7') {
+                                        l += 1;
+                                    } else {
+                                        break;
+                                    }
+                                }
+                                s = &value[i + 2..i + 2 + l];
+                                NumberBase::parse_radix(s, 8)
+                            }
+                            'x' => {
+                                for t in value[i + 2..].chars() {
+                                    if matches!(t, '0'..='9' | 'a'..='f') {
+                                        l += 1;
+                                    } else {
+                                        break;
+                                    }
+                                }
+                                s = &value[i + 2..i + 2 + l];
+                                NumberBase::parse_radix(s, 16)
+                            }
+                            _ => unreachable!(),
+                        }) else {
+                            return Err(ParseError::UnknownToken(s));
+                        };
+                        tokens.last_mul(&mut operator_stack, no_input_left, &mut last_mul, true);
+                        tokens.push(float.into());
+                        chars.advance_by(l + 1).unwrap();
+                        no_input_left = false;
+                        last_open = false;
+                        req_input = false;
+                        open_input = true;
                         expect_expr = false;
                     }
                     _ if if base > 10 {
