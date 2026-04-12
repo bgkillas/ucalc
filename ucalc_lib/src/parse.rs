@@ -333,7 +333,7 @@ impl Tokens {
                         let Some(float) = (match c {
                             'b' => {
                                 for t in value[i + 2..].chars() {
-                                    if matches!(t, '0'..='1') {
+                                    if matches!(t, '0'..='1' | '.') {
                                         l += 1;
                                     } else {
                                         break;
@@ -344,7 +344,7 @@ impl Tokens {
                             }
                             'o' => {
                                 for t in value[i + 2..].chars() {
-                                    if matches!(t, '0'..='7') {
+                                    if matches!(t, '0'..='7' | '.') {
                                         l += 1;
                                     } else {
                                         break;
@@ -355,7 +355,7 @@ impl Tokens {
                             }
                             'x' => {
                                 for t in value[i + 2..].chars() {
-                                    if matches!(t, '0'..='9' | 'a'..='f') {
+                                    if matches!(t, '0'..='9' | 'a'..='f' | '.') {
                                         l += 1;
                                     } else {
                                         break;
