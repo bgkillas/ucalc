@@ -5,6 +5,7 @@ use std::mem;
 use std::num::NonZeroU32;
 use std::ops::{Deref, DerefMut};
 use winit::application::ApplicationHandler;
+use winit::dpi::{PhysicalSize, Size};
 use winit::event::{KeyEvent, Modifiers, StartCause, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop, OwnedDisplayHandle};
 #[cfg(feature = "wasm")]
@@ -315,7 +316,11 @@ impl<T: Program> Term<T> {
 impl<T: Program> ApplicationHandler for Term<T> {
     fn new_events(&mut self, event_loop: &ActiveEventLoop, cause: StartCause) {
         if let StartCause::Init = cause {
-            let window_attrs = Window::default_attributes();
+            let mut window_attrs = Window::default_attributes();
+            window_attrs.min_inner_size = Some(Size::Physical(PhysicalSize::new(
+                self.font_size.x,
+                self.font_size.y,
+            )));
             #[cfg(feature = "wasm")]
             let document = web_sys::window().unwrap().document().unwrap();
             #[cfg(feature = "wasm")]
@@ -339,17 +344,21 @@ impl<T: Program> ApplicationHandler for Term<T> {
         {
             self.screen.x = width.get();
             self.screen.y = height.get();
-            self.screen_cells.x = self.screen.x / self.font_size.x;
-            self.screen_cells.y = self.screen.y / self.font_size.y;
+            let nx = self.screen.x / self.font_size.x;
+            let ny = self.screen.y / self.font_size.y;
             surface.resize(width, height).unwrap();
             if !self.first_sized {
+                self.screen_cells.x = nx;
+                self.screen_cells.y = ny;
                 self.program.init(&mut self.buffer);
                 if !self.buffer.is_empty() {
                     self.clear_buffer();
                     window.request_redraw();
                 }
                 self.first_sized = true;
-            } else {
+            } else if nx != self.screen_cells.x || ny != self.screen_cells.y {
+                self.screen_cells.x = nx;
+                self.screen_cells.y = ny;
                 self.program.resize(self.screen_cells);
             }
         } else {
@@ -372,17 +381,21 @@ impl<T: Program> ApplicationHandler for Term<T> {
             {
                 self.screen.x = width.get();
                 self.screen.y = height.get();
-                self.screen_cells.x = self.screen.x / self.font_size.x;
-                self.screen_cells.y = self.screen.y / self.font_size.y;
+                let nx = self.screen.x / self.font_size.x;
+                let ny = self.screen.y / self.font_size.y;
                 surface.resize(width, height).unwrap();
                 if !self.first_sized {
+                    self.screen_cells.x = nx;
+                    self.screen_cells.y = ny;
                     self.program.init(&mut self.buffer);
                     if !self.buffer.is_empty() {
                         self.clear_buffer();
                         surface.window().request_redraw();
                     }
                     self.first_sized = true;
-                } else {
+                } else if nx != self.screen_cells.x || ny != self.screen_cells.y {
+                    self.screen_cells.x = nx;
+                    self.screen_cells.y = ny;
                     self.program.resize(self.screen_cells);
                 }
                 self.state = WindowState::Running(surface);
@@ -402,10 +415,14 @@ impl<T: Program> ApplicationHandler for Term<T> {
                 {
                     self.screen.x = width.get();
                     self.screen.y = height.get();
-                    self.screen_cells.x = self.screen.x / self.font_size.x;
-                    self.screen_cells.y = self.screen.y / self.font_size.y;
-                    self.program.resize(self.screen_cells);
+                    let nx = self.screen.x / self.font_size.x;
+                    let ny = self.screen.y / self.font_size.y;
                     surface.resize(width, height).unwrap();
+                    if nx != self.screen_cells.x || ny != self.screen_cells.y {
+                        self.screen_cells.x = nx;
+                        self.screen_cells.y = ny;
+                        self.program.resize(self.screen_cells);
+                    }
                 } else {
                     let WindowState::Running(surface) = mem::take(&mut self.state) else {
                         unreachable!()

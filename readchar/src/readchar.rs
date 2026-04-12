@@ -163,7 +163,7 @@ impl ReadChar {
             write!(
                 stdout,
                 "{}",
-                MoveToPreviousLine(self.new_lines + self.cursor_row_max - self.cursor_row,)
+                MoveToPreviousLine(self.new_lines + self.cursor_row_max - self.cursor_row)
             )?;
         }
         write!(stdout, "{}", MoveToColumn(self.col()))?;
@@ -663,7 +663,7 @@ impl ReadChar {
             write!(
                 stdout,
                 "{}",
-                MoveToPreviousLine(self.cursor_row_max - self.cursor_row + self.new_lines,)
+                MoveToPreviousLine(self.cursor_row_max - self.cursor_row + self.new_lines)
             )?;
             write!(stdout, "{}", MoveToColumn(self.col()))?;
             stdout.flush()?;
@@ -694,7 +694,7 @@ impl ReadChar {
                 code: KeyCode::Char('c'),
                 modifiers,
                 ..
-            }) if modifiers == enum_set! {KeyModifiers::Control} => {
+            }) if modifiers == enum_set![KeyModifiers::Control] => {
                 self.exit(stdout, string)?;
                 return Ok(Return::Cancel);
             }
