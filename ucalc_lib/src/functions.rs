@@ -559,7 +559,7 @@ impl Function {
             Self::Div => *a /= b,
             Self::Rem => *a %= b,
             #[cfg(feature = "units")]
-            Self::Convert  => *a /= b,
+            Self::Convert => *a /= b,
             Self::Pow => a.pow_assign(b),
             Self::Root => a.pow_assign(b.recip()),
             Self::Tetration => a.tetration_mut(&b),

@@ -34,8 +34,9 @@ pub fn cli() {
     let stdin = stdin().lock();
     if !stdin.is_terminal() {
         stdin.lines().for_each(|l| {
+            let l = l.unwrap();
             run_line(
-                l.unwrap().as_str(),
+                &l,
                 &mut options,
                 &mut vars,
                 &mut funs,
@@ -112,6 +113,9 @@ fn run_line(
     quit: &mut bool,
     #[cfg(feature = "float_rand")] rand: &mut Rand,
 ) {
+    if line.trim_start().starts_with("//") {
+        return;
+    }
     if line == "--rpn" {
         options.rpn = true;
         return;

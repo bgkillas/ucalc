@@ -40,6 +40,9 @@ pub fn process_line(
     colors: &Colors,
     #[cfg(feature = "float_rand")] rand: &mut Rand,
 ) -> Result<Option<Number>, fmt::Error> {
+    if line.trim_start().starts_with("//") {
+        return Ok(None);
+    }
     str.clear();
     Ok(match line {
         "" | "exit" | "clear" => None,
