@@ -57,7 +57,7 @@ pub type Number = ucalc_numbers::Number<NumberBase>;
     feature = "units"
 ))]
 #[cfg(feature = "units")]
-pub type Number = ucalc_numbers::Number<NumberBase, UnitType, UNIT_COUNT>;
+pub type Number = ucalc_numbers::Number<NBase, UnitType, UNIT_COUNT>;
 #[cfg(not(any(
     feature = "list",
     feature = "vector",

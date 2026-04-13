@@ -3,7 +3,7 @@ use quote::quote;
 fn get_impl() -> TokenStream {
     #[cfg(feature = "units")]
     quote! {
-        impl<K,const N:usize>
+        impl<const N:usize>
     }
     #[cfg(not(feature = "units"))]
     quote! {
@@ -13,7 +13,7 @@ fn get_impl() -> TokenStream {
 fn get_impl_generic() -> TokenStream {
     #[cfg(feature = "units")]
     quote! {
-        impl<T,K,const N:usize>
+        impl<T,const N:usize>
     }
     #[cfg(not(feature = "units"))]
     quote! {
@@ -23,7 +23,7 @@ fn get_impl_generic() -> TokenStream {
 fn get_type(token: TokenStream) -> TokenStream {
     #[cfg(feature = "units")]
     quote! {
-        Number<#token, K, N>
+        Number<#token, f32, N>
     }
     #[cfg(not(feature = "units"))]
     quote! {
@@ -108,7 +108,7 @@ fn impl_lower_ops(ty: TokenStream, oty: TokenStream, ops: Op) -> TokenStream {
                     #[cfg(feature = "list")]
                     Number::List(mut b) => {
                         b.iter_mut().for_each(|b| {
-                            let old = std::mem::replace(b, Number::Value(<#ty>::from(0)));
+                            let old = std::mem::replace(b, Number::Value(<#ty>::from(0).into()));
                             *b = #op::#fun(self.clone(), old);
                         });
                         Number::List(b)
@@ -168,7 +168,7 @@ fn impl_ops(ty: TokenStream, ops: Op) -> TokenStream {
                             unreachable!()
                         };
                         a.iter_mut().for_each(|a| {
-                            let old = std::mem::replace(a, Number::Value(#ty::from(0)));
+                            let old = std::mem::replace(a, Number::Value(#ty::from(0).into()));
                             *a = #op::#fun(b.clone(), old)
                         })
                     }
@@ -234,7 +234,7 @@ pub fn generate_types(ty: proc_macro::TokenStream) -> proc_macro::TokenStream {
         }
         #i Default for #t {
             fn default() -> Self {
-                Self::Value(#ty::default())
+                Self::Value(#ty::default().into())
             }
         }
         #i Sum for #t {

@@ -1,3 +1,5 @@
+#[cfg(feature = "units")]
+use crate::Quantity;
 use crate::{Complex, Float, HalfUsize, Matrix, NegAssign, Number, Vector};
 use crate::{Pow, PowAssign};
 use std::fmt::Display;
@@ -112,13 +114,13 @@ impl<T> Number<T> {
 #[allow(irrefutable_let_patterns)]
 #[cfg(feature = "units")]
 impl<T, K, const N: usize> Number<T, K, N> {
-    pub fn value_mut(&mut self) -> &mut T {
+    pub fn value_mut(&mut self) -> &mut Quantity<T, K, N> {
         let Self::Value(val) = self else {
             unreachable!()
         };
         val
     }
-    pub fn value_ref(&self) -> &T {
+    pub fn value_ref(&self) -> &Quantity<T, K, N> {
         let Self::Value(val) = self else {
             unreachable!()
         };
@@ -138,7 +140,7 @@ impl<T, K, const N: usize> Number<T, K, N> {
         };
         list
     }
-    pub fn get_value(&self) -> Option<&T> {
+    pub fn get_value(&self) -> Option<&Quantity<T, K, N>> {
         let Self::Value(val) = self else { return None };
         Some(val)
     }

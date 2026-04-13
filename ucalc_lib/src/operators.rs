@@ -60,9 +60,7 @@ impl Display for Operator {
                 Self::Solve => "=",
                 #[cfg(feature = "units")]
                 Self::Convert => "->",
-                Self::Bracket(_) => unreachable!(),
-                Self::Function(_, _) => unreachable!(),
-                Self::Custom(_, _) => unreachable!(),
+                Self::Bracket(_) | Self::Function(_, _) | Self::Custom(_, _) => unreachable!(),
             }
         )
     }
@@ -164,8 +162,7 @@ impl Operator {
             #[cfg(feature = "units")]
             Self::Convert => 2,
             Self::Function(fun, _) => return fun.inputs(),
-            Self::Custom(_, _) => unreachable!(),
-            Self::Bracket(_) => unreachable!(),
+            Self::Custom(_, _) | Self::Bracket(_) => unreachable!(),
         })
         .unwrap()
     }
@@ -184,27 +181,7 @@ impl Operator {
             Self::Add => Self::Add,
             Self::Sub => Self::Negate,
             Self::Factorial => Self::SubFactorial,
-            Self::Mul
-            | Self::Negate
-            | Self::SubFactorial
-            | Self::Not
-            | Self::Div
-            | Self::Pow
-            | Self::Root
-            | Self::Rem
-            | Self::Equal
-            | Self::NotEqual
-            | Self::Greater
-            | Self::Less
-            | Self::LessEqual
-            | Self::GreaterEqual
-            | Self::And
-            | Self::Or
-            | Self::Solve
-            | Self::Tetration
-            | Self::Function(_, _)
-            | Self::Custom(_, _)
-            | Self::Bracket(_) => return None,
+            _ => return None,
         })
     }
     pub fn is_unary(self) -> bool {
@@ -217,26 +194,7 @@ impl Operator {
         match self {
             Self::Negate | Self::Not | Self::SubFactorial => true,
             Self::Factorial => false,
-            Self::Mul
-            | Self::Div
-            | Self::Add
-            | Self::Sub
-            | Self::Pow
-            | Self::Root
-            | Self::Rem
-            | Self::Equal
-            | Self::NotEqual
-            | Self::Greater
-            | Self::Less
-            | Self::LessEqual
-            | Self::GreaterEqual
-            | Self::And
-            | Self::Or
-            | Self::Solve
-            | Self::Tetration
-            | Self::Function(_, _)
-            | Self::Custom(_, _)
-            | Self::Bracket(_) => unreachable!(),
+            _ => unreachable!(),
         }
     }
     pub fn precedence(self) -> u8 {
@@ -280,11 +238,7 @@ impl Operator {
             | Self::LessEqual
             | Self::GreaterEqual
             | Self::Solve => false,
-            Self::Bracket(_)
-            | Self::Factorial
-            | Self::Function(_, _)
-            | Self::Custom(_, _)
-            | Self::SubFactorial => {
+            _ => {
                 unreachable!()
             }
         }

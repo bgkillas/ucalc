@@ -27,11 +27,11 @@ pub struct Quantity<T, K, const N: usize> {
 #[cfg(feature = "units")]
 #[derive(Debug, PartialEq, Clone)]
 pub enum Number<T, K, const N: usize> {
-    Value(T),
+    Value(Quantity<T, K, N>),
     #[cfg(feature = "vector")]
-    Vector(Vector<T>),
+    Vector(Vector<Quantity<T, K, N>>),
     #[cfg(feature = "matrix")]
-    Matrix(Matrix<T>),
+    Matrix(Matrix<Quantity<T, K, N>>),
     #[cfg(feature = "list")]
     List(Vec<Number<T, K, N>>),
     Units(Units<K, N>),
