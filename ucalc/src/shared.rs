@@ -3,7 +3,7 @@ use std::fmt;
 use std::fmt::Write;
 #[cfg(feature = "float_rand")]
 use ucalc_lib::Rand;
-use ucalc_lib::{Functions, Number, Tokens, Variables, get_help};
+use ucalc_lib::{Functions, Number, ParseReturn, Tokens, Variables, get_help};
 use ucalc_numbers::FloatTrait;
 #[derive(Clone, Copy)]
 pub struct Options {
@@ -70,7 +70,7 @@ pub fn process_line(
                 str,
                 options.perf,
             ) {
-                Ok(Some(tokens)) => {
+                Ok(ParseReturn::Tokens(tokens)) => {
                     let compute = tmr_write(
                         || {
                             tokens.compute(
@@ -88,7 +88,8 @@ pub fn process_line(
                     write!(str, "{}", compute.to_string_radix(options.base_output))?;
                     Some(compute)
                 }
-                Ok(None) => None,
+                Ok(ParseReturn::Graph(_, _)) => todo!(),
+                Ok(ParseReturn::Var) => None,
                 Err(e) => {
                     write!(str, "{e:?}")?;
                     None

@@ -63,6 +63,30 @@ pub(crate) enum NewCustom<'a> {
     Var(&'a str),
     Fun(bool, Option<(u16, Option<Box<str>>)>),
 }
+#[derive(PartialEq, Debug)]
+pub enum ParseReturn {
+    Tokens(Tokens),
+    Graph(Tokens, Vec<bool>),
+    Var,
+}
+impl ParseReturn {
+    pub fn tokens(self) -> Tokens {
+        let Self::Tokens(tokens) = self else {
+            unreachable!()
+        };
+        tokens
+    }
+    pub fn tokens_any(self) -> Tokens {
+        match self {
+            Self::Tokens(t) => t,
+            Self::Graph(t, _) => t,
+            Self::Var => unreachable!(),
+        }
+    }
+    pub fn is_var(&self) -> bool {
+        matches!(self, Self::Var)
+    }
+}
 impl Tokens {
     #[allow(clippy::too_many_arguments)]
     pub fn parse<'a>(
@@ -75,7 +99,7 @@ impl Tokens {
         base: u8,
         rpn: bool,
         #[cfg(feature = "float_rand")] rand: &mut Rand,
-    ) -> Result<Option<Self>, ParseError<'a>> {
+    ) -> Result<ParseReturn, ParseError<'a>> {
         if rpn {
             Self::rpn(
                 value,
@@ -112,8 +136,9 @@ impl Tokens {
         simplify: bool,
         base: u8,
         #[cfg(feature = "float_rand")] rand: &mut Rand,
-    ) -> Result<Option<Self>, ParseError<'a>> {
+    ) -> Result<ParseReturn, ParseError<'a>> {
         let mut tokens = Tokens(Vec::with_capacity(value.len()));
+        let mut has_graph_vars = vec![false; graph_vars.len()];
         let mut inputs = None;
         let inner = try {
             let mut inner_vars: Vec<&str> = Vec::with_capacity(value.len());
@@ -170,8 +195,25 @@ impl Tokens {
                         if matches!(inputs, Some(NewCustom::Var(_))) {
                             return Err(ParseError::GraphVarError);
                         }
+                        has_graph_vars[i] = true;
                         open_inputs += 1;
                         tokens.push(Token::GraphVar(i as u8))
+                    }
+                    #[cfg(feature = "complex")]
+                    "z" if let Some(i) = graph_vars.iter().copied().position(|v| v == "x")
+                        && let Some(j) = graph_vars.iter().copied().position(|v| v == "y") =>
+                    {
+                        if matches!(inputs, Some(NewCustom::Var(_))) {
+                            return Err(ParseError::GraphVarError);
+                        }
+                        has_graph_vars[i] = true;
+                        has_graph_vars[j] = true;
+                        open_inputs += 1;
+                        tokens.push(Token::GraphVar(i as u8));
+                        tokens.push(Token::GraphVar(j as u8));
+                        tokens.push(Number::from((0, 1)).into());
+                        tokens.push(Function::Mul.into());
+                        tokens.push(Function::Add.into());
                     }
                     _ if let Ok(fun) = Function::try_from(token) => {
                         open_inputs = open_inputs
@@ -277,6 +319,7 @@ impl Tokens {
             simplify,
             vars,
             funs,
+            has_graph_vars,
             #[cfg(feature = "float_rand")]
             rand,
         ))
@@ -291,9 +334,10 @@ impl Tokens {
         simplify: bool,
         base: u8,
         #[cfg(feature = "float_rand")] rand: &mut Rand,
-    ) -> Result<Option<Self>, ParseError<'a>> {
+    ) -> Result<ParseReturn, ParseError<'a>> {
         let mut inputs = None;
         let mut tokens = Tokens(Vec::with_capacity(value.len()));
+        let mut has_graph_vars = vec![false; graph_vars.len()];
         let inner = try {
             let mut operator_stack: Vec<Operator> = Vec::with_capacity(value.len());
             let mut inner_vars: Vec<&str> = Vec::with_capacity(value.len());
@@ -443,6 +487,7 @@ impl Tokens {
                                 if matches!(inputs, Some(NewCustom::Var(_))) {
                                     return Err(ParseError::GraphVarError);
                                 }
+                                has_graph_vars[i] = true;
                                 tokens.last_mul(
                                     &mut operator_stack,
                                     no_input_left,
@@ -450,6 +495,27 @@ impl Tokens {
                                     true,
                                 );
                                 tokens.push(Token::GraphVar(i as u8));
+                                open_input = true;
+                            } else if let Some(i) =
+                                graph_vars.iter().copied().position(|v| v == "x")
+                                && let Some(j) = graph_vars.iter().copied().position(|v| v == "y")
+                            {
+                                if matches!(inputs, Some(NewCustom::Var(_))) {
+                                    return Err(ParseError::GraphVarError);
+                                }
+                                has_graph_vars[i] = true;
+                                has_graph_vars[j] = true;
+                                tokens.last_mul(
+                                    &mut operator_stack,
+                                    no_input_left,
+                                    &mut last_mul,
+                                    true,
+                                );
+                                tokens.push(Token::GraphVar(i as u8));
+                                tokens.push(Token::GraphVar(j as u8));
+                                tokens.push(Number::from((0, 1)).into());
+                                tokens.push(Function::Mul.into());
+                                tokens.push(Function::Add.into());
                                 open_input = true;
                             } else if let Ok(fun) = Function::try_from(s) {
                                 if fun.inputs().get() > 1 {
@@ -958,18 +1024,15 @@ impl Tokens {
             }
             return Err(e);
         }
-        if let Some(res) = tokens.end(
+        Ok(tokens.end(
             inputs,
             simplify,
             vars,
             funs,
+            has_graph_vars,
             #[cfg(feature = "float_rand")]
             rand,
-        ) {
-            Ok(Some(res))
-        } else {
-            Ok(None)
-        }
+        ))
     }
     pub fn last_mul(
         &mut self,
@@ -1155,8 +1218,9 @@ impl Tokens {
         simplify: bool,
         vars: &mut Variables,
         funs: &mut Functions,
+        has_graph_vars: Vec<bool>,
         #[cfg(feature = "float_rand")] rand: &mut Rand,
-    ) -> Option<Self> {
+    ) -> ParseReturn {
         if self.is_empty() {
             self.push(Number::default().into());
         }
@@ -1207,7 +1271,18 @@ impl Tokens {
                 v.volatile = volatile;
                 v.tokens = self;
             }
-            None
+            ParseReturn::Var
+        } else if has_graph_vars.iter().copied().any(|a| a) {
+            if simplify {
+                self.simplify::<{ Volatility::Volatile }>(
+                    vars,
+                    funs,
+                    0,
+                    #[cfg(feature = "float_rand")]
+                    rand,
+                );
+            }
+            ParseReturn::Graph(self, has_graph_vars)
         } else {
             if simplify {
                 self.simplify::<{ Volatility::Volatile }>(
@@ -1218,7 +1293,7 @@ impl Tokens {
                     rand,
                 );
             }
-            Some(self)
+            ParseReturn::Tokens(self)
         }
     }
 }

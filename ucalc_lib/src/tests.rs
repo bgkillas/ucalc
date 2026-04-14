@@ -85,7 +85,7 @@ fn assert_correct_with(
         &mut rng(),
     )
     .unwrap()
-    .unwrap();
+    .tokens_any();
     let rpn = Tokens::rpn(
         b,
         v,
@@ -98,7 +98,7 @@ fn assert_correct_with(
         &mut rng(),
     )
     .unwrap()
-    .unwrap();
+    .tokens_any();
     assert_teq(&infix, &rpn, &Tokens(c));
     let infix = Tokens::infix(
         a,
@@ -112,7 +112,7 @@ fn assert_correct_with(
         &mut rng(),
     )
     .unwrap()
-    .unwrap();
+    .tokens_any();
     assert_teq(
         infix.compute(
             vf,
@@ -146,7 +146,7 @@ fn assert_fun(infix: &str, rpn: &str, expected: &Functions) {
             &mut rng()
         )
         .unwrap()
-        .is_none()
+        .is_var()
     );
     let mut f2 = Functions::default();
     assert!(
@@ -162,7 +162,7 @@ fn assert_fun(infix: &str, rpn: &str, expected: &Functions) {
             &mut rng()
         )
         .unwrap()
-        .is_none()
+        .is_var()
     );
     assert_teq(&f1, &f2, expected);
 }
@@ -179,7 +179,7 @@ fn infix(s: &str) -> Tokens {
         &mut rng(),
     )
     .unwrap()
-    .unwrap()
+    .tokens()
 }
 fn rpn(s: &str) -> Tokens {
     Tokens::rpn(
@@ -194,7 +194,7 @@ fn rpn(s: &str) -> Tokens {
         &mut rng(),
     )
     .unwrap()
-    .unwrap()
+    .tokens()
 }
 fn res<T>(f: T) -> Number
 where
@@ -244,7 +244,7 @@ fn test_solve_poly() {
             &mut rng()
         )
         .unwrap()
-        .is_none()
+        .is_var()
     );
     let mut buffer = Vec::with_capacity(8);
     for i in 0..n.pow(k) {
@@ -270,7 +270,7 @@ fn test_solve_poly() {
                 &mut rng(),
             )
             .unwrap()
-            .unwrap()
+            .tokens()
             .compute_buffer_with(
                 &mut Vec::with_capacity(8),
                 &[],
@@ -1774,7 +1774,7 @@ fn test_overwrite_var() {
             &mut rng()
         )
         .unwrap()
-        .is_none()
+        .is_var()
     );
     assert_eq!(v, vars1);
     assert_eq!(f, funs1);
@@ -1791,7 +1791,7 @@ fn test_overwrite_var() {
             &mut rng()
         )
         .unwrap()
-        .is_none()
+        .is_var()
     );
     assert_eq!(v, vars2);
     assert_eq!(f, funs2);
@@ -1808,7 +1808,7 @@ fn test_overwrite_var() {
             &mut rng()
         )
         .unwrap()
-        .is_none()
+        .is_var()
     );
     assert_eq!(v, vars3);
     assert_eq!(f, funs3);
@@ -1825,7 +1825,7 @@ fn test_overwrite_var() {
             &mut rng()
         )
         .unwrap()
-        .is_none()
+        .is_var()
     );
     assert_eq!(v, vars4);
     assert_eq!(f, funs4);
@@ -1842,7 +1842,7 @@ fn test_overwrite_var() {
             &mut rng()
         )
         .unwrap()
-        .is_none()
+        .is_var()
     );
     assert_eq!(v, vars5);
     assert_eq!(f, funs5);
@@ -1861,7 +1861,7 @@ fn test_overwrite_var() {
             &mut rng()
         )
         .unwrap()
-        .is_none()
+        .is_var()
     );
     assert_eq!(v, vars1);
     assert_eq!(f, funs1);
@@ -1878,7 +1878,7 @@ fn test_overwrite_var() {
             &mut rng()
         )
         .unwrap()
-        .is_none()
+        .is_var()
     );
     assert_eq!(v, vars2);
     assert_eq!(f, funs2);
@@ -1895,7 +1895,7 @@ fn test_overwrite_var() {
             &mut rng()
         )
         .unwrap()
-        .is_none()
+        .is_var()
     );
     assert_eq!(v, vars3);
     assert_eq!(f, funs3);
@@ -1912,7 +1912,7 @@ fn test_overwrite_var() {
             &mut rng()
         )
         .unwrap()
-        .is_none()
+        .is_var()
     );
     assert_eq!(v, vars4);
     assert_eq!(f, funs4);
@@ -1929,7 +1929,7 @@ fn test_overwrite_var() {
             &mut rng()
         )
         .unwrap()
-        .is_none()
+        .is_var()
     );
     assert_eq!(v, vars5);
     assert_eq!(f, funs5);
@@ -1951,7 +1951,7 @@ fn test_custom_var() {
             &mut rng()
         )
         .unwrap()
-        .is_none()
+        .is_var()
     );
     assert_eq!(v, vars);
     let mut v = Variables(Vec::new());
@@ -1968,7 +1968,7 @@ fn test_custom_var() {
             &mut rng()
         )
         .unwrap()
-        .is_none()
+        .is_var()
     );
     assert_eq!(v, vars);
     assert_correct_with(
@@ -2067,7 +2067,7 @@ fn test_inner_functions() {
             &mut rng()
         )
         .unwrap()
-        .is_none()
+        .is_var()
     );
     assert!(
         Tokens::infix(
@@ -2082,7 +2082,7 @@ fn test_inner_functions() {
             &mut rng()
         )
         .unwrap()
-        .is_none()
+        .is_var()
     );
     assert_eq!(f, funs);
     let mut f = Functions::default();
@@ -2099,7 +2099,7 @@ fn test_inner_functions() {
             &mut rng()
         )
         .unwrap()
-        .is_none()
+        .is_var()
     );
     assert!(
         Tokens::rpn(
@@ -2114,7 +2114,7 @@ fn test_inner_functions() {
             &mut rng()
         )
         .unwrap()
-        .is_none()
+        .is_var()
     );
     assert_eq!(f, funs);
     assert_correct_with(

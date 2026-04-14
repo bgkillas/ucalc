@@ -22,7 +22,7 @@ pub use compute::Compute;
 pub use functions::Function;
 pub use functions_list::{FUNCTION_LIST, get_help};
 pub use operators::Operator;
-pub use parse::{Derivative, Token, Tokens, TokensSlice, Volatility};
+pub use parse::{Derivative, ParseReturn, Token, Tokens, TokensSlice, Volatility};
 #[cfg(feature = "float_rand")]
 pub use rand::{Rand, rng};
 #[cfg(feature = "units")]

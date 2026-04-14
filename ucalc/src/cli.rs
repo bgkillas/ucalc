@@ -8,7 +8,7 @@ use std::env::args;
 use std::hint::black_box;
 use std::io::Write;
 use std::io::{BufRead, IsTerminal, stdin, stdout};
-use ucalc_lib::{Compute, Functions, Number, Tokens, Variable, Variables, Volatility};
+use ucalc_lib::{Compute, Functions, Number, ParseReturn, Tokens, Variable, Variables, Volatility};
 #[cfg(feature = "float_rand")]
 use ucalc_lib::{Rand, rng};
 use ucalc_numbers::{FloatTrait, RealTrait};
@@ -142,7 +142,7 @@ fn run_line(
             rand,
         )
         .unwrap()
-        .unwrap();
+        .tokens();
         let num = tokens.compute(
             &[],
             funs,
@@ -182,7 +182,7 @@ fn run_line(
         },
         options.perf,
     ) {
-        Ok(Some(tokens)) => {
+        Ok(ParseReturn::Tokens(tokens)) => {
             let compute = tmr(
                 || {
                     tokens.compute(
@@ -221,7 +221,7 @@ fn run_line(
                     rand,
                 )
                 .unwrap()
-                .unwrap();
+                .tokens();
                 benchmark(
                     tokens,
                     options.benchmark,
@@ -232,7 +232,10 @@ fn run_line(
                 );
             }
         }
-        Ok(None) => {}
+        Ok(ParseReturn::Graph(_, _)) => {
+            todo!()
+        }
+        Ok(ParseReturn::Var) => {}
         Err(e) => println!("{e:?}"),
     }
 }
