@@ -8,6 +8,7 @@ use std::env::args;
 use std::hint::black_box;
 use std::io::Write;
 use std::io::{BufRead, IsTerminal, stdin, stdout};
+use std::process::exit;
 use ucalc_lib::{Compute, Functions, Number, ParseReturn, Tokens, Variable, Variables, Volatility};
 #[cfg(feature = "float_rand")]
 use ucalc_lib::{Rand, rng};
@@ -18,6 +19,7 @@ pub fn cli() {
     let mut funs = Functions::default();
     let mut quit = false;
     let mut options = Options::default();
+    let mut ret = 0;
     #[cfg(feature = "float_rand")]
     let mut rand = rng();
     for arg in args().skip(1) {
@@ -27,9 +29,10 @@ pub fn cli() {
             &mut vars,
             &mut funs,
             &mut quit,
+            &mut ret,
             #[cfg(feature = "float_rand")]
             &mut rand,
-        )
+        );
     }
     let stdin = stdin().lock();
     if !stdin.is_terminal() {
@@ -41,11 +44,15 @@ pub fn cli() {
                 &mut vars,
                 &mut funs,
                 &mut false,
+                &mut ret,
                 #[cfg(feature = "float_rand")]
                 &mut rand,
             )
         });
-    } else if !quit {
+        exit(ret);
+    } else if quit {
+        exit(ret);
+    } else {
         let mut readchar = ReadChar::new(History::new(None).unwrap());
         let mut stdout = stdout().lock();
         vars.push(Variable::new("@", Number::default(), Volatility::Constant));
@@ -111,6 +118,7 @@ fn run_line(
     vars: &mut Variables,
     funs: &mut Functions,
     quit: &mut bool,
+    ret: &mut i32,
     #[cfg(feature = "float_rand")] rand: &mut Rand,
 ) {
     if line.trim_start().starts_with("//") {
@@ -236,7 +244,10 @@ fn run_line(
             todo!()
         }
         Ok(ParseReturn::Var) => {}
-        Err(e) => println!("{e:?}"),
+        Err(e) => {
+            *ret = 1;
+            println!("{e:?}")
+        }
     }
 }
 fn benchmark(
