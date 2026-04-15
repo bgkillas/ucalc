@@ -179,7 +179,7 @@ fn run_line(
                 line,
                 vars,
                 funs,
-                &[],
+                &["x", "y"],
                 false,
                 true,
                 options.base_input,

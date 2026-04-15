@@ -496,8 +496,8 @@ impl Tokens {
                                 );
                                 tokens.push(Token::GraphVar(i as u8));
                                 open_input = true;
-                            } else if let Some(i) =
-                                graph_vars.iter().copied().position(|v| v == "x")
+                            } else if s == "z"
+                                && let Some(i) = graph_vars.iter().copied().position(|v| v == "x")
                                 && let Some(j) = graph_vars.iter().copied().position(|v| v == "y")
                             {
                                 if matches!(inputs, Some(NewCustom::Var(_))) {

@@ -101,6 +101,7 @@ pub enum Function {
     While(ModifyInputs),
     Exprs(NonZeroU8),
     Solve,
+    Derivative,
     NumericalDerivative,
     NumericalDifferential,
     NumericalIntegral,
@@ -174,6 +175,7 @@ impl TryFrom<&str> for Function {
             "convert" => Self::Convert,
             "numerical_differential" => Self::NumericalDifferential,
             "numerical_derivative" => Self::NumericalDerivative,
+            "derivative" => Self::Derivative,
             "numerical_integral" => Self::NumericalIntegral,
             "numerical_solve" => Self::NumericalSolve,
             "tetration" => Self::Tetration,
@@ -249,6 +251,7 @@ impl Display for Function {
                 Self::Convert => "convert",
                 Self::NumericalDifferential => "numerical_differential",
                 Self::NumericalDerivative => "numerical_derivative",
+                Self::Derivative => "derivative",
                 Self::NumericalIntegral => "numerical_integral",
                 Self::NumericalSolve => "numerical_solve",
                 #[cfg(feature = "complex")]
@@ -371,6 +374,7 @@ impl Function {
             | Self::Modify(ModifyInputs::Two)
             | Self::While(ModifyInputs::Two)
             | Self::NumericalDerivative
+            | Self::Derivative
             | Self::NumericalSolve => 2,
             #[cfg(feature = "float_rand")]
             Self::RandUniform => 2,
@@ -624,6 +628,7 @@ impl Function {
             | Self::NumericalSolve
             | Self::NumericalIntegral
             | Self::NumericalDerivative
+            | Self::Derivative
             | Self::Modify(ModifyInputs::Two)
             | Self::NumericalDifferential => 1,
             Self::If | Self::Modify(ModifyInputs::Three) | Self::While(ModifyInputs::Two) => 2,
@@ -640,6 +645,7 @@ impl Function {
             | Self::Set
             | Self::Solve
             | Self::NumericalDerivative
+            | Self::Derivative
             | Self::NumericalSolve
             | Self::NumericalIntegral => 1,
             Self::Fold | Self::NumericalDifferential => 2,
@@ -649,7 +655,9 @@ impl Function {
     pub fn expected_var(self, n: NonZeroU8) -> bool {
         match self {
             Self::Solve => n.get() == 1,
-            Self::Set | Self::NumericalDerivative | Self::NumericalSolve => n.get() == 2,
+            Self::Set | Self::NumericalDerivative | Self::Derivative | Self::NumericalSolve => {
+                n.get() == 2
+            }
             Self::Sum | Self::Prod | Self::Iter | Self::NumericalIntegral => n.get() == 3,
             Self::Fold | Self::NumericalDifferential => matches!(n.get(), 4 | 5),
             _ => false,
@@ -658,7 +666,9 @@ impl Function {
     pub fn first_expected_var(self, n: NonZeroU8) -> bool {
         match self {
             Self::Solve => n.get() == 1,
-            Self::Set | Self::NumericalDerivative | Self::NumericalSolve => n.get() == 2,
+            Self::Set | Self::NumericalDerivative | Self::Derivative | Self::NumericalSolve => {
+                n.get() == 2
+            }
             Self::Sum | Self::Prod | Self::Iter | Self::NumericalIntegral => n.get() == 3,
             Self::Fold | Self::NumericalDifferential => n.get() == 4,
             _ => false,
@@ -675,6 +685,7 @@ impl Function {
                 | Self::Solve
                 | Self::NumericalIntegral
                 | Self::NumericalDerivative
+                | Self::Derivative
                 | Self::NumericalDifferential
                 | Self::NumericalSolve
         )
@@ -694,6 +705,7 @@ impl Function {
                 | Self::Exprs(_)
                 | Self::NumericalIntegral
                 | Self::NumericalDerivative
+                | Self::Derivative
                 | Self::NumericalDifferential
                 | Self::NumericalSolve
         )
@@ -882,7 +894,7 @@ impl Function {
                         #[cfg(feature = "float_rand")]
                         rand,
                     )
-                    .unwrap_or(Number::from(Constant::Nan))
+                    .unwrap_or_else(|| Number::from(Constant::Nan))
                     .into();
             }
             Self::Iter => {
@@ -913,6 +925,21 @@ impl Function {
                             rand,
                         )
                     });
+            }
+            Self::Derivative => {
+                let (point, [], [tokens]) = compute.tokens.get_skip_mut(stack);
+                let point = mem::take(point);
+                inner_vars.push(point);
+                *stack.last_mut().unwrap().num_mut() = compute
+                    .tokens(tokens)
+                    .derivative(
+                        inner_vars,
+                        stack,
+                        #[cfg(feature = "float_rand")]
+                        rand,
+                    )
+                    .unwrap_or_else(|| Number::from(Constant::Nan));
+                inner_vars.pop().unwrap();
             }
             Self::NumericalDerivative => {
                 let (point, [], [tokens]) = compute.tokens.get_skip_mut(stack);

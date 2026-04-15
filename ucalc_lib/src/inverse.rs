@@ -178,6 +178,7 @@ impl From<Function> for Inverse {
             | Function::NumericalIntegral
             | Function::NumericalSolve
             | Function::NumericalDerivative
+            | Function::Derivative
             | Function::NumericalDifferential => Self::None,
             #[cfg(feature = "complex")]
             Function::Arg
