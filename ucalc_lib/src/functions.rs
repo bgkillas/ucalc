@@ -929,17 +929,17 @@ impl Function {
             Self::Derivative => {
                 let (point, [], [tokens]) = compute.tokens.get_skip_mut(stack);
                 let point = mem::take(point);
-                inner_vars.push(point);
                 *stack.last_mut().unwrap().num_mut() = compute
                     .tokens(tokens)
                     .derivative(
                         inner_vars,
                         stack,
+                        point,
+                        inner_vars.len() as u16,
                         #[cfg(feature = "float_rand")]
                         rand,
                     )
                     .unwrap_or_else(|| Number::from(Constant::Nan));
-                inner_vars.pop().unwrap();
             }
             Self::NumericalDerivative => {
                 let (point, [], [tokens]) = compute.tokens.get_skip_mut(stack);
@@ -949,7 +949,7 @@ impl Function {
                     inner_vars,
                     stack,
                     point,
-                    inner_vars.len() - 1,
+                    (inner_vars.len() - 1) as u16,
                     #[cfg(feature = "float_rand")]
                     rand,
                 );
@@ -964,7 +964,7 @@ impl Function {
                     stack,
                     start,
                     end,
-                    inner_vars.len() - 1,
+                    (inner_vars.len() - 1) as u16,
                     #[cfg(feature = "float_rand")]
                     rand,
                 );
@@ -982,8 +982,8 @@ impl Function {
                         x_0,
                         t_0,
                         t_1,
-                        inner_vars.len() - 2,
-                        inner_vars.len() - 1,
+                        (inner_vars.len() - 2) as u16,
+                        (inner_vars.len() - 1) as u16,
                         #[cfg(feature = "float_rand")]
                         rand,
                     );
@@ -998,7 +998,7 @@ impl Function {
                     inner_vars,
                     stack,
                     point,
-                    inner_vars.len() - 1,
+                    (inner_vars.len() - 1) as u16,
                     #[cfg(feature = "float_rand")]
                     rand,
                 );

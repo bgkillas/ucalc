@@ -9,10 +9,10 @@ impl Compute<'_> {
         inner_vars: &mut Vec<Number>,
         stack: &mut Vec<StackToken>,
         point: Number,
-        var: usize,
+        var: u16,
         #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Number {
-        inner_vars[var] = point;
+        inner_vars[var as usize] = point;
         for _ in 0..64 {
             let y = self.compute(
                 inner_vars,
@@ -26,32 +26,32 @@ impl Compute<'_> {
             let val = self.numerical_derivative(
                 inner_vars,
                 stack,
-                inner_vars[var].clone(),
+                inner_vars[var as usize].clone(),
                 var,
                 #[cfg(feature = "float_rand")]
                 rand,
             );
-            inner_vars[var] -= val.recip() * y;
+            inner_vars[var as usize] -= val.recip() * y;
         }
-        inner_vars[var].clone()
+        inner_vars[var as usize].clone()
     }
     pub fn numerical_derivative(
         &self,
         inner_vars: &mut Vec<Number>,
         stack: &mut Vec<StackToken>,
         point: Number,
-        var: usize,
+        var: u16,
         #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Number {
         let epsilon = Float::from(2.0f64.powi(-32));
-        inner_vars[var] = point.clone() - &epsilon;
+        inner_vars[var as usize] = point.clone() - &epsilon;
         let start = self.compute(
             inner_vars,
             stack,
             #[cfg(feature = "float_rand")]
             rand,
         );
-        inner_vars[var] = point + &epsilon;
+        inner_vars[var as usize] = point + &epsilon;
         let end = self.compute(
             inner_vars,
             stack,
@@ -66,14 +66,14 @@ impl Compute<'_> {
         stack: &mut Vec<StackToken>,
         n: u8,
         point: Number,
-        var: usize,
+        var: u16,
         #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Number {
         let e = -32;
         let e = e - e % n as i32;
         let epsilon = Float::from(2.0f64.powi(e / n as i32));
         let mut sum = Number::default();
-        inner_vars[var] = point;
+        inner_vars[var as usize] = point;
         for k in 0..=n {
             let r = Float::from(
                 UInteger::from(n as usize)
@@ -96,7 +96,7 @@ impl Compute<'_> {
                 ) * r;
             }
             if k != n {
-                inner_vars[var] += &epsilon;
+                inner_vars[var as usize] += &epsilon;
             }
         }
         let epsilon = Float::from(2.0f64.powi(e));
@@ -108,13 +108,13 @@ impl Compute<'_> {
         stack: &mut Vec<StackToken>,
         start: Number,
         end: Number,
-        var: usize,
+        var: u16,
         #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Number {
         let k = 1024;
         let epsilon = (end - &start) / Float::from(k);
         let mut total = Number::from(0);
-        inner_vars[var] = start;
+        inner_vars[var as usize] = start;
         let mut last = self.compute(
             inner_vars,
             stack,
@@ -123,7 +123,7 @@ impl Compute<'_> {
         );
         let mid = epsilon.clone() / Float::from(2);
         for _ in 1..=k {
-            inner_vars[var] += &epsilon;
+            inner_vars[var as usize] += &epsilon;
             let cur = self.compute(
                 inner_vars,
                 stack,
@@ -143,18 +143,18 @@ impl Compute<'_> {
         n: u8,
         start: Number,
         end: Number,
-        var: usize,
+        var: u16,
         #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Number {
         if n == 0 {
-            inner_vars[var] = end;
+            inner_vars[var as usize] = end;
             let end = self.compute(
                 inner_vars,
                 stack,
                 #[cfg(feature = "float_rand")]
                 rand,
             );
-            inner_vars[var] = start;
+            inner_vars[var as usize] = start;
             let start = self.compute(
                 inner_vars,
                 stack,
@@ -168,7 +168,7 @@ impl Compute<'_> {
         let fact = Float::from(UInteger::from((n - 1) as usize).factorial().0);
         let epsilon = (end - &start) / &kf;
         let mut total = Number::from(0);
-        inner_vars[var] = start;
+        inner_vars[var as usize] = start;
         let mut last = self.compute(
             inner_vars,
             stack,
@@ -182,7 +182,7 @@ impl Compute<'_> {
         last /= &fact;
         let mid = epsilon.clone() / Float::from(2);
         for i in 1..=k {
-            inner_vars[var] += &epsilon;
+            inner_vars[var as usize] += &epsilon;
             let mut cur = self.compute(
                 inner_vars,
                 stack,
@@ -208,14 +208,14 @@ impl Compute<'_> {
         x_0: Number,
         t_0: Number,
         t_1: Number,
-        x_var: usize,
-        t_var: usize,
+        x_var: u16,
+        t_var: u16,
         #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Number {
         let n = 1024;
         let epsilon = (t_1 - &t_0) / Float::from(n);
-        inner_vars[x_var] = x_0;
-        inner_vars[t_var] = t_0;
+        inner_vars[x_var as usize] = x_0;
+        inner_vars[t_var as usize] = t_0;
         for _ in 1..=n {
             let delta = self.compute(
                 inner_vars,
@@ -223,9 +223,9 @@ impl Compute<'_> {
                 #[cfg(feature = "float_rand")]
                 rand,
             ) * &epsilon;
-            inner_vars[x_var] += delta;
-            inner_vars[t_var] += &epsilon;
+            inner_vars[x_var as usize] += delta;
+            inner_vars[t_var as usize] += &epsilon;
         }
-        inner_vars[x_var].clone()
+        inner_vars[x_var as usize].clone()
     }
 }

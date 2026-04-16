@@ -279,7 +279,7 @@ impl<'a> Compute<'a> {
                                         d.get(),
                                         stack.last().unwrap().num_ref().clone(),
                                         end,
-                                        inner_vars.len() - 1,
+                                        (inner_vars.len() - 1) as u16,
                                         #[cfg(feature = "float_rand")]
                                         rand,
                                     );
@@ -294,7 +294,7 @@ impl<'a> Compute<'a> {
                                     d.get(),
                                     Number::default(),
                                     stack[len - inputs].num_ref().clone(),
-                                    inner_vars.len() - 1,
+                                    (inner_vars.len() - 1) as u16,
                                     #[cfg(feature = "float_rand")]
                                     rand,
                                 );
@@ -309,7 +309,7 @@ impl<'a> Compute<'a> {
                                 stack,
                                 d.get(),
                                 stack[len - inputs].num_ref().clone(),
-                                inner_vars.len() - 1,
+                                (inner_vars.len() - 1) as u16,
                                 #[cfg(feature = "float_rand")]
                                 rand,
                             );
