@@ -155,7 +155,7 @@ impl Compute<'_> {
                                 );
                                 tokens.advance_by(last).unwrap();
                                 start += last;
-                                inverse.right_inverse(ret, num);
+                                inverse.inverse_on_2::<1>(ret, num);
                             }
                         } else {
                             let num = self.tokens(right_tokens).compute(
@@ -165,7 +165,7 @@ impl Compute<'_> {
                                 rand,
                             );
                             tokens.advance_back_by(i - (start + last)).unwrap();
-                            inverse.left_inverse(ret, num);
+                            inverse.inverse_on_2::<0>(ret, num);
                         }
                     }
                 }

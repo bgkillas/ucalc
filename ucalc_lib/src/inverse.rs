@@ -1,9 +1,13 @@
 use crate::functions::AtanInputs;
 use crate::{Function, Number};
+#[cfg(feature = "complex")]
+use ucalc_numbers::{ComplexFunctions, ComplexFunctionsMut};
 use ucalc_numbers::{FloatFunctions, FloatFunctionsMut, Pow, PowAssign};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Inverse {
     Add,
+    #[cfg(feature = "complex")]
+    Addi,
     Sub,
     Mul,
     Div,
@@ -60,37 +64,51 @@ impl Inverse {
             _ => return None,
         })
     }
-    pub fn left_inverse(self, a: &mut Number, b: Number) {
+    pub fn inverse_on_2<const N: usize>(self, a: &mut Number, mut b: Number) {
         match self {
             Self::Add => *a -= b,
-            Self::Sub => *a += b,
-            Self::Mul => *a /= b,
-            Self::Div => *a *= b,
-            Self::Pow => Inverse::pow_assign(a, b.recip()),
-            Self::Root => Inverse::pow_assign(a, b),
-            _ => unreachable!(),
-        }
-    }
-    pub fn right_inverse(self, a: &mut Number, mut b: Number) {
-        match self {
-            Self::Add => *a -= b,
+            #[cfg(feature = "complex")]
+            Self::Addi => {
+                if N == 0 {
+                    *a -= b.mul_i(false)
+                } else {
+                    *a -= b;
+                    a.mul_i_mut(true);
+                }
+            }
             Self::Sub => {
-                std::mem::swap(a, &mut b);
-                *a -= b
+                if N == 0 {
+                    *a += b
+                } else {
+                    std::mem::swap(a, &mut b);
+                    *a -= b
+                }
             }
             Self::Mul => *a /= b,
             Self::Div => {
-                std::mem::swap(a, &mut b);
-                *a /= b
+                if N == 0 {
+                    *a *= b
+                } else {
+                    std::mem::swap(a, &mut b);
+                    *a /= b
+                }
             }
             Self::Pow => {
-                a.ln_mut();
-                *a /= b.ln();
+                if N == 0 {
+                    Inverse::pow_assign(a, b.recip())
+                } else {
+                    a.ln_mut();
+                    *a /= b.ln();
+                }
             }
             Self::Root => {
-                std::mem::swap(a, &mut b);
-                a.ln_mut();
-                *a /= b.ln();
+                if N == 0 {
+                    Inverse::pow_assign(a, b)
+                } else {
+                    std::mem::swap(a, &mut b);
+                    a.ln_mut();
+                    *a /= b.ln();
+                }
             }
             _ => unreachable!(),
         }
@@ -109,6 +127,8 @@ impl TryFrom<Function> for Inverse {
     fn try_from(value: Function) -> Result<Self, Self::Error> {
         Ok(match value {
             Function::Add => Self::Add,
+            #[cfg(feature = "complex")]
+            Function::Addi => Self::Addi,
             Function::Sub => Self::Sub,
             Function::Mul => Self::Mul,
             Function::Div => Self::Div,
@@ -136,55 +156,7 @@ impl TryFrom<Function> for Inverse {
             Function::Sq => Self::Sq,
             Function::Cbrt => Self::Cbrt,
             Function::Cb => Self::Cb,
-            Function::Tetration
-            | Function::Rem
-            | Function::Factorial
-            | Function::SubFactorial
-            | Function::Equal
-            | Function::NotEqual
-            | Function::Greater
-            | Function::Less
-            | Function::GreaterEqual
-            | Function::LessEqual
-            | Function::And
-            | Function::Or
-            | Function::Not
-            | Function::Max
-            | Function::Min
-            | Function::Quadratic
-            | Function::Sum
-            | Function::Prod
-            | Function::Gamma
-            | Function::Erf
-            | Function::Erfc
-            | Function::Abs
-            | Function::Iter
-            | Function::Atan(AtanInputs::Two)
-            | Function::Ceil
-            | Function::Floor
-            | Function::Round
-            | Function::Trunc
-            | Function::Fract
-            | Function::If
-            | Function::Fold
-            | Function::Set
-            | Function::Solve
-            | Function::Modify(_)
-            | Function::While(_)
-            | Function::Exprs(_)
-            | Function::NumericalIntegral
-            | Function::NumericalSolve
-            | Function::NumericalDerivative
-            | Function::Derivative
-            | Function::NumericalDifferential => return Err(()),
-            #[cfg(feature = "complex")]
-            Function::Arg
-            | Function::Real
-            | Function::Imag
-            | Function::Cubic
-            | Function::Quartic => return Err(()),
-            #[cfg(feature = "float_rand")]
-            Function::RandUniform => return Err(()),
+            _ => return Err(()),
         })
     }
 }

@@ -211,9 +211,7 @@ impl Tokens {
                         open_inputs += 1;
                         tokens.push(Token::GraphVar(i as u8));
                         tokens.push(Token::GraphVar(j as u8));
-                        tokens.push(Number::from((0, 1)).into());
-                        tokens.push(Function::Mul.into());
-                        tokens.push(Function::Add.into());
+                        tokens.push(Function::Addi.into());
                     }
                     _ if let Ok(fun) = Function::try_from(token) => {
                         open_inputs = open_inputs
@@ -496,7 +494,8 @@ impl Tokens {
                                 );
                                 tokens.push(Token::GraphVar(i as u8));
                                 open_input = true;
-                            } else if s == "z"
+                            } else if cfg!(feature = "complex")
+                                && s == "z"
                                 && let Some(i) = graph_vars.iter().copied().position(|v| v == "x")
                                 && let Some(j) = graph_vars.iter().copied().position(|v| v == "y")
                             {
@@ -513,9 +512,8 @@ impl Tokens {
                                 );
                                 tokens.push(Token::GraphVar(i as u8));
                                 tokens.push(Token::GraphVar(j as u8));
-                                tokens.push(Number::from((0, 1)).into());
-                                tokens.push(Function::Mul.into());
-                                tokens.push(Function::Add.into());
+                                #[cfg(feature = "complex")]
+                                tokens.push(Function::Addi.into());
                                 open_input = true;
                             } else if let Ok(fun) = Function::try_from(s) {
                                 if fun.inputs().get() > 1 {

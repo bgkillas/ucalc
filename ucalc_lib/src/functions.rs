@@ -8,7 +8,7 @@ use std::mem;
 use std::num::NonZeroU8;
 use std::ops::Deref;
 #[cfg(feature = "complex")]
-use ucalc_numbers::{ComplexFunctionsMut, ComplexTrait};
+use ucalc_numbers::{ComplexFunctions, ComplexFunctionsMut, ComplexTrait};
 use ucalc_numbers::{
     Constant, Float, FloatFunctions, FloatFunctionsMut, FloatTrait, NegAssign, PowAssign, RealTrait,
 };
@@ -25,6 +25,8 @@ pub enum ModifyInputs {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Function {
     Add,
+    #[cfg(feature = "complex")]
+    Addi,
     Sub,
     Mul,
     Div,
@@ -167,6 +169,8 @@ impl TryFrom<&str> for Function {
             "fold" => Self::Fold,
             "solve" => Self::Solve,
             "add" => Self::Add,
+            #[cfg(feature = "complex")]
+            "addi" => Self::Addi,
             "sub" => Self::Sub,
             "mul" => Self::Mul,
             "div" => Self::Div,
@@ -266,6 +270,8 @@ impl Display for Function {
                 Self::Fold => "fold",
                 Self::Solve => "solve",
                 Self::Add => "add",
+                #[cfg(feature = "complex")]
+                Self::Addi => "addi",
                 Self::Sub => "sub",
                 Self::Mul => "mul",
                 Self::Div => "div",
@@ -351,6 +357,8 @@ impl Function {
             | Self::Solve => 1,
             #[cfg(feature = "complex")]
             Self::Arg | Self::Conj | Self::Real | Self::Imag => 1,
+            #[cfg(feature = "complex")]
+            Self::Addi => 2,
             Self::Tetration
             | Self::Add
             | Self::Sub
@@ -558,6 +566,8 @@ impl Function {
     ) {
         match self {
             Self::Add => *a += b,
+            #[cfg(feature = "complex")]
+            Self::Addi => *a += b.mul_i(false),
             Self::Sub => *a -= b,
             Self::Mul => *a *= b,
             Self::Div => *a /= b,

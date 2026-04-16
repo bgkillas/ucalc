@@ -1,9 +1,13 @@
+#[cfg(feature = "float_rand")]
+use crate::Rand;
 use crate::compute::StackToken;
-use crate::{Compute, Function, Number, Rand, Token};
+use crate::{Compute, Function, Number, Token};
 use ucalc_numbers::{Float, FloatFunctions, FloatFunctionsMut, NegAssign, Pow, PowAssign};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Derivative {
     Add,
+    #[cfg(feature = "complex")]
+    Addi,
     Sub,
     Mul,
     Div,
@@ -75,6 +79,14 @@ impl Derivative {
     pub fn compute_on_2<const N: usize>(self, a: &mut Number, b: &Number) {
         match self {
             Self::Add => *a = Number::from(1),
+            #[cfg(feature = "complex")]
+            Self::Addi => {
+                if N == 0 {
+                    *a = Number::from(1)
+                } else {
+                    *a = Number::from((0, 1))
+                }
+            }
             Self::Sub => *a = Number::from(if N == 0 { 1 } else { -1 }),
             Self::Mul => {
                 if N == 0 {
@@ -153,6 +165,8 @@ impl TryFrom<Function> for Derivative {
             Function::Real => Self::Real,
             #[cfg(feature = "complex")]
             Function::Imag => Self::Imag,
+            #[cfg(feature = "complex")]
+            Function::Addi => Self::Addi,
             _ => return Err(()),
         })
     }
