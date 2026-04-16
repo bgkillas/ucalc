@@ -7,7 +7,7 @@ use crate::rand::Rand;
 use std::ops::Deref;
 impl Compute<'_> {
     pub(crate) fn solve(
-        self,
+        &self,
         inner_vars: &mut Vec<Number>,
         stack: &mut Vec<StackToken>,
         #[cfg(feature = "float_rand")] rand: &mut Rand,
@@ -29,7 +29,7 @@ impl Compute<'_> {
         )
     }
     fn solve_inner(
-        self,
+        &self,
         inner_vars: &mut Vec<Number>,
         ret: &mut Number,
         stack: &mut Vec<StackToken>,

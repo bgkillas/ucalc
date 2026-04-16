@@ -397,7 +397,7 @@ impl Polynomial {
 }
 impl Compute<'_> {
     pub fn compute_polynomial(
-        self,
+        &self,
         inner_vars: &mut Vec<Number>,
         stack: &mut Vec<StackToken>,
         to_poly: Option<u16>,

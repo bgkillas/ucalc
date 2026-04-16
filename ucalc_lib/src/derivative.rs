@@ -35,42 +35,43 @@ impl Derivative {
             _ => unreachable!(),
         }
     }
-    pub fn compute_on_2_first(self, a: &mut Number, b: &Number) {
+    pub fn compute_on_2<const N: usize>(self, a: &mut Number, b: &Number) {
         match self {
             Self::Add => *a = Number::from(1),
-            Self::Sub => *a = Number::from(1),
-            Self::Mul => *a = b.clone(),
-            Self::Div => *a = b.clone().recip(),
-            Self::Pow => {
-                a.pow_assign(b.clone() - Float::from(1));
-                *a *= b;
+            Self::Sub => *a = Number::from(if N == 0 { 1 } else { -1 }),
+            Self::Mul => {
+                if N == 0 {
+                    *a = b.clone()
+                }
             }
-            Self::Root => {
-                a.pow_assign(b.clone().recip() - Float::from(1));
-                *a /= b;
-            }
-            _ => unreachable!(),
-        }
-    }
-    pub fn compute_on_2_second(self, a: &mut Number, b: &Number) {
-        match self {
-            Self::Add => *a = Number::from(1),
-            Self::Sub => *a = Number::from(-1),
-            Self::Mul => {}
             Self::Div => {
-                a.neg_assign();
-                *a /= b.clone() * b;
+                if N == 0 {
+                    *a = b.clone().recip()
+                } else {
+                    a.neg_assign();
+                    *a /= b.clone() * b
+                }
             }
             Self::Pow => {
-                let l = a.clone().pow(b);
-                a.ln_mut();
-                *a *= l;
+                if N == 0 {
+                    a.pow_assign(b.clone() - Float::from(1));
+                    *a *= b;
+                } else {
+                    let l = a.clone().pow(b);
+                    a.ln_mut();
+                    *a *= l;
+                }
             }
             Self::Root => {
-                let l = a.clone().pow(b.clone().recip());
-                a.ln_mut();
-                *a *= l;
-                *a /= b.clone() * b;
+                if N == 0 {
+                    a.pow_assign(b.clone().recip() - Float::from(1));
+                    *a /= b;
+                } else {
+                    let l = a.clone().pow(b.clone().recip());
+                    a.ln_mut();
+                    *a *= l;
+                    *a /= b.clone() * b;
+                }
             }
             _ => unreachable!(),
         }
@@ -93,6 +94,7 @@ impl From<Function> for Derivative {
         }
     }
 }
+#[derive(Debug)]
 pub struct DiffToken {
     value: Number,
     derivative: Number,
@@ -104,22 +106,63 @@ impl DiffToken {
 }
 impl Compute<'_> {
     pub(crate) fn derivative(
-        self,
-        inner_vars: &[Number],
+        &self,
+        inner_vars: &mut Vec<Number>,
         stack: &mut Vec<StackToken>,
-        point: Number,
         var: u16,
         #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Option<Number> {
         let mut tokens = self.tokens.iter().enumerate();
-        let end = stack.len();
+        let stack_end = stack.len();
         while let Some((i, token)) = tokens.next() {
             match token {
-                &Token::CustomFun(_, d) => {
+                &Token::CustomFun(n, d) => {
                     if d.get() != 0 {
                         todo!()
                     }
-                    todo!()
+                    let end = inner_vars.len();
+                    let len = stack.len();
+                    let fun = &self.custom_funs[n as usize];
+                    let inputs = fun.inputs.get() as usize;
+                    let compute = self.tokens(&fun.tokens[..]).offset(end);
+                    inner_vars.extend(
+                        stack[len - inputs..]
+                            .iter()
+                            .map(|a| a.diff_ref().value.clone()),
+                    );
+                    stack[len - inputs].diff_mut().value = compute.compute(
+                        inner_vars,
+                        stack,
+                        #[cfg(feature = "float_rand")]
+                        rand,
+                    );
+                    let Some(d) = compute.derivative(
+                        inner_vars,
+                        stack,
+                        end as u16,
+                        #[cfg(feature = "float_rand")]
+                        rand,
+                    ) else {
+                        stack.drain(stack_end..);
+                        return None;
+                    };
+                    stack[len - inputs].diff_mut().derivative *= d;
+                    for i in 1..inputs {
+                        let Some(mut d) = compute.derivative(
+                            inner_vars,
+                            stack,
+                            (end + i) as u16,
+                            #[cfg(feature = "float_rand")]
+                            rand,
+                        ) else {
+                            stack.drain(stack_end..);
+                            return None;
+                        };
+                        d *= &stack[len - inputs + i].diff_ref().derivative;
+                        stack[len - inputs].diff_mut().derivative += d;
+                    }
+                    inner_vars.drain(end..);
+                    stack.drain(len - inputs + 1..);
                 }
                 &Token::Function(fun, d) => {
                     if d.get() != 0 {
@@ -127,7 +170,7 @@ impl Compute<'_> {
                     }
                     let derivative = Derivative::from(fun);
                     if derivative.is_none() {
-                        stack.drain(end..);
+                        stack.drain(stack_end..);
                         return None;
                     }
                     match fun.inputs().get() {
@@ -143,8 +186,8 @@ impl Compute<'_> {
                             let g = stack.last_mut().unwrap().diff_mut();
                             let mut d1 = g.value.clone();
                             let mut d2 = g.value.clone();
-                            derivative.compute_on_2_first(&mut d1, &h.value);
-                            derivative.compute_on_2_second(&mut d2, &h.value);
+                            derivative.compute_on_2::<0>(&mut d1, &h.value);
+                            derivative.compute_on_2::<1>(&mut d2, &h.value);
                             fun.compute_on_2(
                                 &mut g.value,
                                 h.value,
@@ -157,16 +200,17 @@ impl Compute<'_> {
                         _ => todo!(),
                     }
                 }
-                &Token::InnerVar(n) => {
-                    if n == var {
-                        stack.push(DiffToken::new(point.clone(), Number::from(1)).into())
-                    } else {
-                        stack.push(
-                            DiffToken::new(inner_vars[n as usize].clone(), Number::default())
-                                .into(),
-                        )
-                    }
-                }
+                &Token::InnerVar(n) => stack.push(
+                    DiffToken::new(
+                        inner_vars[self.offset + n as usize].clone(),
+                        if self.offset + n as usize == var as usize {
+                            Number::from(1)
+                        } else {
+                            Number::default()
+                        },
+                    )
+                    .into(),
+                ),
                 &Token::Skip(to) => {
                     stack.push(StackToken::Skip(i + 1));
                     tokens.advance_by(to).unwrap();

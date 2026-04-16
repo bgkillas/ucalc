@@ -343,6 +343,7 @@ impl<'a> Compute<'a> {
         stack.pop().unwrap().num()
     }
 }
+#[derive(Debug)]
 pub enum StackToken {
     Number(Number),
     Polynomial(Polynomial),
@@ -357,6 +358,12 @@ impl StackToken {
         diff
     }
     pub fn diff_mut(&mut self) -> &mut DiffToken {
+        let Self::Diff(diff) = self else {
+            unreachable!()
+        };
+        diff
+    }
+    pub fn diff_ref(&self) -> &DiffToken {
         let Self::Diff(diff) = self else {
             unreachable!()
         };
