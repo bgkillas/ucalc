@@ -144,7 +144,7 @@ impl Compute<'_> {
                                         #[cfg(feature = "float_rand")]
                                         rand,
                                     )?;
-                                let poly = *poly.poly() - ret.deref();
+                                let poly = poly.poly() - ret.deref();
                                 let roots = poly.roots();
                                 return Some(roots);
                             } else {

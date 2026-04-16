@@ -1,3 +1,4 @@
+use crate::derivative::DiffToken;
 use crate::parse::{Token, Tokens, TokensSlice};
 use crate::polynomial::Polynomial;
 #[cfg(feature = "float_rand")]
@@ -344,10 +345,23 @@ impl<'a> Compute<'a> {
 }
 pub enum StackToken {
     Number(Number),
-    Polynomial(Box<Polynomial>),
+    Polynomial(Polynomial),
+    Diff(DiffToken),
     Skip(usize),
 }
 impl StackToken {
+    pub fn diff(self) -> DiffToken {
+        let Self::Diff(diff) = self else {
+            unreachable!()
+        };
+        diff
+    }
+    pub fn diff_mut(&mut self) -> &mut DiffToken {
+        let Self::Diff(diff) = self else {
+            unreachable!()
+        };
+        diff
+    }
     pub fn num(self) -> Number {
         let Self::Number(num) = self else {
             unreachable!()
@@ -378,7 +392,7 @@ impl StackToken {
         };
         poly
     }
-    pub fn poly(self) -> Box<Polynomial> {
+    pub fn poly(self) -> Polynomial {
         let Self::Polynomial(poly) = self else {
             unreachable!()
         };
@@ -396,8 +410,13 @@ impl From<Number> for StackToken {
         Self::Number(value)
     }
 }
+impl From<DiffToken> for StackToken {
+    fn from(value: DiffToken) -> Self {
+        Self::Diff(value)
+    }
+}
 impl From<Polynomial> for StackToken {
     fn from(value: Polynomial) -> Self {
-        Self::Polynomial(value.into())
+        Self::Polynomial(value)
     }
 }

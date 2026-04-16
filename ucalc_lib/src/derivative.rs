@@ -77,11 +77,11 @@ impl From<Function> for Derivative {
         }
     }
 }
-struct DiffStack {
+pub struct DiffToken {
     value: Number,
     derivative: Number,
 }
-impl DiffStack {
+impl DiffToken {
     pub fn new(value: Number, derivative: Number) -> Self {
         Self { value, derivative }
     }
@@ -95,8 +95,8 @@ impl Compute<'_> {
         var: u16,
         #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Option<Number> {
-        let mut diff_stack: Vec<DiffStack> = Vec::with_capacity(self.tokens.len());
         let mut tokens = self.tokens.iter().enumerate();
+        let end = stack.len();
         while let Some((i, token)) = tokens.next() {
             match token {
                 &Token::CustomFun(_, d) => {
@@ -111,19 +111,20 @@ impl Compute<'_> {
                     }
                     let derivative = Derivative::from(fun);
                     if derivative.is_none() {
+                        stack.drain(end..);
                         return None;
                     }
                     match fun.inputs().get() {
                         1 => {
-                            let g = diff_stack.last_mut().unwrap();
+                            let g = stack.last_mut().unwrap().diff_mut();
                             let mut f_g = g.value.clone();
                             derivative.compute_on_1(&mut f_g);
                             fun.compute_on_1(&mut g.value);
                             g.derivative *= f_g;
                         }
                         2 => {
-                            let h = diff_stack.pop().unwrap();
-                            let g = diff_stack.last_mut().unwrap();
+                            let h = stack.pop().unwrap().diff();
+                            let g = stack.last_mut().unwrap().diff_mut();
                             let mut d1 = g.value.clone();
                             let mut d2 = g.value.clone();
                             derivative.compute_on_2_first(&mut d1, &h.value);
@@ -142,22 +143,22 @@ impl Compute<'_> {
                 }
                 &Token::InnerVar(n) => {
                     if n == var {
-                        diff_stack.push(DiffStack::new(point.clone(), Number::from(1)))
+                        stack.push(DiffToken::new(point.clone(), Number::from(1)).into())
                     } else {
-                        diff_stack.push(DiffStack::new(
-                            inner_vars[n as usize].clone(),
-                            Number::default(),
-                        ))
+                        stack.push(
+                            DiffToken::new(inner_vars[n as usize].clone(), Number::default())
+                                .into(),
+                        )
                     }
                 }
                 &Token::Skip(to) => {
                     stack.push(StackToken::Skip(i + 1));
                     tokens.advance_by(to).unwrap();
                 }
-                Token::Number(n) => diff_stack.push(DiffStack::new(n.clone(), Number::default())),
+                Token::Number(n) => stack.push(DiffToken::new(n.clone(), Number::default()).into()),
                 _ => todo!(),
             }
         }
-        Some(diff_stack.pop().unwrap().derivative)
+        Some(stack.pop().unwrap().diff().derivative)
     }
 }
