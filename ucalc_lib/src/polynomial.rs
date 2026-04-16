@@ -300,7 +300,11 @@ impl Polynomial {
         };
         ret.iter_mut().for_each(|a| {
             self.functions.iter().rev().for_each(|f| match f {
-                &Func::Function(f) => Inverse::from(f).get_inverse().unwrap().compute_on_1(a),
+                &Func::Function(f) => Inverse::try_from(f)
+                    .unwrap()
+                    .get_inverse()
+                    .unwrap()
+                    .compute_on_1(a),
                 Func::Power(p) => Inverse::pow_assign(a, p.clone().recip()),
             })
         });

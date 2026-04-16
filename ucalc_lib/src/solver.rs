@@ -93,10 +93,9 @@ impl Compute<'_> {
                     if d.get() != 0 {
                         todo!()
                     }
-                    let inverse = Inverse::from(fun);
-                    if inverse.is_none() {
+                    let Ok(inverse) = Inverse::try_from(fun) else {
                         return None;
-                    }
+                    };
                     if let Some(inv) = inverse.get_inverse() {
                         inv.compute_on_1(ret);
                     } else {

@@ -31,12 +31,8 @@ pub enum Inverse {
     Sq,
     Cbrt,
     Cb,
-    None,
 }
 impl Inverse {
-    pub fn is_none(self) -> bool {
-        matches!(self, Self::None)
-    }
     pub fn get_inverse(self) -> Option<Function> {
         Some(match self {
             Self::Sin => Function::Asin,
@@ -108,9 +104,10 @@ impl Inverse {
         a.pow_assign(b)
     }
 }
-impl From<Function> for Inverse {
-    fn from(value: Function) -> Self {
-        match value {
+impl TryFrom<Function> for Inverse {
+    type Error = ();
+    fn try_from(value: Function) -> Result<Self, Self::Error> {
+        Ok(match value {
             Function::Add => Self::Add,
             Function::Sub => Self::Sub,
             Function::Mul => Self::Mul,
@@ -179,15 +176,15 @@ impl From<Function> for Inverse {
             | Function::NumericalSolve
             | Function::NumericalDerivative
             | Function::Derivative
-            | Function::NumericalDifferential => Self::None,
+            | Function::NumericalDifferential => return Err(()),
             #[cfg(feature = "complex")]
             Function::Arg
             | Function::Real
             | Function::Imag
             | Function::Cubic
-            | Function::Quartic => Self::None,
+            | Function::Quartic => return Err(()),
             #[cfg(feature = "float_rand")]
-            Function::RandUniform => Self::None,
-        }
+            Function::RandUniform => return Err(()),
+        })
     }
 }

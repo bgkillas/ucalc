@@ -13,12 +13,30 @@ pub enum Derivative {
     Sin,
     Cos,
     Tan,
-    None,
+    Ln,
+    Exp,
+    Sqrt,
+    Cbrt,
+    Abs,
+    #[cfg(feature = "complex")]
+    Arg,
+    Recip,
+    #[cfg(feature = "complex")]
+    Conj,
+    Rem,
+    Ceil,
+    Floor,
+    Round,
+    Trunc,
+    #[cfg(feature = "units")]
+    Convert,
+    Fract,
+    #[cfg(feature = "complex")]
+    Real,
+    #[cfg(feature = "complex")]
+    Imag,
 }
 impl Derivative {
-    pub fn is_none(self) -> bool {
-        matches!(self, Self::None)
-    }
     pub fn compute_on_1(self, a: &mut Number) {
         match self {
             Self::Negate => a.neg_assign(),
@@ -32,6 +50,25 @@ impl Derivative {
                 a.recip_mut();
                 *a *= a.clone();
             }
+            Self::Ln => todo!(),
+            Self::Exp => todo!(),
+            Self::Sqrt => todo!(),
+            Self::Cbrt => todo!(),
+            Self::Abs => todo!(),
+            Self::Recip => todo!(),
+            Self::Ceil => todo!(),
+            Self::Floor => todo!(),
+            Self::Round => todo!(),
+            Self::Trunc => todo!(),
+            Self::Fract => todo!(),
+            #[cfg(feature = "complex")]
+            Self::Arg => todo!(),
+            #[cfg(feature = "complex")]
+            Self::Conj => todo!(),
+            #[cfg(feature = "complex")]
+            Self::Real => todo!(),
+            #[cfg(feature = "complex")]
+            Self::Imag => todo!(),
             _ => unreachable!(),
         }
     }
@@ -73,13 +110,17 @@ impl Derivative {
                     *a /= b.clone() * b;
                 }
             }
+            #[cfg(feature = "units")]
+            Self::Convert => todo!(),
+            Self::Rem => todo!(),
             _ => unreachable!(),
         }
     }
 }
-impl From<Function> for Derivative {
-    fn from(value: Function) -> Self {
-        match value {
+impl TryFrom<Function> for Derivative {
+    type Error = ();
+    fn try_from(value: Function) -> Result<Self, Self::Error> {
+        Ok(match value {
             Function::Add => Self::Add,
             Function::Sub => Self::Sub,
             Function::Mul => Self::Mul,
@@ -90,8 +131,30 @@ impl From<Function> for Derivative {
             Function::Sin => Self::Sin,
             Function::Cos => Self::Cos,
             Function::Tan => Self::Tan,
-            _ => Self::None,
-        }
+            Function::Ln => Self::Ln,
+            Function::Exp => Self::Exp,
+            Function::Sqrt => Self::Sqrt,
+            Function::Cbrt => Self::Cbrt,
+            Function::Abs => Self::Abs,
+            #[cfg(feature = "complex")]
+            Function::Arg => Self::Arg,
+            Function::Recip => Self::Recip,
+            #[cfg(feature = "complex")]
+            Function::Conj => Self::Conj,
+            Function::Rem => Self::Rem,
+            Function::Ceil => Self::Ceil,
+            Function::Floor => Self::Floor,
+            Function::Round => Self::Round,
+            Function::Trunc => Self::Trunc,
+            #[cfg(feature = "units")]
+            Function::Convert => Self::Convert,
+            Function::Fract => Self::Fract,
+            #[cfg(feature = "complex")]
+            Function::Real => Self::Real,
+            #[cfg(feature = "complex")]
+            Function::Imag => Self::Imag,
+            _ => return Err(()),
+        })
     }
 }
 #[derive(Debug)]
@@ -168,11 +231,10 @@ impl Compute<'_> {
                     if d.get() != 0 {
                         todo!()
                     }
-                    let derivative = Derivative::from(fun);
-                    if derivative.is_none() {
+                    let Ok(derivative) = Derivative::try_from(fun) else {
                         stack.drain(stack_end..);
                         return None;
-                    }
+                    };
                     match fun.inputs().get() {
                         1 => {
                             let g = stack.last_mut().unwrap().diff_mut();
@@ -211,12 +273,21 @@ impl Compute<'_> {
                     )
                     .into(),
                 ),
+                &Token::CustomVar(n) => stack.push(
+                    DiffToken::new(
+                        self.custom_vars[n as usize].value.clone(),
+                        Number::default(),
+                    )
+                    .into(),
+                ),
+                &Token::GraphVar(n) => stack.push(
+                    DiffToken::new(self.graph_vars[n as usize].clone(), Number::default()).into(),
+                ),
                 &Token::Skip(to) => {
                     stack.push(StackToken::Skip(i + 1));
                     tokens.advance_by(to).unwrap();
                 }
                 Token::Number(n) => stack.push(DiffToken::new(n.clone(), Number::default()).into()),
-                _ => todo!(),
             }
         }
         Some(stack.pop().unwrap().diff().derivative)
