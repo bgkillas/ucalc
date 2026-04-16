@@ -10,6 +10,9 @@ pub enum Derivative {
     Pow,
     Root,
     Negate,
+    Sin,
+    Cos,
+    Tan,
     None,
 }
 impl Derivative {
@@ -19,6 +22,16 @@ impl Derivative {
     pub fn compute_on_1(self, a: &mut Number) {
         match self {
             Self::Negate => a.neg_assign(),
+            Self::Sin => a.cos_mut(),
+            Self::Cos => {
+                a.sin_mut();
+                a.neg_assign()
+            }
+            Self::Tan => {
+                a.cos_mut();
+                a.recip_mut();
+                *a *= a.clone();
+            }
             _ => unreachable!(),
         }
     }
@@ -39,7 +52,7 @@ impl Derivative {
             _ => unreachable!(),
         }
     }
-    pub fn compute_on_2_second(self, a: &mut Number, b: Number) {
+    pub fn compute_on_2_second(self, a: &mut Number, b: &Number) {
         match self {
             Self::Add => *a = Number::from(1),
             Self::Sub => *a = Number::from(-1),
@@ -49,7 +62,7 @@ impl Derivative {
                 *a /= b.clone() * b;
             }
             Self::Pow => {
-                let l = a.clone().pow(&b);
+                let l = a.clone().pow(b);
                 a.ln_mut();
                 *a *= l;
             }
@@ -73,6 +86,9 @@ impl From<Function> for Derivative {
             Function::Pow => Self::Pow,
             Function::Root => Self::Root,
             Function::Negate => Self::Negate,
+            Function::Sin => Self::Sin,
+            Function::Cos => Self::Cos,
+            Function::Tan => Self::Tan,
             _ => Self::None,
         }
     }
@@ -128,7 +144,7 @@ impl Compute<'_> {
                             let mut d1 = g.value.clone();
                             let mut d2 = g.value.clone();
                             derivative.compute_on_2_first(&mut d1, &h.value);
-                            derivative.compute_on_2_second(&mut d2, h.value.clone());
+                            derivative.compute_on_2_second(&mut d2, &h.value);
                             fun.compute_on_2(
                                 &mut g.value,
                                 h.value,
