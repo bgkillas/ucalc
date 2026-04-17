@@ -267,6 +267,7 @@ pub trait ComplexFunctionsMut<F>: Sized {
 }
 pub trait ComplexTrait<F>: FloatTrait<F> {
     fn to_imag(self) -> F;
+    fn to_real_imag(self) -> (F, F);
     fn imag(&self) -> &F;
     fn imag_mut(&mut self) -> &mut F;
     fn zero_real(&mut self);

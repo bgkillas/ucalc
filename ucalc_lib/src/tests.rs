@@ -420,7 +420,7 @@ fn parse_rem() {
     assert_correct(
         "7%4",
         "7 4 %",
-        vec![num(7), num(4), Function::Rem.into()],
+        vec![num(7), num(4), Function::Mod.into()],
         res(3),
     );
     assert_correct(
@@ -429,7 +429,7 @@ fn parse_rem() {
         vec![
             num(7),
             num(4),
-            Function::Rem.into(),
+            Function::Mod.into(),
             num(2),
             Function::Pow.into(),
         ],
@@ -3146,7 +3146,7 @@ fn function_exists() {
         Function::Pow,
         Function::Tetration,
         Function::Root,
-        Function::Rem,
+        Function::Mod,
         Function::Negate,
         Function::Factorial,
         Function::SubFactorial,

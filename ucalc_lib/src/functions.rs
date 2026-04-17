@@ -33,7 +33,7 @@ pub enum Function {
     Pow,
     Tetration,
     Root,
-    Rem,
+    Mod,
     Negate,
     Factorial,
     SubFactorial,
@@ -184,7 +184,7 @@ impl TryFrom<&str> for Function {
             "numerical_solve" => Self::NumericalSolve,
             "tetration" => Self::Tetration,
             "root" => Self::Root,
-            "rem" => Self::Rem,
+            "rem" => Self::Mod,
             "negate" => Self::Negate,
             "factorial" => Self::Factorial,
             "subfactorial" => Self::SubFactorial,
@@ -278,7 +278,7 @@ impl Display for Function {
                 Self::Pow => "pow",
                 Self::Tetration => "tetration",
                 Self::Root => "root",
-                Self::Rem => "rem",
+                Self::Mod => "rem",
                 Self::Negate => "negate",
                 Self::Factorial => "factorial",
                 Self::SubFactorial => "subfactorial",
@@ -366,7 +366,7 @@ impl Function {
             | Self::Div
             | Self::Pow
             | Self::Root
-            | Self::Rem
+            | Self::Mod
             | Self::Equal
             | Self::NotEqual
             | Self::Greater
@@ -571,7 +571,7 @@ impl Function {
             Self::Sub => *a -= b,
             Self::Mul => *a *= b,
             Self::Div => *a /= b,
-            Self::Rem => *a %= b,
+            Self::Mod => *a %= b,
             #[cfg(feature = "units")]
             Self::Convert => *a /= b,
             Self::Pow => a.pow_assign(b),

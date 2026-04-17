@@ -36,7 +36,7 @@ enum Op {
     Sub,
     Mul,
     Div,
-    Rem,
+    Mod,
     Pow,
 }
 impl Op {
@@ -66,7 +66,7 @@ impl Op {
                 quote! {div},
                 quote! {div_assign},
             ),
-            Op::Rem => (
+            Op::Mod => (
                 quote! {Rem},
                 quote! {RemAssign},
                 quote! {rem},
@@ -201,7 +201,7 @@ pub fn generate_lower(input: proc_macro::TokenStream) -> proc_macro::TokenStream
         impl_lower_ops(ty.clone(), oty.clone(), Op::Sub),
         impl_lower_ops(ty.clone(), oty.clone(), Op::Div),
         impl_lower_ops(ty.clone(), oty.clone(), Op::Mul),
-        impl_lower_ops(ty.clone(), oty.clone(), Op::Rem),
+        impl_lower_ops(ty.clone(), oty.clone(), Op::Mod),
         impl_lower_ops(ty.clone(), oty.clone(), Op::Pow),
     ];
     quote! {
@@ -220,7 +220,7 @@ pub fn generate_types(ty: proc_macro::TokenStream) -> proc_macro::TokenStream {
         impl_ops(ty.clone(), Op::Sub),
         impl_ops(ty.clone(), Op::Div),
         impl_ops(ty.clone(), Op::Mul),
-        impl_ops(ty.clone(), Op::Rem),
+        impl_ops(ty.clone(), Op::Mod),
         impl_ops(ty.clone(), Op::Pow),
     ];
     quote! {

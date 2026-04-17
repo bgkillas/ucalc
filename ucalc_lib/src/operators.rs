@@ -11,7 +11,7 @@ pub enum Operator {
     Pow,
     Tetration,
     Root,
-    Rem,
+    Mod,
     Negate,
     Factorial,
     SubFactorial,
@@ -44,7 +44,7 @@ impl Display for Operator {
                 Self::Pow => "^",
                 Self::Tetration => "^^",
                 Self::Root => "//",
-                Self::Rem => "%",
+                Self::Mod => "%",
                 Self::Negate => "-",
                 Self::Factorial => "!",
                 Self::SubFactorial => "!",
@@ -76,7 +76,7 @@ impl TryFrom<Function> for Operator {
             Function::Pow => Self::Pow,
             Function::Tetration => Self::Tetration,
             Function::Root => Self::Root,
-            Function::Rem => Self::Rem,
+            Function::Mod => Self::Mod,
             Function::Negate => Self::Negate,
             Function::Factorial => Self::Factorial,
             Function::SubFactorial => Self::SubFactorial,
@@ -110,7 +110,7 @@ impl TryFrom<&str> for Operator {
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         Ok(match value {
             "//" => Self::Root,
-            "%" => Self::Rem,
+            "%" => Self::Mod,
             "^" | "**" => Self::Pow,
             "^^" => Self::Tetration,
             "*" => Self::Mul,
@@ -148,7 +148,7 @@ impl Operator {
             | Self::Sub
             | Self::Pow
             | Self::Root
-            | Self::Rem
+            | Self::Mod
             | Self::Equal
             | Self::NotEqual
             | Self::Greater
@@ -214,14 +214,14 @@ impl Operator {
             Self::Mul | Self::Div => 6,
             Self::Negate | Self::Not => 7,
             Self::Pow | Self::Root | Self::Tetration => 8,
-            Self::Rem => 9,
+            Self::Mod => 9,
             Self::Factorial | Self::SubFactorial => 10,
             Self::Bracket(_) | Self::Function(_, _) | Self::Custom(_, _) => unreachable!(),
         }
     }
     pub fn left_associative(self) -> bool {
         match self {
-            Self::Add | Self::Sub | Self::Mul | Self::Div | Self::Rem | Self::And | Self::Or => {
+            Self::Add | Self::Sub | Self::Mul | Self::Div | Self::Mod | Self::And | Self::Or => {
                 true
             }
             #[cfg(feature = "units")]
@@ -254,7 +254,7 @@ impl From<Operator> for Function {
             Operator::Pow => Self::Pow,
             Operator::Tetration => Self::Tetration,
             Operator::Root => Self::Root,
-            Operator::Rem => Self::Rem,
+            Operator::Mod => Self::Mod,
             Operator::Negate => Self::Negate,
             Operator::Factorial => Self::Factorial,
             Operator::SubFactorial => Self::SubFactorial,

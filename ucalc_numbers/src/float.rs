@@ -354,6 +354,9 @@ impl ComplexTrait<Float> for Complex {
     fn to_imag(self) -> Float {
         self.imag
     }
+    fn to_real_imag(self) -> (Float, Float) {
+        (self.real, self.imag)
+    }
     fn imag(&self) -> &Float {
         &self.imag
     }

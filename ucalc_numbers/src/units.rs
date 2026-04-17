@@ -617,6 +617,9 @@ impl<F, T: ComplexTrait<F>, N, const K: usize> ComplexTrait<F> for Quantity<T, N
     fn to_imag(self) -> F {
         self.num.to_imag()
     }
+    fn to_real_imag(self) -> (F, F) {
+        self.num.to_real_imag()
+    }
     fn imag(&self) -> &F {
         self.num.imag()
     }

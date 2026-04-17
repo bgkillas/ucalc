@@ -2,7 +2,11 @@
 use crate::Rand;
 use crate::compute::StackToken;
 use crate::{Compute, Function, Number, Token};
-use ucalc_numbers::{Float, FloatFunctions, FloatFunctionsMut, NegAssign, Pow, PowAssign};
+#[cfg(feature = "complex")]
+use ucalc_numbers::ComplexTrait;
+use ucalc_numbers::{
+    Float, FloatFunctions, FloatFunctionsMut, FloatTrait, NegAssign, Pow, PowAssign,
+};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Derivative {
     Add,
@@ -27,7 +31,7 @@ pub enum Derivative {
     Recip,
     #[cfg(feature = "complex")]
     Conj,
-    Rem,
+    Mod,
     Ceil,
     Floor,
     Round,
@@ -67,25 +71,57 @@ impl Derivative {
                 a.recip_mut();
                 *a /= Float::from(3);
             }
-            Self::Abs => todo!(),
+            Self::Abs => {
+                if a.is_zero() {
+                    return Err(());
+                }
+                *a /= a.clone().abs();
+            }
             Self::Recip => {
                 a.recip_mut();
                 *a *= a.clone();
                 a.neg_assign();
             }
-            Self::Ceil => todo!(),
-            Self::Floor => todo!(),
-            Self::Round => todo!(),
-            Self::Trunc => todo!(),
-            Self::Fract => todo!(),
+            Self::Ceil | Self::Floor => {
+                if a.real().clone().fract().is_zero() {
+                    return Err(());
+                }
+                *a = Number::default();
+            }
+            Self::Round => {
+                if (a.real().clone() - Float::from(0.5)).fract().is_zero() {
+                    return Err(());
+                }
+                *a = Number::default();
+            }
+            Self::Trunc => {
+                if !a.real().is_zero() && a.real().clone().fract().is_zero() {
+                    return Err(());
+                }
+                *a = Number::default();
+            }
+            Self::Fract => {
+                if !a.real().is_zero() && a.real().clone().fract().is_zero() {
+                    return Err(());
+                }
+                *a = Number::from(1);
+            }
             #[cfg(feature = "complex")]
-            Self::Arg => todo!(),
+            Self::Arg => {
+                if a.is_zero() {
+                    return Err(());
+                }
+                let b = std::mem::take(a);
+                let (b, c) = b.to_real_imag();
+                let b = b.clone() * b + c.clone() * &c;
+                *a = Number::from(-c / b);
+            }
             #[cfg(feature = "complex")]
-            Self::Conj => todo!(),
+            Self::Conj => *a = Number::from(1),
             #[cfg(feature = "complex")]
-            Self::Real => todo!(),
+            Self::Real => *a = Number::from(1),
             #[cfg(feature = "complex")]
-            Self::Imag => todo!(),
+            Self::Imag => *a = Number::from(0),
             _ => unreachable!(),
         }
         Ok(())
@@ -115,6 +151,15 @@ impl Derivative {
                     *a /= b.clone() * b
                 }
             }
+            #[cfg(feature = "units")]
+            Self::Convert => {
+                if N == 0 {
+                    *a = b.clone().recip()
+                } else {
+                    a.neg_assign();
+                    *a /= b.clone() * b
+                }
+            }
             Self::Pow => {
                 if N == 0 {
                     a.pow_assign(b.clone() - Float::from(1));
@@ -136,9 +181,18 @@ impl Derivative {
                     *a /= b.clone() * b;
                 }
             }
-            #[cfg(feature = "units")]
-            Self::Convert => todo!(),
-            Self::Rem => todo!(),
+            Self::Mod => {
+                *a /= b;
+                if a.clone().fract().is_zero() {
+                    return Err(());
+                }
+                if N == 0 {
+                    *a = Number::from(1);
+                } else {
+                    a.floor_mut();
+                    a.neg_assign();
+                }
+            }
             _ => unreachable!(),
         }
         Ok(())
@@ -168,7 +222,7 @@ impl TryFrom<Function> for Derivative {
             Function::Recip => Self::Recip,
             #[cfg(feature = "complex")]
             Function::Conj => Self::Conj,
-            Function::Rem => Self::Rem,
+            Function::Mod => Self::Mod,
             Function::Ceil => Self::Ceil,
             Function::Floor => Self::Floor,
             Function::Round => Self::Round,
@@ -280,7 +334,7 @@ impl Compute<'_> {
                                 g.derivative *= d1;
                                 g.derivative += h.derivative * d2;
                             }
-                            _ => todo!(),
+                            _ => unreachable!(),
                         }
                     }
                     &Token::InnerVar(n) => stack.push(
