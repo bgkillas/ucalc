@@ -139,7 +139,7 @@ impl Line {
     }
     pub fn clear_down(&mut self, cursor: u32) {
         if (self.vec.len() as u32) > cursor {
-            self.vec.drain(cursor as usize..);
+            self.vec.truncate(cursor as usize);
         }
     }
 }

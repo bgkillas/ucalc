@@ -33,7 +33,7 @@ impl Poly {
         self
     }
     pub fn simplify(&mut self) {
-        self.0.drain(self.len()..);
+        self.0.truncate(self.len());
     }
     pub fn last(&self) -> &Number {
         &self[self.len() - 1]
@@ -425,7 +425,7 @@ impl Compute<'_> {
                             #[cfg(feature = "float_rand")]
                             rand,
                         )?;
-                        stack.drain(len + 1 - inputs..);
+                        stack.truncate(len + 1 - inputs);
                     }
                     &Token::CustomVar(index) => {
                         stack.push(self.custom_vars[index as usize].value.clone().into())
@@ -449,7 +449,7 @@ impl Compute<'_> {
                                 #[cfg(feature = "float_rand")]
                                 rand,
                             )?;
-                        inner_vars.drain(end..);
+                        inner_vars.truncate(end);
                     }
                     Token::Number(n) => stack.push(n.clone().into()),
                     &Token::InnerVar(index) => {
@@ -473,7 +473,7 @@ impl Compute<'_> {
         if let Some(res) = res {
             Some(res)
         } else {
-            stack.drain(stack_end..);
+            stack.truncate(stack_end);
             None
         }
     }

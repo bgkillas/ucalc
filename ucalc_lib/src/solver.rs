@@ -79,7 +79,7 @@ impl Compute<'_> {
                     if let Some(n) = roots {
                         *ret = n;
                     }
-                    inner_vars.drain(end..);
+                    inner_vars.truncate(end);
                     return self.tokens(args[0]).solve_inner(
                         inner_vars,
                         ret,

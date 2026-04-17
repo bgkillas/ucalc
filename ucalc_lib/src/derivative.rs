@@ -248,8 +248,8 @@ impl Compute<'_> {
                             d *= &stack[len - inputs + i].diff_ref().derivative;
                             stack[len - inputs].diff_mut().derivative += d;
                         }
-                        inner_vars.drain(end..);
-                        stack.drain(len - inputs + 1..);
+                        inner_vars.truncate(end);
+                        stack.truncate(len - inputs + 1);
                     }
                     &Token::Function(fun, d) => {
                         if d.get() != 0 {
@@ -319,7 +319,7 @@ impl Compute<'_> {
         if let Some(res) = res {
             Some(res)
         } else {
-            stack.drain(stack_end..);
+            stack.truncate(stack_end);
             None
         }
     }

@@ -325,7 +325,7 @@ impl<'a> Compute<'a> {
                             rand,
                         );
                     }
-                    inner_vars.drain(end..);
+                    inner_vars.truncate(end);
                 }
                 &Token::InnerVar(index) => {
                     stack.push(inner_vars[self.offset + index as usize].clone().into())
