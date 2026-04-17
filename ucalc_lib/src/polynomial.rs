@@ -407,66 +407,75 @@ impl Compute<'_> {
         to_poly: Option<u16>,
         #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Option<StackToken> {
-        let mut poly = Vec::with_capacity(8).into();
-        let mut tokens = self.tokens.iter().enumerate();
-        while let Some((i, token)) = tokens.next() {
-            match token {
-                &Token::Function(fun, d) => {
-                    if d.get() != 0 {
-                        todo!()
-                    }
-                    let inputs = fun.inputs().get() as usize;
-                    let len = stack.len();
-                    fun.compute_poly(
-                        &mut stack[len - inputs..],
-                        &mut poly,
-                        #[cfg(feature = "float_rand")]
-                        rand,
-                    )?;
-                    stack.drain(len + 1 - inputs..);
-                }
-                &Token::CustomVar(index) => {
-                    stack.push(self.custom_vars[index as usize].value.clone().into())
-                }
-                &Token::CustomFun(index, d) => {
-                    if d.get() != 0 {
-                        todo!()
-                    }
-                    let inputs = self.custom_funs[index as usize].inputs.get() as usize;
-                    let end = inner_vars.len();
-                    let len = stack.len();
-                    inner_vars.push(stack[len - inputs].num_ref().clone()); //TODO not always num
-                    inner_vars.extend(stack.drain(len + 1 - inputs..).map(|n| n.num()));
-                    stack[len - inputs] = self
-                        .offset(end)
-                        .tokens(&self.custom_funs[index as usize].tokens[..])
-                        .compute_polynomial(
-                            inner_vars,
-                            stack,
-                            None,
+        let stack_end = stack.len();
+        let res = try {
+            let mut poly = Vec::with_capacity(8).into();
+            let mut tokens = self.tokens.iter().enumerate();
+            while let Some((i, token)) = tokens.next() {
+                match token {
+                    &Token::Function(fun, d) => {
+                        if d.get() != 0 {
+                            todo!()
+                        }
+                        let inputs = fun.inputs().get() as usize;
+                        let len = stack.len();
+                        fun.compute_poly(
+                            &mut stack[len - inputs..],
+                            &mut poly,
                             #[cfg(feature = "float_rand")]
                             rand,
                         )?;
-                    inner_vars.drain(end..);
-                }
-                Token::Number(n) => stack.push(n.clone().into()),
-                &Token::InnerVar(index) => {
-                    if Some(index) == to_poly {
-                        stack.push(Polynomial::new().into())
-                    } else {
-                        stack.push(inner_vars[self.offset + index as usize].clone().into())
+                        stack.drain(len + 1 - inputs..);
+                    }
+                    &Token::CustomVar(index) => {
+                        stack.push(self.custom_vars[index as usize].value.clone().into())
+                    }
+                    &Token::CustomFun(index, d) => {
+                        if d.get() != 0 {
+                            todo!()
+                        }
+                        let inputs = self.custom_funs[index as usize].inputs.get() as usize;
+                        let end = inner_vars.len();
+                        let len = stack.len();
+                        inner_vars.push(stack[len - inputs].num_ref().clone()); //TODO not always num
+                        inner_vars.extend(stack.drain(len + 1 - inputs..).map(|n| n.num()));
+                        stack[len - inputs] = self
+                            .offset(end)
+                            .tokens(&self.custom_funs[index as usize].tokens[..])
+                            .compute_polynomial(
+                                inner_vars,
+                                stack,
+                                None,
+                                #[cfg(feature = "float_rand")]
+                                rand,
+                            )?;
+                        inner_vars.drain(end..);
+                    }
+                    Token::Number(n) => stack.push(n.clone().into()),
+                    &Token::InnerVar(index) => {
+                        if Some(index) == to_poly {
+                            stack.push(Polynomial::new().into())
+                        } else {
+                            stack.push(inner_vars[self.offset + index as usize].clone().into())
+                        }
+                    }
+                    &Token::GraphVar(index) => {
+                        stack.push(self.graph_vars[index as usize].clone().into())
+                    }
+                    &Token::Skip(to) => {
+                        stack.push(StackToken::Skip(i + 1));
+                        tokens.advance_by(to).unwrap();
                     }
                 }
-                &Token::GraphVar(index) => {
-                    stack.push(self.graph_vars[index as usize].clone().into())
-                }
-                &Token::Skip(to) => {
-                    stack.push(StackToken::Skip(i + 1));
-                    tokens.advance_by(to).unwrap();
-                }
             }
+            stack.pop().unwrap()
+        };
+        if let Some(res) = res {
+            Some(res)
+        } else {
+            stack.drain(stack_end..);
+            None
         }
-        Some(stack.pop().unwrap())
     }
 }
 impl Function {

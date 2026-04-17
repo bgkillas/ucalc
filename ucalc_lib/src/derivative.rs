@@ -41,7 +41,7 @@ pub enum Derivative {
     Imag,
 }
 impl Derivative {
-    pub fn compute_on_1(self, a: &mut Number) {
+    pub fn compute_on_1(self, a: &mut Number) -> Result<(), ()> {
         match self {
             Self::Negate => a.neg_assign(),
             Self::Sin => a.cos_mut(),
@@ -54,12 +54,25 @@ impl Derivative {
                 a.recip_mut();
                 *a *= a.clone();
             }
-            Self::Ln => todo!(),
-            Self::Exp => todo!(),
-            Self::Sqrt => todo!(),
-            Self::Cbrt => todo!(),
+            Self::Ln => a.recip_mut(),
+            Self::Exp => a.exp_mut(),
+            Self::Sqrt => {
+                a.sqrt_mut();
+                a.recip_mut();
+                *a *= Float::from(0.5);
+            }
+            Self::Cbrt => {
+                a.cbrt_mut();
+                *a *= a.clone();
+                a.recip_mut();
+                *a /= Float::from(3);
+            }
             Self::Abs => todo!(),
-            Self::Recip => todo!(),
+            Self::Recip => {
+                a.recip_mut();
+                *a *= a.clone();
+                a.neg_assign();
+            }
             Self::Ceil => todo!(),
             Self::Floor => todo!(),
             Self::Round => todo!(),
@@ -75,8 +88,9 @@ impl Derivative {
             Self::Imag => todo!(),
             _ => unreachable!(),
         }
+        Ok(())
     }
-    pub fn compute_on_2<const N: usize>(self, a: &mut Number, b: &Number) {
+    pub fn compute_on_2<const N: usize>(self, a: &mut Number, b: &Number) -> Result<(), ()> {
         match self {
             Self::Add => *a = Number::from(1),
             #[cfg(feature = "complex")]
@@ -127,6 +141,7 @@ impl Derivative {
             Self::Rem => todo!(),
             _ => unreachable!(),
         }
+        Ok(())
     }
 }
 impl TryFrom<Function> for Derivative {
@@ -189,121 +204,123 @@ impl Compute<'_> {
         var: u16,
         #[cfg(feature = "float_rand")] rand: &mut Rand,
     ) -> Option<Number> {
-        let mut tokens = self.tokens.iter().enumerate();
         let stack_end = stack.len();
-        while let Some((i, token)) = tokens.next() {
-            match token {
-                &Token::CustomFun(n, d) => {
-                    if d.get() != 0 {
-                        todo!()
-                    }
-                    let end = inner_vars.len();
-                    let len = stack.len();
-                    let fun = &self.custom_funs[n as usize];
-                    let inputs = fun.inputs.get() as usize;
-                    let compute = self.tokens(&fun.tokens[..]).offset(end);
-                    inner_vars.extend(
-                        stack[len - inputs..]
-                            .iter()
-                            .map(|a| a.diff_ref().value.clone()),
-                    );
-                    stack[len - inputs].diff_mut().value = compute.compute(
-                        inner_vars,
-                        stack,
-                        #[cfg(feature = "float_rand")]
-                        rand,
-                    );
-                    let Some(d) = compute.derivative(
-                        inner_vars,
-                        stack,
-                        end as u16,
-                        #[cfg(feature = "float_rand")]
-                        rand,
-                    ) else {
-                        stack.drain(stack_end..);
-                        return None;
-                    };
-                    stack[len - inputs].diff_mut().derivative *= d;
-                    for i in 1..inputs {
-                        let Some(mut d) = compute.derivative(
+        let res = try {
+            let mut tokens = self.tokens.iter().enumerate();
+            while let Some((i, token)) = tokens.next() {
+                match token {
+                    &Token::CustomFun(n, d) => {
+                        if d.get() != 0 {
+                            todo!()
+                        }
+                        let end = inner_vars.len();
+                        let len = stack.len();
+                        let fun = &self.custom_funs[n as usize];
+                        let inputs = fun.inputs.get() as usize;
+                        let compute = self.tokens(&fun.tokens[..]).offset(end);
+                        inner_vars.extend(
+                            stack[len - inputs..]
+                                .iter()
+                                .map(|a| a.diff_ref().value.clone()),
+                        );
+                        stack[len - inputs].diff_mut().value = compute.compute(
                             inner_vars,
                             stack,
-                            (end + i) as u16,
                             #[cfg(feature = "float_rand")]
                             rand,
-                        ) else {
-                            stack.drain(stack_end..);
-                            return None;
-                        };
-                        d *= &stack[len - inputs + i].diff_ref().derivative;
-                        stack[len - inputs].diff_mut().derivative += d;
-                    }
-                    inner_vars.drain(end..);
-                    stack.drain(len - inputs + 1..);
-                }
-                &Token::Function(fun, d) => {
-                    if d.get() != 0 {
-                        todo!()
-                    }
-                    let Ok(derivative) = Derivative::try_from(fun) else {
-                        stack.drain(stack_end..);
-                        return None;
-                    };
-                    match fun.inputs().get() {
-                        1 => {
-                            let g = stack.last_mut().unwrap().diff_mut();
-                            let mut f_g = g.value.clone();
-                            derivative.compute_on_1(&mut f_g);
-                            fun.compute_on_1(&mut g.value);
-                            g.derivative *= f_g;
-                        }
-                        2 => {
-                            let h = stack.pop().unwrap().diff();
-                            let g = stack.last_mut().unwrap().diff_mut();
-                            let mut d1 = g.value.clone();
-                            let mut d2 = g.value.clone();
-                            derivative.compute_on_2::<0>(&mut d1, &h.value);
-                            derivative.compute_on_2::<1>(&mut d2, &h.value);
-                            fun.compute_on_2(
-                                &mut g.value,
-                                h.value,
+                        );
+                        let d = compute.derivative(
+                            inner_vars,
+                            stack,
+                            end as u16,
+                            #[cfg(feature = "float_rand")]
+                            rand,
+                        )?;
+                        stack[len - inputs].diff_mut().derivative *= d;
+                        for i in 1..inputs {
+                            let mut d = compute.derivative(
+                                inner_vars,
+                                stack,
+                                (end + i) as u16,
                                 #[cfg(feature = "float_rand")]
                                 rand,
-                            );
-                            g.derivative *= d1;
-                            g.derivative += h.derivative * d2;
+                            )?;
+                            d *= &stack[len - inputs + i].diff_ref().derivative;
+                            stack[len - inputs].diff_mut().derivative += d;
                         }
-                        _ => todo!(),
+                        inner_vars.drain(end..);
+                        stack.drain(len - inputs + 1..);
+                    }
+                    &Token::Function(fun, d) => {
+                        if d.get() != 0 {
+                            todo!()
+                        }
+                        let derivative = Derivative::try_from(fun).ok()?;
+                        match fun.inputs().get() {
+                            1 => {
+                                let g = stack.last_mut().unwrap().diff_mut();
+                                let mut f_g = g.value.clone();
+                                derivative.compute_on_1(&mut f_g).ok()?;
+                                fun.compute_on_1(&mut g.value);
+                                g.derivative *= f_g;
+                            }
+                            2 => {
+                                let h = stack.pop().unwrap().diff();
+                                let g = stack.last_mut().unwrap().diff_mut();
+                                let mut d1 = g.value.clone();
+                                let mut d2 = g.value.clone();
+                                derivative.compute_on_2::<0>(&mut d1, &h.value).ok()?;
+                                derivative.compute_on_2::<1>(&mut d2, &h.value).ok()?;
+                                fun.compute_on_2(
+                                    &mut g.value,
+                                    h.value,
+                                    #[cfg(feature = "float_rand")]
+                                    rand,
+                                );
+                                g.derivative *= d1;
+                                g.derivative += h.derivative * d2;
+                            }
+                            _ => todo!(),
+                        }
+                    }
+                    &Token::InnerVar(n) => stack.push(
+                        DiffToken::new(
+                            inner_vars[self.offset + n as usize].clone(),
+                            if self.offset + n as usize == var as usize {
+                                Number::from(1)
+                            } else {
+                                Number::default()
+                            },
+                        )
+                        .into(),
+                    ),
+                    &Token::CustomVar(n) => stack.push(
+                        DiffToken::new(
+                            self.custom_vars[n as usize].value.clone(),
+                            Number::default(),
+                        )
+                        .into(),
+                    ),
+                    &Token::GraphVar(n) => stack.push(
+                        DiffToken::new(self.graph_vars[n as usize].clone(), Number::default())
+                            .into(),
+                    ),
+                    &Token::Skip(to) => {
+                        stack.push(StackToken::Skip(i + 1));
+                        tokens.advance_by(to).unwrap();
+                    }
+                    Token::Number(n) => {
+                        stack.push(DiffToken::new(n.clone(), Number::default()).into())
                     }
                 }
-                &Token::InnerVar(n) => stack.push(
-                    DiffToken::new(
-                        inner_vars[self.offset + n as usize].clone(),
-                        if self.offset + n as usize == var as usize {
-                            Number::from(1)
-                        } else {
-                            Number::default()
-                        },
-                    )
-                    .into(),
-                ),
-                &Token::CustomVar(n) => stack.push(
-                    DiffToken::new(
-                        self.custom_vars[n as usize].value.clone(),
-                        Number::default(),
-                    )
-                    .into(),
-                ),
-                &Token::GraphVar(n) => stack.push(
-                    DiffToken::new(self.graph_vars[n as usize].clone(), Number::default()).into(),
-                ),
-                &Token::Skip(to) => {
-                    stack.push(StackToken::Skip(i + 1));
-                    tokens.advance_by(to).unwrap();
-                }
-                Token::Number(n) => stack.push(DiffToken::new(n.clone(), Number::default()).into()),
             }
+            stack.pop().unwrap().diff().derivative
+        };
+        if let Some(res) = res {
+            Some(res)
+        } else {
+            stack.drain(stack_end..);
+            None
         }
-        Some(stack.pop().unwrap().diff().derivative)
     }
 }
