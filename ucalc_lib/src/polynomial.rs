@@ -285,7 +285,8 @@ impl Polynomial {
             && self.quotient.clone().div_buffer(&self.divisor, &mut poly)
         {
             poly.as_ref().roots()?
-        } else if let Some(mut roots) = self.quotient.as_ref().roots() {
+        } else {
+            let mut roots = self.quotient.as_ref().roots()?;
             if self.divisor.len() > 1 {
                 let anti_roots = self.divisor.as_ref().roots()?;
                 for r in anti_roots {
@@ -295,8 +296,6 @@ impl Polynomial {
                 }
             }
             roots
-        } else {
-            return None;
         };
         ret.iter_mut().for_each(|a| {
             self.functions.iter().rev().for_each(|f| match f {

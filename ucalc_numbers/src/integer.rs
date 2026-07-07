@@ -54,12 +54,12 @@ impl UInteger {
         Self((1..=self.0).product())
     }
 }
-impl const From<U> for UInteger {
+impl From<U> for UInteger {
     fn from(value: U) -> Self {
         Self(value)
     }
 }
-impl const From<I> for Integer {
+impl From<I> for Integer {
     fn from(value: I) -> Self {
         Self(value)
     }

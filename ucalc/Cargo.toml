@@ -35,7 +35,7 @@ cli=["readchar/crossterm"]
 ucalc_lib = {workspace = true}
 ucalc_numbers = {workspace = true}
 readchar = {workspace = true}
-mimalloc = {version="0.1.48", features = ["v3"], optional = true}
+mimalloc = {version="0.1.52", optional = true}
 uterm_lib = {workspace = true}
-wasm-bindgen = {version="0.2.118", optional = true}
+wasm-bindgen = {version="0.2.126", optional = true}
 console_error_panic_hook = {version="0.1.7",optional = true}

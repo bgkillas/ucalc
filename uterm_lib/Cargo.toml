@@ -17,5 +17,5 @@ wasm=["dep:web-sys", "dep:wasm-bindgen"]
 softbuffer = {version="0.4.8", default-features = false}
 winit={version="0.30.13", default-features=false, features = ["rwh_06"]}
 bdf2 = "0.7.1"
-wasm-bindgen = {version="0.2.118",optional = true}
-web-sys = {version = "0.3.95", features = ["HtmlCanvasElement", "Window", "Document"], optional = true}
+wasm-bindgen = {version="0.2.126",optional = true}
+web-sys = {version = "0.3.103", features = ["HtmlCanvasElement", "Window", "Document"], optional = true}

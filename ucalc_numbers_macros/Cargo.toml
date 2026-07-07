@@ -18,5 +18,5 @@ list = []
 proc-macro = true
 
 [dependencies]
-quote = "1.0.45"
+quote = "1.0.46"
 proc-macro2 = "1.0.106"

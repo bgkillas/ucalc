@@ -7,7 +7,6 @@
 #![feature(rustc_attrs)]
 #![feature(ptr_cast_slice)]
 #![feature(const_trait_impl)]
-#![feature(const_convert)]
 #[cfg(feature = "float")]
 mod float;
 #[cfg(feature = "float_rand")]
