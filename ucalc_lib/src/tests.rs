@@ -1024,6 +1024,68 @@ fn parse_abs() {
         res(1),
     );
 }
+/*#[test]
+fn test_fuzz() {
+    let chars = [
+        None,
+        Some('s'),
+        Some('i'),
+        Some('n'),
+        Some('('),
+        Some('0'),
+        Some('.'),
+        Some('1'),
+        Some(')'),
+        Some(' '),
+    ];
+    const P: usize = 8;
+    let mut s = String::with_capacity(P);
+    let e = chars.len();
+    let mut vars = Variables::default();
+    let mut funs = Functions::default();
+    let mut rng = rng();
+    for rpn in [false, true] {
+        for simpl in [false, true] {
+            for arr in (0..e).flat_map(move |a| {
+                (0..e).flat_map(move |b| {
+                    (0..e).flat_map(move |c| {
+                        (0..e).flat_map(move |d| {
+                            (0..e).flat_map(move |e| {
+                                (0..e).flat_map(move |f| {
+                                    (0..e).flat_map(move |g| {
+                                        (0..e).map(move |h| [a, b, c, d, e, f, g, h])
+                                    })
+                                })
+                            })
+                        })
+                    })
+                })
+            }) {
+                s.clear();
+                for i in arr {
+                    if let Some(c) = chars[i] {
+                        s.push(c);
+                    }
+                }
+                println!("{s:?} {rpn} {simpl}");
+                if let Ok(tokens) = Tokens::parse(
+                    &s,
+                    &mut vars,
+                    &mut funs,
+                    &[],
+                    false,
+                    simpl,
+                    10,
+                    rpn,
+                    &mut rng,
+                ) {
+                    println!("{tokens:?}");
+                    std::hint::black_box(tokens.tokens_any().compute(&[], &funs, &vars, &mut rng));
+                }
+            }
+        }
+    }
+}*/
 #[test]
 fn test_empty() {
     assert_correct("", "", vec![num(0)], res(0));

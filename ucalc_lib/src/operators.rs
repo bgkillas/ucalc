@@ -237,10 +237,10 @@ impl Operator {
             | Self::Less
             | Self::LessEqual
             | Self::GreaterEqual
+            | Self::Factorial
+            | Self::SubFactorial
             | Self::Solve => false,
-            _ => {
-                unreachable!()
-            }
+            Self::Bracket(_) | Self::Function(_, _) | Self::Custom(_, _) => unreachable!(),
         }
     }
 }

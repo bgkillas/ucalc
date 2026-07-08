@@ -1095,9 +1095,11 @@ impl Tokens {
         negate: bool,
     ) -> Result<(), ParseError<'static>> {
         while let Some(top) = operator_stack.pop_if(|top| {
-            !matches!(top, Operator::Bracket(_))
-                && (top.precedence() > operator.precedence()
-                    || (top.precedence() == operator.precedence() && operator.left_associative()))
+            !matches!(
+                top,
+                Operator::Bracket(_) | Operator::Function(_, _) | Operator::Custom(_, _)
+            ) && (top.precedence() > operator.precedence()
+                || (top.precedence() == operator.precedence() && operator.left_associative()))
                 && !(negate && operator == Operator::Negate && *top == Operator::Pow)
         }) {
             self.push_operator(top, inner_vars, operator_stack, custom_funs)?;
