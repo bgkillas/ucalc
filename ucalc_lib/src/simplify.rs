@@ -15,9 +15,9 @@ impl Tokens {
         while i < self.len() {
             match self[i] {
                 Token::Function(fun, d) => {
-                    let inputs = fun.inputs().get();
+                    let inputs = fun.inputs().get() as usize;
                     if fun.volatility() < V
-                        && self[i - inputs as usize..i]
+                        && self[i - inputs..i]
                             .iter()
                             .all(|n| matches!(n, Token::Number(_)))
                         && d.get() == 0
@@ -31,15 +31,15 @@ impl Tokens {
                         } else {
                             let n = fun
                                 .compute_drain(
-                                    self.drain(i - inputs as usize..i).map(|t| t.num()),
+                                    self.drain(i - inputs..i).map(|t| t.num()),
                                     #[cfg(feature = "float_rand")]
                                     rand,
                                 )
                                 .into();
-                            i -= inputs as usize;
+                            i -= inputs;
                             for i in skips.iter().copied() {
                                 *<Tokens as IndexMut<usize>>::index_mut(self, i).skip_mut() -=
-                                    inputs as usize;
+                                    inputs;
                             }
                             self[i] = n;
                         }

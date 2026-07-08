@@ -347,7 +347,7 @@ impl Tokens {
             let mut req_input = false;
             let mut open_input = false;
             let mut last_mul = false;
-            let mut expect_expr = false;
+            let mut expect_expr = !value.is_empty();
             let mut abs = 0;
             let mut needs_bracket = false;
             while let Some((i, c)) = chars.next() {
