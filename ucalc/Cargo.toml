@@ -4,7 +4,6 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-homepage.workspace = true
 description.workspace = true
 
 [lib]
@@ -15,7 +14,7 @@ default = ["f64", "complex", "float_rand", "mimalloc", "cli"]
 x11=["uterm_lib/x11", "uterm"]
 wayland=["uterm_lib/wayland", "uterm"]
 wasm=["dep:wasm-bindgen", "ucalc_lib/wasm", "uterm_lib/wasm", "dep:console_error_panic_hook", "uterm"]
-uterm=[]
+uterm=["uterm_lib"]
 f16 = ["ucalc_lib/f16"]
 f32 = ["ucalc_lib/f32"]
 f64 = ["ucalc_lib/f64"]
@@ -36,6 +35,6 @@ ucalc_lib = {workspace = true}
 ucalc_numbers = {workspace = true}
 readchar = {workspace = true}
 mimalloc = {version="0.1.52", optional = true}
-uterm_lib = {workspace = true}
-wasm-bindgen = {version="0.2.126", optional = true}
+uterm_lib = {workspace = true, optional = true}
+wasm-bindgen = {version="0.2.129", optional = true}
 console_error_panic_hook = {version="0.1.7",optional = true}

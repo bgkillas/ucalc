@@ -88,7 +88,8 @@ pub fn process_line(
                     write!(str, "{}", compute.to_string_radix(options.base_output))?;
                     Some(compute)
                 }
-                Ok(ParseReturn::Graph(_, _)) => todo!(),
+                //TODO
+                Ok(ParseReturn::Graph(_, _)) => None,
                 Ok(ParseReturn::Var) => None,
                 Err(e) => {
                     write!(str, "{e:?}")?;
